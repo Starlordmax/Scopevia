@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+
+# TypeScript
+*.tsbuildinfo
+
+# Build
+dist/
+build/
+
+# Env files (never commit secrets)
+.env
+.env.local
+.env.*.local
+.env.test
+.env.production
+
+# Supabase local dev
+supabase/.branches
+supabase/.temp
+
+# Testing
+coverage/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+
+# Claude Code local (personal tool permissions, not project source)
+.claude/settings.local.json

@@ -1,0 +1,14 @@
+-- Local development seed data.
+--
+-- System roles, permissions and the role_permissions matrix are NOT seeded
+-- here — they live in the versioned migration
+-- 20260701120900_seed_roles_and_permissions.sql because they are required
+-- reference data in every environment (dev, staging, production), not
+-- throwaway local sample data.
+--
+-- This file is intentionally empty in Phase 0. Test users/tenants for local
+-- development and RLS verification are created via the Supabase Auth Admin
+-- API (see tests/rls/tenant-isolation.test.ts and
+-- docs/17-rls-verification.md) rather than seeded here, since creating an
+-- auth.users row correctly requires going through Supabase Auth (password
+-- hashing, identities, etc.), not a raw INSERT.
