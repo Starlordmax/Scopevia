@@ -1,6 +1,8 @@
 # 14 — Phase 0: Foundations
 
-Estado: **Implementado**. Este documento describe qué se construyó, qué decisiones se tomaron durante la implementación (incluyendo diferencias respecto al prompt original) y qué queda deliberadamente fuera de alcance.
+Estado: **Implementado y verificado**. Este documento describe qué se construyó, qué decisiones se tomaron durante la implementación (incluyendo diferencias respecto al prompt original) y qué queda deliberadamente fuera de alcance.
+
+Tras la implementación inicial, se ejecutó una fase de revisión y hardening de seguridad (auditoría de funciones `SECURITY DEFINER`, protección contra condiciones de carrera, invitaciones basadas en consentimiento, y verificación contra Postgres real) documentada en **[18-phase-0-security-hardening.md](18-phase-0-security-hardening.md)**, con la evidencia de ejecución en **[19-phase-0-verification-evidence.md](19-phase-0-verification-evidence.md)**. La migración `20260701121000_security_hardening.sql` corrige varios hallazgos de esa revisión, incluyendo una escalación de privilegios real (un Admin podía promoverse a Owner) encontrada durante el propio proceso de hardening.
 
 ## Qué incluye Phase 0
 
@@ -56,8 +58,8 @@ Cookie `httpOnly` (`scopevia_active_tenant`) como **hint únicamente**. Toda pá
 ### Separación de clientes Supabase
 Cuatro módulos (`client.ts`, `server.ts`, `middleware.ts`, `admin.ts`) — ver [ADR-017](adr/0006-supabase-client-separation.md). `admin.ts` existe pero **no se usa en ningún flujo de Phase 0**; toda mutación usa la sesión del propio usuario contra una función `SECURITY DEFINER`, un escalamiento de privilegio más acotado y auditable que usar `service_role` desde la aplicación.
 
-### Invitación de miembros — simplificación explícita
-`invite_member_by_email()` **solo** puede añadir a alguien que **ya tiene cuenta** en Scopevia, y lo agrega directamente en estado `active` (sin flujo de token de invitación por email ni aceptación pendiente). El estado `invited` sigue existiendo en el modelo de datos (`tenant_memberships.status`) para cuando se construya ese flujo completo en una fase posterior (CRM/organización) — no se construyó una UI de "pending invites" desechable solo para Phase 0.
+### Invitación de miembros — simplificación explícita, con consentimiento
+`invite_member_by_email()` **solo** puede añadir a alguien que **ya tiene cuenta** en Scopevia. Tras la revisión de seguridad ([18](18-phase-0-security-hardening.md)), la membresía se crea en estado `invited` y **no otorga ningún acceso** (toda policy RLS y función helper exige `status='active'`) hasta que el propio usuario invitado llama a `accept_invitation()`. `get_pending_invitations()` alimenta la sección "Pending invitations" de `/select-tenant`, donde el usuario ve e acepta sus invitaciones. Sigue sin existir un flujo de token por email — el usuario descubre la invitación al iniciar sesión, no por un correo con link. Un Admin/Owner puede cancelar una invitación pendiente (`status='removed'`) pero **no puede** forzar su aceptación en nombre del invitado.
 
 ### Simplificación del modelo respecto al prompt original
 Se eliminó `membership_roles` (tabla N:M) del esquema propuesto — ver arriba, "un rol por membresía".
@@ -99,8 +101,8 @@ Todas las funciones `SECURITY DEFINER` fijan `search_path = public, pg_temp` exp
 ## Limitaciones conocidas de Phase 0
 
 - Sin roles personalizados por tenant (esquema listo, UI no construida).
-- Sin flujo de invitación por email con token/aceptación pendiente (ver arriba).
-- Sin transferencia de ownership entre usuarios (`invite_member_by_email` explícitamente rechaza `p_role_key='owner'`).
+- La invitación requiere aceptación explícita (`accept_invitation()`), pero sigue sin token de email/link — el usuario la ve al iniciar sesión, no recibe un correo con "click para unirte". Ver [18-phase-0-security-hardening.md](18-phase-0-security-hardening.md).
+- Sin transferencia de ownership entre usuarios (`invite_member_by_email`/`update_membership` explícitamente rechazan asignar `owner` salvo que el caller ya tenga `roles.manage`).
 - Sin recuperación de cuenta multi-factor, OAuth, ni magic links (diferidos según el prompt).
 - Sin límite de tasa (rate limiting) implementado todavía a nivel de aplicación — ver [11 del prompt]/[06-security-and-rls.md](06-security-and-rls.md), es un ítem no bloqueante marcado para una fase posterior.
 - Tipos de Supabase (`types/database.ts`) escritos a mano — deben regenerarse con `npm run db:types` en cuanto exista un proyecto Supabase real (local o remoto).

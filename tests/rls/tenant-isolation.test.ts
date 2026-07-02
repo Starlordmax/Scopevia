@@ -313,8 +313,16 @@ describe.skipIf(!canRun)("Phase 0 security hardening (requires real Postgres)", 
     });
 
     it("no client can modify system roles", async () => {
-      const { error } = await aClient.from("roles").update({ name: "Hacked Owner" }).eq("key", "owner");
-      expect(error).not.toBeNull();
+      // No UPDATE policy exists on `roles` for `authenticated`, so RLS's
+      // USING clause is unconditionally false for this command — Postgres
+      // reports success with zero rows matched rather than a hard error
+      // (the same shape as the cross-tenant `tenants` update tests above).
+      const { data, error } = await aClient.from("roles").update({ name: "Hacked Owner" }).eq("key", "owner").select();
+      expect(error).toBeNull();
+      expect(data ?? []).toHaveLength(0);
+
+      const { data: unchanged } = await admin.from("roles").select("name").eq("key", "owner").single();
+      expect((unchanged as { name: string }).name).toBe("Owner");
     });
 
     it("no client can insert directly into a system role's role_permissions", async () => {
@@ -400,18 +408,22 @@ describe.skipIf(!canRun)("Phase 0 security hardening (requires real Postgres)", 
     });
 
     it("a Tenant A custom role cannot be assigned to a Tenant B membership", async () => {
-      const tenantARole = extraRoleIds[0];
-      const { data: bOwnerMembership } = await admin
-        .from("tenant_memberships")
-        .select("id")
-        .eq("tenant_id", tenantBId)
-        .eq("user_id", userB.id)
+      // Deliberately NOT Tenant B's owner: assigning a non-owner role there
+      // would also (correctly) trip protect_last_owner, which fires before
+      // this guard and would mask which check actually rejected the change.
+      // userF is invited as a plain (non-owner) Tenant B member instead, to
+      // isolate the cross-tenant role guard from the last-owner guard.
+      const { data: fInvite, error: fInviteErr } = await bClient
+        .rpc("invite_member_by_email", { p_tenant_id: tenantBId, p_email: userF.email, p_role_key: "viewer" })
         .single();
+      expect(fInviteErr).toBeNull();
+      const fMembershipInB = (fInvite as { id: string }).id;
 
+      const tenantARole = extraRoleIds[0];
       const { error } = await admin
         .from("tenant_memberships")
         .update({ role_id: tenantARole })
-        .eq("id", (bOwnerMembership as { id: string }).id);
+        .eq("id", fMembershipInB);
 
       expect(error).not.toBeNull();
       expect(error?.message).toMatch(/does not belong to tenant/i);
@@ -578,10 +590,17 @@ describe.skipIf(!canRun)("Phase 0 security hardening (requires real Postgres)", 
       const failed = outcomes.filter((r) => r.error);
 
       // The critical invariant — regardless of which one wins the race,
-      // EXACTLY one must be rejected by protect_last_owner().
+      // EXACTLY one must be rejected. It can be rejected for either of two
+      // equally valid reasons depending on commit order: (a) protect_last_owner()
+      // catches it directly ("at least one active owner"), or (b) if the
+      // OTHER demotion commits first, the loser's own membership is no
+      // longer active by the time their call evaluates user_has_permission()
+      // for the "only an owner can modify another owner" check, so they lose
+      // roles.manage first and are rejected one step earlier. Both outcomes
+      // prove the same thing: it is impossible for both demotions to succeed.
       expect(succeeded).toHaveLength(1);
       expect(failed).toHaveLength(1);
-      expect(failed[0]?.error?.message).toMatch(/at least one active owner/i);
+      expect(failed[0]?.error?.message).toMatch(/at least one active owner|only an owner can modify/i);
 
       const { data: remainingOwners } = await admin
         .from("tenant_memberships")

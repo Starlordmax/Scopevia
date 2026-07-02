@@ -2,32 +2,37 @@
 
 ## Por qué esto es su propio documento
 
-RLS es la última línea de defensa contra fugas de datos entre tenants ([ADR-001](adr/0001-multi-tenant-database-strategy.md)). Una policy mal escrita falla en silencio (devuelve cero filas o permite de más) — no lanza un error obvio en desarrollo casual. Por eso Phase 0 exige una suite de pruebas de integración dedicada, corriendo contra Postgres real, no mocks.
+RLS es la última línea de defensa contra fugas de datos entre tenants ([ADR-001](adr/0001-multi-tenant-database-strategy.md)). Una policy mal escrita falla en silencio (devuelve cero filas o permite de más) — no lanza un error obvio en desarrollo casual. Por eso Phase 0 exige una suite de pruebas de integración dedicada, corriendo contra Postgres real, no mocks — y por eso Phase 0 no se declaró completa hasta ejecutarla contra una base real (ver [18-phase-0-security-hardening.md](18-phase-0-security-hardening.md) y [19-phase-0-verification-evidence.md](19-phase-0-verification-evidence.md)).
 
 ## Qué cubre `tests/rls/tenant-isolation.test.ts`
 
-| # | Caso | Qué demuestra |
-|---|---|---|
-| 1 | User A no puede leer Tenant B | Aislamiento de lectura básico |
-| 2 | User A no puede actualizar Tenant B | Aislamiento de escritura básico (0 filas afectadas, sin error ruidoso) |
-| 3 | User A no puede listar membresías de Tenant B | Aislamiento de `tenant_memberships` |
-| 4 | User A no puede asignar un rol en una membresía de Tenant B | `update_membership()` re-valida permisos independientemente de RLS |
-| 5 | Simétricamente, User B no puede leer ni modificar Tenant A | La policy no favorece a "quien se registró primero" |
-| 6 | Un usuario no puede cambiar su propio rol/estado | Guardia anti-auto-modificación (función + trigger) |
-| 7 | El último owner activo no puede ser degradado/suspendido | Trigger `protect_last_owner`, efectivo incluso vía `service_role` directo |
-| 8 | Ningún cliente puede insertar un tenant directamente | No existe policy de INSERT en `tenants` |
-| 9 | Una request anónima (sin sesión) no puede leer ningún tenant | Todas las policies están `to authenticated`, nunca a `anon` |
-| 10 | Un usuario sin membresía en un tenant no puede invitar miembros ahí | `user_has_permission()` deniega correctamente fuera del propio tenant |
+La suite usa 6 usuarios de prueba (A y B, dueños de Tenant A y Tenant B respectivamente; C invitado como viewer, D invitado como admin, ambos a Tenant A; E dejado deliberadamente como invitación pendiente; F desechable solo para la prueba de creación concurrente) y está organizada en 9 grupos:
+
+| Grupo | Qué demuestra |
+|---|---|
+| Invitations | Una invitación no otorga acceso hasta `accept_invitation()`; nadie puede aceptar la invitación de otro; un admin no puede forzar la aceptación; el owner puede cancelar una invitación pendiente |
+| Read isolation | Aislamiento de lectura entre tenants; un Viewer activo no puede listar miembros (permiso, no solo pertenencia); no hay enumeración global de memberships/perfiles/tenants; `anon` no lee nada |
+| Write isolation | Aislamiento de escritura; nadie inserta `audit_logs`/`tenant_memberships` directamente; nadie modifica roles del sistema; nadie se auto-asigna el rol owner |
+| Owner protection | Un Admin no puede tocar la membresía de un Owner; otorgar el rol owner exige `roles.manage`, no solo `members.update` |
+| Cross-tenant role guard | Claves de rol de sistema duplicadas son rechazadas; dos tenants pueden tener roles personalizados con la misma clave sin chocar; un rol de un tenant no puede asignarse a una membresía de otro |
+| Tenant creation idempotency | Slug duplicado rechazado sin tenant huérfano; creación concurrente con el mismo slug produce exactamente un ganador, sin membership huérfana |
+| Audit log integrity | `audit_logs` es append-only incluso para `service_role`; un tenant no lee logs de otro; eventos sensibles quedan registrados; el metadata no contiene secretos |
+| Suspension & removal | Suspender/remover una membresía bloquea el acceso en la sesión ya existente del usuario, sin necesidad de reautenticación; un usuario suspendido no puede reactivarse a sí mismo |
+| Last-owner protection under concurrency | Dos demociones concurrentes de los dos únicos owners de un tenant: exactamente una debe fallar, nunca ambas tienen éxito — la prueba directa de la corrección de concurrencia en `protect_last_owner()` |
+
+Ver el archivo fuente para la lista exhaustiva y actualizada (40 casos `it` a la fecha de este documento).
 
 ## Cómo ejecutarla
 
-**Requiere Docker** (para `supabase start`). Esta suite **no** se ejecutó en el entorno donde se generó Phase 0 porque ese entorno no tenía Docker disponible — está completa y lista, pero pendiente de una primera ejecución real. Ver sección "Deferred work" del reporte de entrega de Phase 0.
+Dos rutas igualmente válidas:
+
+### Opción A — Supabase local (requiere Docker)
 
 ```bash
 npm run db:start
 ```
 
-Copia la URL y las claves que imprime a `.env.local` bajo estas variables (**distintas** de las de la app, para dejar explícito que son de un proyecto local desechable):
+Copia la URL y las claves que imprime a `.env.local`:
 
 ```env
 SUPABASE_TEST_URL=http://127.0.0.1:54321
@@ -35,28 +40,42 @@ SUPABASE_TEST_ANON_KEY=<anon key impresa por supabase start>
 SUPABASE_TEST_SERVICE_ROLE_KEY=<service_role key impresa por supabase start>
 ```
 
-Luego:
-
 ```bash
 npm run db:reset   # asegura que las migraciones/seeds estén aplicadas
 npm run test:rls
 ```
 
-Si las tres variables `SUPABASE_TEST_*` no están presentes, la suite completa se **salta** (no falla) — así `npm test` (que la excluye explícitamente) y CI pueden correr sin Docker, mientras que `npm run test:rls` es el comando explícito para la verificación completa.
+### Opción B — Proyecto Supabase remoto dedicado a testing
+
+Cuando Docker no está disponible, se usa un proyecto Supabase remoto **dedicado exclusivamente a pruebas** (nunca staging/producción):
+
+```bash
+npx supabase login                              # interactivo, una vez
+npx supabase link --project-ref <ref-del-proyecto-de-test>
+npx supabase db push                            # aplica las 11 migraciones desde cero
+```
+
+Completa `.env.local` con la URL/anon key/service_role key de ESE proyecto bajo `SUPABASE_TEST_*` (mismos nombres que en la Opción A), luego:
+
+```bash
+npm run test:rls
+```
+
+Esta fue la ruta usada para la verificación real de Phase 0 — ver [19-phase-0-verification-evidence.md](19-phase-0-verification-evidence.md) para el proyecto lógico usado (sin exponer secretos) y los resultados.
+
+En ambas opciones: si las tres variables `SUPABASE_TEST_*` no están presentes, la suite completa se **salta** (no falla) — así `npm test`/CI corren sin necesitar ninguna base de datos real, mientras que `npm run test:rls` es el comando explícito para la verificación completa.
 
 ## Qué NO demuestra esta suite (limitaciones conocidas)
 
 - No prueba el aislamiento de Supabase Storage (no hay buckets/adjuntos todavía en Phase 0).
-- No prueba carga/concurrencia (dos requests simultáneas de aceptación de invitación, etc.) — el `ON CONFLICT ... WHERE status='removed'` de `invite_member_by_email()` está diseñado para ser seguro ante condiciones de carrera gracias a la constraint `unique(tenant_id, user_id)`, pero no hay un test de concurrencia explícito en Phase 0.
 - No prueba el comportamiento exacto de expiración de sesión/refresh token — se asume el comportamiento estándar de Supabase Auth.
+- No prueba concurrencia a gran escala (cientos de requests simultáneas) — solo la condición de carrera específica del último owner, con exactamente dos actores concurrentes, que es la que importa a este nivel de madurez del producto.
 
 ## Verificación manual complementaria (Supabase Studio)
 
-Como refuerzo visual, con `supabase start` corriendo:
-
-1. Abre Studio (`http://127.0.0.1:54323`) → Authentication → crea dos usuarios de prueba.
-2. Table Editor → `tenant_memberships`: confirma que no puedes insertar una fila manualmente como el rol `authenticated` (Studio usa el rol `postgres`/`service_role` internamente y sí podrá — la prueba real de RLS es vía la API con el JWT de cada usuario, que es exactamente lo que hace la suite automatizada arriba, no el Table Editor).
-3. SQL Editor → ejecuta `select * from pg_policies where schemaname = 'public';` y confirma que cada tabla de dominio tiene las policies documentadas en [06-security-and-rls.md](06-security-and-rls.md) y en `supabase/migrations/20260701120800_rls_policies.sql`.
+1. Abre Studio → Authentication → confirma los usuarios de prueba (si quedaron, límpialos: `afterAll` ya los borra en una corrida normal).
+2. SQL Editor → ejecuta `select * from pg_policies where schemaname = 'public';` y confirma que cada tabla de dominio tiene las policies documentadas en [06-security-and-rls.md](06-security-and-rls.md), `supabase/migrations/20260701120800_rls_policies.sql` y `20260701121000_security_hardening.sql`.
+3. SQL Editor → `select tgname, tgrelid::regclass from pg_trigger where not tgisinternal order by 2;` para confirmar que los triggers de hardening (`trg_validate_membership_role_tenant`, `trg_protect_last_owner`, `trg_prevent_self_membership_modification`) existen.
 
 ## Checklist de RLS para cualquier tabla nueva (fases futuras)
 
@@ -68,4 +87,5 @@ Antes de mergear una migración que agregue una tabla con `tenant_id`:
 - [ ] Si la tabla tiene mutaciones simples de un solo campo → policy de `update`/`insert` gateada por `user_has_permission()`.
 - [ ] `grant` explícito solo de los verbos realmente necesarios a `authenticated` — nunca `all privileges`.
 - [ ] Policy con `to authenticated` explícito — nunca omitir el `TO` (evita alcanzar `anon` por accidente).
-- [ ] Caso de prueba de aislamiento agregado a la suite de RLS.
+- [ ] Si hay operaciones concurrentes que puedan violar un invariante (p. ej. "al menos uno de X"), bloquear la fila padre relevante (`FOR UPDATE`) antes de contar/verificar.
+- [ ] Caso de prueba de aislamiento (y de concurrencia, si aplica) agregado a la suite de RLS.

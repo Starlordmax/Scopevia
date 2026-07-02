@@ -4,7 +4,7 @@
 
 Scopevia is a mobile-first SaaS platform that helps contractors manage leads, calculate costs, produce Good/Better/Best proposals, and get paid — starting with painting contractors.
 
-This repository is currently at **Phase 0: Foundations** — authentication, multi-tenancy, roles/permissions and Row Level Security. No product features (CRM, estimating, proposals, payments) exist yet. See [docs/](docs/) for the full product and architecture design, and [docs/14-phase-0-foundations.md](docs/14-phase-0-foundations.md) for what this phase specifically implements.
+This repository is currently at **Phase 0: Foundations** — authentication, multi-tenancy, roles/permissions and Row Level Security, since hardened and verified against a real Postgres instance. No product features (CRM, estimating, proposals, payments) exist yet. See [docs/](docs/) for the full product and architecture design, [docs/14-phase-0-foundations.md](docs/14-phase-0-foundations.md) for what this phase implements, [docs/18-phase-0-security-hardening.md](docs/18-phase-0-security-hardening.md) for the security review, and [docs/19-phase-0-verification-evidence.md](docs/19-phase-0-verification-evidence.md) for real test-run evidence.
 
 ## Stack
 
@@ -37,6 +37,8 @@ Full walkthrough (installing, running migrations, creating a test user, verifyin
 | [docs/15-local-development.md](docs/15-local-development.md) | Local setup, commands, troubleshooting |
 | [docs/16-environments-and-deployment.md](docs/16-environments-and-deployment.md) | Dev/staging/production separation, migrations, secrets |
 | [docs/17-rls-verification.md](docs/17-rls-verification.md) | How to verify tenant isolation, and the checklist for adding new tables safely |
+| [docs/18-phase-0-security-hardening.md](docs/18-phase-0-security-hardening.md) | Security review: issues found (including a real privilege-escalation path), fixes applied, SECURITY DEFINER function audit |
+| [docs/19-phase-0-verification-evidence.md](docs/19-phase-0-verification-evidence.md) | Real command output and PASS/FAIL results from verifying against Postgres |
 | [docs/adr/](docs/adr/) | Architecture Decision Records |
 
 ## Project structure
