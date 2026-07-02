@@ -1,188 +1,2035 @@
-/**
- * Hand-written types for the Phase 0 schema.
- *
- * This is a minimal stand-in for the real generated types. Once a Supabase
- * project exists (local or hosted), replace this file's contents with the
- * output of:
- *
- *   npm run db:types
- *
- * which runs `supabase gen types typescript --local`. Keep the exported
- * type names (`Database`, `Tables`, `Enums`) stable so the rest of the
- * codebase does not need to change when you do.
- */
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
-export type RoleKey = "owner" | "admin" | "estimator" | "sales" | "field_worker" | "viewer";
-export type MembershipStatus = "invited" | "active" | "suspended" | "removed";
-export type TenantStatus = "active" | "suspended" | "archived";
-
-export interface Database {
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
-      profiles: {
-        Row: {
-          id: string;
-          full_name: string | null;
-          avatar_url: string | null;
-          locale: string;
-          timezone: string;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: Partial<Database["public"]["Tables"]["profiles"]["Row"]> & { id: string };
-        Update: Partial<Database["public"]["Tables"]["profiles"]["Row"]>;
-        Relationships: [];
-      };
-      tenants: {
-        Row: {
-          id: string;
-          name: string;
-          slug: string;
-          status: TenantStatus;
-          created_by: string;
-          created_at: string;
-          updated_at: string;
-          deleted_at: string | null;
-        };
-        Insert: never; // created only via create_tenant_with_owner()
-        Update: Partial<Pick<Database["public"]["Tables"]["tenants"]["Row"], "name" | "status">>;
-        Relationships: [];
-      };
-      tenant_memberships: {
-        Row: {
-          id: string;
-          tenant_id: string;
-          user_id: string;
-          role_id: string;
-          status: MembershipStatus;
-          invited_by: string | null;
-          joined_at: string | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: never; // created only via create_tenant_with_owner() / invite_member_by_email()
-        Update: never; // mutated only via update_membership()
-        Relationships: [];
-      };
-      roles: {
-        Row: {
-          id: string;
-          key: string;
-          name: string;
-          description: string | null;
-          is_system: boolean;
-          tenant_id: string | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: never;
-        Update: never;
-        Relationships: [];
-      };
-      permissions: {
-        Row: {
-          id: string;
-          key: string;
-          name: string;
-          description: string | null;
-          created_at: string;
-        };
-        Insert: never;
-        Update: never;
-        Relationships: [];
-      };
-      role_permissions: {
-        Row: {
-          role_id: string;
-          permission_id: string;
-          created_at: string;
-        };
-        Insert: never;
-        Update: never;
-        Relationships: [];
-      };
       audit_logs: {
         Row: {
-          id: string;
-          tenant_id: string | null;
-          actor_user_id: string | null;
-          action: string;
-          entity_type: string;
-          entity_id: string | null;
-          metadata: Record<string, unknown>;
-          ip_address: string | null;
-          user_agent: string | null;
-          created_at: string;
-        };
-        Insert: never; // written only via log_audit_event()
-        Update: never; // append-only
-        Relationships: [];
-      };
-    };
-    Views: Record<string, never>;
+          action: string
+          actor_user_id: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          ip_address: string | null
+          metadata: Json
+          tenant_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json
+          tenant_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json
+          tenant_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_contacts: {
+        Row: {
+          archived_at: string | null
+          archived_by: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          email: string | null
+          first_name: string
+          id: string
+          is_primary: boolean
+          job_title: string | null
+          last_name: string | null
+          notes: string | null
+          phone: string | null
+          preferred_contact_method: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
+          client_id: string
+          created_at?: string
+          created_by: string
+          email?: string | null
+          first_name: string
+          id?: string
+          is_primary?: boolean
+          job_title?: string | null
+          last_name?: string | null
+          notes?: string | null
+          phone?: string | null
+          preferred_contact_method?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          archived_by?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          email?: string | null
+          first_name?: string
+          id?: string
+          is_primary?: boolean
+          job_title?: string | null
+          last_name?: string | null
+          notes?: string | null
+          phone?: string | null
+          preferred_contact_method?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_contacts_client_id_tenant_id_fkey"
+            columns: ["client_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "client_contacts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          archived_at: string | null
+          archived_by: string | null
+          client_type: string
+          created_at: string
+          created_by: string
+          display_name: string
+          email: string | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          legal_name: string | null
+          phone: string | null
+          preferred_contact_method: string | null
+          secondary_phone: string | null
+          source: string | null
+          tax_exempt: boolean
+          tenant_id: string
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
+          client_type: string
+          created_at?: string
+          created_by: string
+          display_name: string
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          legal_name?: string | null
+          phone?: string | null
+          preferred_contact_method?: string | null
+          secondary_phone?: string | null
+          source?: string | null
+          tax_exempt?: boolean
+          tenant_id: string
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          archived_by?: string | null
+          client_type?: string
+          created_at?: string
+          created_by?: string
+          display_name?: string
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          legal_name?: string | null
+          phone?: string | null
+          preferred_contact_method?: string | null
+          secondary_phone?: string | null
+          source?: string | null
+          tax_exempt?: boolean
+          tenant_id?: string
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_activities: {
+        Row: {
+          activity_type: string
+          actor_user_id: string | null
+          client_id: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          opportunity_id: string | null
+          project_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          activity_type: string
+          actor_user_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          opportunity_id?: string | null
+          project_id?: string | null
+          tenant_id: string
+        }
+        Update: {
+          activity_type?: string
+          actor_user_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          opportunity_id?: string | null
+          project_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_activities_client_id_tenant_id_fkey"
+            columns: ["client_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "crm_activities_opportunity_id_tenant_id_fkey"
+            columns: ["opportunity_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "crm_activities_project_id_tenant_id_fkey"
+            columns: ["project_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "crm_activities_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_notes: {
+        Row: {
+          archived_at: string | null
+          archived_by: string | null
+          body: string
+          client_id: string | null
+          created_at: string
+          created_by: string
+          id: string
+          opportunity_id: string | null
+          project_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
+          body: string
+          client_id?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          opportunity_id?: string | null
+          project_id?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          archived_by?: string | null
+          body?: string
+          client_id?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          opportunity_id?: string | null
+          project_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_notes_client_id_tenant_id_fkey"
+            columns: ["client_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "crm_notes_opportunity_id_tenant_id_fkey"
+            columns: ["opportunity_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "crm_notes_project_id_tenant_id_fkey"
+            columns: ["project_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "crm_notes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      opportunities: {
+        Row: {
+          archived_at: string | null
+          archived_by: string | null
+          assigned_to: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          estimated_value_cents: number | null
+          expected_close_date: string | null
+          id: string
+          inspection_scheduled_at: string | null
+          lost_reason: string | null
+          pre_archive_status: string | null
+          probability: number | null
+          source: string | null
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
+          assigned_to?: string | null
+          client_id: string
+          created_at?: string
+          created_by: string
+          estimated_value_cents?: number | null
+          expected_close_date?: string | null
+          id?: string
+          inspection_scheduled_at?: string | null
+          lost_reason?: string | null
+          pre_archive_status?: string | null
+          probability?: number | null
+          source?: string | null
+          status?: string
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          archived_by?: string | null
+          assigned_to?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          estimated_value_cents?: number | null
+          expected_close_date?: string | null
+          id?: string
+          inspection_scheduled_at?: string | null
+          lost_reason?: string | null
+          pre_archive_status?: string | null
+          probability?: number | null
+          source?: string | null
+          status?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opportunities_assigned_to_tenant_id_fkey"
+            columns: ["assigned_to", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_memberships"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "opportunities_client_id_tenant_id_fkey"
+            columns: ["client_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "opportunities_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      permissions: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          key: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          key: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          key?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          locale: string
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id: string
+          locale?: string
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          locale?: string
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      project_addresses: {
+        Row: {
+          access_instructions: string | null
+          address_line_1: string
+          address_line_2: string | null
+          archived_at: string | null
+          archived_by: string | null
+          city: string
+          country_code: string
+          created_at: string
+          created_by: string
+          id: string
+          is_primary: boolean
+          latitude: number | null
+          longitude: number | null
+          postal_code: string
+          project_id: string
+          state: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          access_instructions?: string | null
+          address_line_1: string
+          address_line_2?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
+          city: string
+          country_code?: string
+          created_at?: string
+          created_by: string
+          id?: string
+          is_primary?: boolean
+          latitude?: number | null
+          longitude?: number | null
+          postal_code: string
+          project_id: string
+          state: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          access_instructions?: string | null
+          address_line_1?: string
+          address_line_2?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
+          city?: string
+          country_code?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_primary?: boolean
+          latitude?: number | null
+          longitude?: number | null
+          postal_code?: string
+          project_id?: string
+          state?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_addresses_project_id_tenant_id_fkey"
+            columns: ["project_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "project_addresses_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          archived_at: string | null
+          archived_by: string | null
+          assigned_to: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          inspection_scheduled_at: string | null
+          name: string
+          opportunity_id: string | null
+          pre_archive_status: string | null
+          primary_contact_id: string | null
+          service_type: string | null
+          status: string
+          tenant_id: string
+          tentative_start_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
+          assigned_to?: string | null
+          client_id: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          inspection_scheduled_at?: string | null
+          name: string
+          opportunity_id?: string | null
+          pre_archive_status?: string | null
+          primary_contact_id?: string | null
+          service_type?: string | null
+          status?: string
+          tenant_id: string
+          tentative_start_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          archived_by?: string | null
+          assigned_to?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          inspection_scheduled_at?: string | null
+          name?: string
+          opportunity_id?: string | null
+          pre_archive_status?: string | null
+          primary_contact_id?: string | null
+          service_type?: string | null
+          status?: string
+          tenant_id?: string
+          tentative_start_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_assigned_to_tenant_id_fkey"
+            columns: ["assigned_to", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_memberships"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "projects_client_id_tenant_id_fkey"
+            columns: ["client_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "projects_opportunity_id_tenant_id_fkey"
+            columns: ["opportunity_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "projects_primary_contact_id_tenant_id_fkey"
+            columns: ["primary_contact_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "client_contacts"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "projects_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      role_permissions: {
+        Row: {
+          created_at: string
+          permission_id: string
+          role_id: string
+        }
+        Insert: {
+          created_at?: string
+          permission_id: string
+          role_id: string
+        }
+        Update: {
+          created_at?: string
+          permission_id?: string
+          role_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_permission_id_fkey"
+            columns: ["permission_id"]
+            isOneToOne: false
+            referencedRelation: "permissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "role_permissions_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roles: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_system: boolean
+          key: string
+          name: string
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          key: string
+          name: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          key?: string
+          name?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_memberships: {
+        Row: {
+          created_at: string
+          id: string
+          invited_by: string | null
+          joined_at: string | null
+          role_id: string
+          status: string
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invited_by?: string | null
+          joined_at?: string | null
+          role_id: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invited_by?: string | null
+          joined_at?: string | null
+          role_id?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_memberships_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_memberships_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenants: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          name: string
+          slug: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          name: string
+          slug: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          name?: string
+          slug?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
     Functions: {
-      get_user_tenants: {
-        Args: Record<string, never>;
-        Returns: {
-          tenant_id: string;
-          tenant_name: string;
-          tenant_slug: string;
-          tenant_status: TenantStatus;
-          role_key: RoleKey;
-          role_name: string;
-          membership_status: MembershipStatus;
-        }[];
-      };
-      user_has_permission: {
-        Args: { p_tenant_id: string; p_permission_key: string };
-        Returns: boolean;
-      };
-      user_is_active_tenant_member: {
-        Args: { p_tenant_id: string };
-        Returns: boolean;
-      };
-      create_tenant_with_owner: {
-        Args: { p_name: string; p_slug: string };
-        Returns: Database["public"]["Tables"]["tenants"]["Row"];
-      };
-      update_membership: {
-        Args: { p_membership_id: string; p_new_status: MembershipStatus | null; p_new_role_key: RoleKey | null };
-        Returns: Database["public"]["Tables"]["tenant_memberships"]["Row"];
-      };
-      invite_member_by_email: {
-        Args: { p_tenant_id: string; p_email: string; p_role_key: RoleKey };
-        Returns: Database["public"]["Tables"]["tenant_memberships"]["Row"];
-      };
       accept_invitation: {
-        Args: { p_membership_id: string };
-        Returns: Database["public"]["Tables"]["tenant_memberships"]["Row"];
-      };
-      get_pending_invitations: {
-        Args: Record<string, never>;
+        Args: { p_membership_id: string }
         Returns: {
-          membership_id: string;
-          tenant_id: string;
-          tenant_name: string;
-          role_name: string;
-          invited_at: string;
-        }[];
-      };
+          created_at: string
+          id: string
+          invited_by: string | null
+          joined_at: string | null
+          role_id: string
+          status: string
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tenant_memberships"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      archive_client: {
+        Args: { p_client_id: string }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          client_type: string
+          created_at: string
+          created_by: string
+          display_name: string
+          email: string | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          legal_name: string | null
+          phone: string | null
+          preferred_contact_method: string | null
+          secondary_phone: string | null
+          source: string | null
+          tax_exempt: boolean
+          tenant_id: string
+          updated_at: string
+          website: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "clients"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      archive_client_contact: {
+        Args: { p_contact_id: string }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          email: string | null
+          first_name: string
+          id: string
+          is_primary: boolean
+          job_title: string | null
+          last_name: string | null
+          notes: string | null
+          phone: string | null
+          preferred_contact_method: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "client_contacts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      archive_note: {
+        Args: { p_note_id: string }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          body: string
+          client_id: string | null
+          created_at: string
+          created_by: string
+          id: string
+          opportunity_id: string | null
+          project_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "crm_notes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      archive_opportunity: {
+        Args: { p_opportunity_id: string }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          assigned_to: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          estimated_value_cents: number | null
+          expected_close_date: string | null
+          id: string
+          inspection_scheduled_at: string | null
+          lost_reason: string | null
+          pre_archive_status: string | null
+          probability: number | null
+          source: string | null
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "opportunities"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      archive_project: {
+        Args: { p_project_id: string }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          assigned_to: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          inspection_scheduled_at: string | null
+          name: string
+          opportunity_id: string | null
+          pre_archive_status: string | null
+          primary_contact_id: string | null
+          service_type: string | null
+          status: string
+          tenant_id: string
+          tentative_start_date: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "projects"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      archive_project_address: {
+        Args: { p_address_id: string }
+        Returns: {
+          access_instructions: string | null
+          address_line_1: string
+          address_line_2: string | null
+          archived_at: string | null
+          archived_by: string | null
+          city: string
+          country_code: string
+          created_at: string
+          created_by: string
+          id: string
+          is_primary: boolean
+          latitude: number | null
+          longitude: number | null
+          postal_code: string
+          project_id: string
+          state: string
+          tenant_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "project_addresses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      change_opportunity_status: {
+        Args: {
+          p_inspection_scheduled_at?: string
+          p_lost_reason?: string
+          p_new_status: string
+          p_opportunity_id: string
+        }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          assigned_to: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          estimated_value_cents: number | null
+          expected_close_date: string | null
+          id: string
+          inspection_scheduled_at: string | null
+          lost_reason: string | null
+          pre_archive_status: string | null
+          probability: number | null
+          source: string | null
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "opportunities"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      change_project_status: {
+        Args: {
+          p_inspection_scheduled_at?: string
+          p_new_status: string
+          p_project_id: string
+        }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          assigned_to: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          inspection_scheduled_at: string | null
+          name: string
+          opportunity_id: string | null
+          pre_archive_status: string | null
+          primary_contact_id: string | null
+          service_type: string | null
+          status: string
+          tenant_id: string
+          tentative_start_date: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "projects"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      convert_opportunity_to_project: {
+        Args: {
+          p_description?: string
+          p_opportunity_id: string
+          p_project_name?: string
+          p_service_type?: string
+        }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          assigned_to: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          inspection_scheduled_at: string | null
+          name: string
+          opportunity_id: string | null
+          pre_archive_status: string | null
+          primary_contact_id: string | null
+          service_type: string | null
+          status: string
+          tenant_id: string
+          tentative_start_date: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "projects"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_client: {
+        Args: {
+          p_client_type: string
+          p_display_name: string
+          p_email?: string
+          p_first_name?: string
+          p_last_name?: string
+          p_legal_name?: string
+          p_phone?: string
+          p_preferred_contact_method?: string
+          p_secondary_phone?: string
+          p_source?: string
+          p_tax_exempt?: boolean
+          p_tenant_id: string
+          p_website?: string
+        }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          client_type: string
+          created_at: string
+          created_by: string
+          display_name: string
+          email: string | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          legal_name: string | null
+          phone: string | null
+          preferred_contact_method: string | null
+          secondary_phone: string | null
+          source: string | null
+          tax_exempt: boolean
+          tenant_id: string
+          updated_at: string
+          website: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "clients"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_client_contact: {
+        Args: {
+          p_client_id: string
+          p_email?: string
+          p_first_name: string
+          p_is_primary?: boolean
+          p_job_title?: string
+          p_last_name?: string
+          p_notes?: string
+          p_phone?: string
+          p_preferred_contact_method?: string
+        }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          email: string | null
+          first_name: string
+          id: string
+          is_primary: boolean
+          job_title: string | null
+          last_name: string | null
+          notes: string | null
+          phone: string | null
+          preferred_contact_method: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "client_contacts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_note: {
+        Args: {
+          p_body: string
+          p_client_id?: string
+          p_opportunity_id?: string
+          p_project_id?: string
+          p_tenant_id: string
+        }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          body: string
+          client_id: string | null
+          created_at: string
+          created_by: string
+          id: string
+          opportunity_id: string | null
+          project_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "crm_notes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_opportunity: {
+        Args: {
+          p_assigned_to?: string
+          p_client_id: string
+          p_estimated_value_cents?: number
+          p_expected_close_date?: string
+          p_probability?: number
+          p_source?: string
+          p_tenant_id: string
+          p_title: string
+        }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          assigned_to: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          estimated_value_cents: number | null
+          expected_close_date: string | null
+          id: string
+          inspection_scheduled_at: string | null
+          lost_reason: string | null
+          pre_archive_status: string | null
+          probability: number | null
+          source: string | null
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "opportunities"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_project: {
+        Args: {
+          p_assigned_to?: string
+          p_client_id: string
+          p_description?: string
+          p_name: string
+          p_service_type?: string
+          p_tenant_id: string
+          p_tentative_start_date?: string
+        }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          assigned_to: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          inspection_scheduled_at: string | null
+          name: string
+          opportunity_id: string | null
+          pre_archive_status: string | null
+          primary_contact_id: string | null
+          service_type: string | null
+          status: string
+          tenant_id: string
+          tentative_start_date: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "projects"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_project_address: {
+        Args: {
+          p_access_instructions?: string
+          p_address_line_1: string
+          p_address_line_2?: string
+          p_city: string
+          p_country_code?: string
+          p_is_primary?: boolean
+          p_postal_code: string
+          p_project_id: string
+          p_state: string
+        }
+        Returns: {
+          access_instructions: string | null
+          address_line_1: string
+          address_line_2: string | null
+          archived_at: string | null
+          archived_by: string | null
+          city: string
+          country_code: string
+          created_at: string
+          created_by: string
+          id: string
+          is_primary: boolean
+          latitude: number | null
+          longitude: number | null
+          postal_code: string
+          project_id: string
+          state: string
+          tenant_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "project_addresses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_tenant_with_owner: {
+        Args: { p_name: string; p_slug: string }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          name: string
+          slug: string
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tenants"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      get_pending_invitations: {
+        Args: never
+        Returns: {
+          invited_at: string
+          membership_id: string
+          role_name: string
+          tenant_id: string
+          tenant_name: string
+        }[]
+      }
+      get_user_tenants: {
+        Args: never
+        Returns: {
+          membership_status: string
+          role_key: string
+          role_name: string
+          tenant_id: string
+          tenant_name: string
+          tenant_slug: string
+          tenant_status: string
+        }[]
+      }
+      invite_member_by_email: {
+        Args: { p_email: string; p_role_key: string; p_tenant_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          invited_by: string | null
+          joined_at: string | null
+          role_id: string
+          status: string
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tenant_memberships"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      is_active_member_of_tenant: {
+        Args: { p_membership_id: string; p_tenant_id: string }
+        Returns: boolean
+      }
       log_audit_event: {
         Args: {
-          p_tenant_id: string | null;
-          p_actor_user_id: string | null;
-          p_action: string;
-          p_entity_type: string;
-          p_entity_id: string | null;
-          p_metadata?: Record<string, unknown>;
-          p_ip_address?: string | null;
-          p_user_agent?: string | null;
-        };
-        Returns: string;
-      };
-    };
-    Enums: Record<string, never>;
-  };
+          p_action: string
+          // Hand-corrected: p_actor_user_id/p_tenant_id have no SQL DEFAULT
+          // (so codegen can't mark them optional) but their column type is a
+          // nullable uuid, and application code (src/lib/audit/log.ts) must
+          // be able to pass an explicit null for tenant-less events like
+          // auth.signed_in. Keep this in sync if the migration changes.
+          p_actor_user_id: string | null
+          p_entity_id: string
+          p_entity_type: string
+          p_ip_address?: string
+          p_metadata?: Json
+          p_tenant_id: string | null
+          p_user_agent?: string
+        }
+        Returns: string
+      }
+      log_crm_activity: {
+        Args: {
+          p_activity_type: string
+          p_actor_user_id: string
+          p_client_id: string
+          p_metadata?: Json
+          p_opportunity_id: string
+          p_project_id: string
+          p_tenant_id: string
+        }
+        Returns: string
+      }
+      restore_client: {
+        Args: { p_client_id: string }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          client_type: string
+          created_at: string
+          created_by: string
+          display_name: string
+          email: string | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          legal_name: string | null
+          phone: string | null
+          preferred_contact_method: string | null
+          secondary_phone: string | null
+          source: string | null
+          tax_exempt: boolean
+          tenant_id: string
+          updated_at: string
+          website: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "clients"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      restore_client_contact: {
+        Args: { p_contact_id: string }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          email: string | null
+          first_name: string
+          id: string
+          is_primary: boolean
+          job_title: string | null
+          last_name: string | null
+          notes: string | null
+          phone: string | null
+          preferred_contact_method: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "client_contacts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      restore_opportunity: {
+        Args: { p_opportunity_id: string }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          assigned_to: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          estimated_value_cents: number | null
+          expected_close_date: string | null
+          id: string
+          inspection_scheduled_at: string | null
+          lost_reason: string | null
+          pre_archive_status: string | null
+          probability: number | null
+          source: string | null
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "opportunities"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      restore_project: {
+        Args: { p_project_id: string }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          assigned_to: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          inspection_scheduled_at: string | null
+          name: string
+          opportunity_id: string | null
+          pre_archive_status: string | null
+          primary_contact_id: string | null
+          service_type: string | null
+          status: string
+          tenant_id: string
+          tentative_start_date: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "projects"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      restore_project_address: {
+        Args: { p_address_id: string }
+        Returns: {
+          access_instructions: string | null
+          address_line_1: string
+          address_line_2: string | null
+          archived_at: string | null
+          archived_by: string | null
+          city: string
+          country_code: string
+          created_at: string
+          created_by: string
+          id: string
+          is_primary: boolean
+          latitude: number | null
+          longitude: number | null
+          postal_code: string
+          project_id: string
+          state: string
+          tenant_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "project_addresses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_primary_contact: {
+        Args: { p_contact_id: string }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          email: string | null
+          first_name: string
+          id: string
+          is_primary: boolean
+          job_title: string | null
+          last_name: string | null
+          notes: string | null
+          phone: string | null
+          preferred_contact_method: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "client_contacts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_primary_project_address: {
+        Args: { p_address_id: string }
+        Returns: {
+          access_instructions: string | null
+          address_line_1: string
+          address_line_2: string | null
+          archived_at: string | null
+          archived_by: string | null
+          city: string
+          country_code: string
+          created_at: string
+          created_by: string
+          id: string
+          is_primary: boolean
+          latitude: number | null
+          longitude: number | null
+          postal_code: string
+          project_id: string
+          state: string
+          tenant_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "project_addresses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_client: {
+        Args: {
+          p_client_id: string
+          p_client_type: string
+          p_display_name: string
+          p_email?: string
+          p_first_name?: string
+          p_last_name?: string
+          p_legal_name?: string
+          p_phone?: string
+          p_preferred_contact_method?: string
+          p_secondary_phone?: string
+          p_source?: string
+          p_tax_exempt?: boolean
+          p_website?: string
+        }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          client_type: string
+          created_at: string
+          created_by: string
+          display_name: string
+          email: string | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          legal_name: string | null
+          phone: string | null
+          preferred_contact_method: string | null
+          secondary_phone: string | null
+          source: string | null
+          tax_exempt: boolean
+          tenant_id: string
+          updated_at: string
+          website: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "clients"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_client_contact: {
+        Args: {
+          p_contact_id: string
+          p_email?: string
+          p_first_name: string
+          p_job_title?: string
+          p_last_name?: string
+          p_notes?: string
+          p_phone?: string
+          p_preferred_contact_method?: string
+        }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          email: string | null
+          first_name: string
+          id: string
+          is_primary: boolean
+          job_title: string | null
+          last_name: string | null
+          notes: string | null
+          phone: string | null
+          preferred_contact_method: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "client_contacts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_membership: {
+        Args: {
+          p_membership_id: string
+          p_new_role_key?: string
+          p_new_status?: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          invited_by: string | null
+          joined_at: string | null
+          role_id: string
+          status: string
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tenant_memberships"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_note: {
+        Args: { p_body: string; p_note_id: string }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          body: string
+          client_id: string | null
+          created_at: string
+          created_by: string
+          id: string
+          opportunity_id: string | null
+          project_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "crm_notes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_opportunity: {
+        Args: {
+          p_assigned_to?: string
+          p_estimated_value_cents?: number
+          p_expected_close_date?: string
+          p_opportunity_id: string
+          p_probability?: number
+          p_source?: string
+          p_title: string
+        }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          assigned_to: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          estimated_value_cents: number | null
+          expected_close_date: string | null
+          id: string
+          inspection_scheduled_at: string | null
+          lost_reason: string | null
+          pre_archive_status: string | null
+          probability: number | null
+          source: string | null
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "opportunities"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_project: {
+        Args: {
+          p_assigned_to?: string
+          p_description?: string
+          p_name: string
+          p_primary_contact_id?: string
+          p_project_id: string
+          p_service_type?: string
+          p_tentative_start_date?: string
+        }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          assigned_to: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          inspection_scheduled_at: string | null
+          name: string
+          opportunity_id: string | null
+          pre_archive_status: string | null
+          primary_contact_id: string | null
+          service_type: string | null
+          status: string
+          tenant_id: string
+          tentative_start_date: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "projects"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_project_address: {
+        Args: {
+          p_access_instructions?: string
+          p_address_id: string
+          p_address_line_1: string
+          p_address_line_2?: string
+          p_city: string
+          p_country_code?: string
+          p_postal_code: string
+          p_state: string
+        }
+        Returns: {
+          access_instructions: string | null
+          address_line_1: string
+          address_line_2: string | null
+          archived_at: string | null
+          archived_by: string | null
+          city: string
+          country_code: string
+          created_at: string
+          created_by: string
+          id: string
+          is_primary: boolean
+          latitude: number | null
+          longitude: number | null
+          postal_code: string
+          project_id: string
+          state: string
+          tenant_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "project_addresses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      user_has_permission: {
+        Args: { p_permission_key: string; p_tenant_id: string }
+        Returns: boolean
+      }
+      user_is_active_tenant_member: {
+        Args: { p_tenant_id: string }
+        Returns: boolean
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
 }
 
-export type Tables<T extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][T]["Row"];
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
+  public: {
+    Enums: {},
+  },
+} as const

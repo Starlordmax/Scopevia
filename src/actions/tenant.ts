@@ -96,8 +96,11 @@ export async function updateMembershipAction(_prev: ActionResult, formData: Form
   const supabase = await createClient();
   const { error } = await supabase.rpc("update_membership", {
     p_membership_id: membershipId.data,
-    p_new_status: status?.data ?? null,
-    p_new_role_key: roleKey?.data ?? null,
+    // undefined (key omitted from the request), not null: both p_new_status
+    // and p_new_role_key have a SQL `default null`, which only takes effect
+    // when the argument is omitted — an explicit JSON null does not.
+    p_new_status: status?.data ?? undefined,
+    p_new_role_key: roleKey?.data ?? undefined,
   });
   if (error) {
     return { error: error.message };

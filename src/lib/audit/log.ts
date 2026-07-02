@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "../supabase/server";
+import type { Json } from "../../../types/database";
 
 export type AuditAction =
   | "auth.signed_in"
@@ -45,7 +46,12 @@ export async function logAuditEvent(input: LogAuditEventInput): Promise<void> {
       p_action: input.action,
       p_entity_type: input.entityType,
       p_entity_id: input.entityId,
-      p_metadata: input.metadata ?? {},
+      // Our metadata objects are always small, plain, JSON-serializable
+      // structures (see the "no secrets/tokens/payloads" rule documented on
+      // AuditAction above) — Record<string, unknown> isn't structurally a
+      // Json, so this narrow cast reflects that guarantee rather than
+      // widening the input type for every caller.
+      p_metadata: (input.metadata ?? {}) as Json,
     });
     if (error) throw error;
   } catch (err) {

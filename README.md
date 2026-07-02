@@ -4,7 +4,7 @@
 
 Scopevia is a mobile-first SaaS platform that helps contractors manage leads, calculate costs, produce Good/Better/Best proposals, and get paid — starting with painting contractors.
 
-This repository is currently at **Phase 0: Foundations** — authentication, multi-tenancy, roles/permissions and Row Level Security, since hardened and verified against a real Postgres instance. No product features (CRM, estimating, proposals, payments) exist yet. See [docs/](docs/) for the full product and architecture design, [docs/14-phase-0-foundations.md](docs/14-phase-0-foundations.md) for what this phase implements, [docs/18-phase-0-security-hardening.md](docs/18-phase-0-security-hardening.md) for the security review, and [docs/19-phase-0-verification-evidence.md](docs/19-phase-0-verification-evidence.md) for real test-run evidence.
+This repository is currently at **Phase 1: CRM & Projects**, built on top of **Phase 0: Foundations** — authentication, multi-tenancy, roles/permissions and Row Level Security, since hardened and verified against a real Postgres instance. Phase 1 adds Clients, Contacts, Opportunities, Projects, Project Addresses, Notes, and an activity timeline. Estimating, proposals, and payments do not exist yet. See [docs/](docs/) for the full product and architecture design, [docs/14-phase-0-foundations.md](docs/14-phase-0-foundations.md) / [docs/20-phase-1-crm-and-projects.md](docs/20-phase-1-crm-and-projects.md) for what each phase implements, [docs/18-phase-0-security-hardening.md](docs/18-phase-0-security-hardening.md) / [docs/23-phase-1-rls-verification.md](docs/23-phase-1-rls-verification.md) for the security reviews, and [docs/19-phase-0-verification-evidence.md](docs/19-phase-0-verification-evidence.md) for real test-run evidence.
 
 ## Stack
 
@@ -12,7 +12,7 @@ This repository is currently at **Phase 0: Foundations** — authentication, mul
 - [Supabase](https://supabase.com/) (Postgres, Auth, Row Level Security)
 - [Zod](https://zod.dev/) for runtime validation
 - [Vitest](https://vitest.dev/) for testing
-- Plain CSS (mobile-first) — no UI framework in Phase 0
+- Plain CSS (mobile-first) — no UI framework
 
 ## Getting started
 
@@ -38,29 +38,37 @@ Full walkthrough (installing, running migrations, creating a test user, verifyin
 | [docs/16-environments-and-deployment.md](docs/16-environments-and-deployment.md) | Dev/staging/production separation, migrations, secrets |
 | [docs/17-rls-verification.md](docs/17-rls-verification.md) | How to verify tenant isolation, and the checklist for adding new tables safely |
 | [docs/18-phase-0-security-hardening.md](docs/18-phase-0-security-hardening.md) | Security review: issues found (including a real privilege-escalation path), fixes applied, SECURITY DEFINER function audit |
-| [docs/19-phase-0-verification-evidence.md](docs/19-phase-0-verification-evidence.md) | Real command output and PASS/FAIL results from verifying against Postgres |
+| [docs/19-phase-0-verification-evidence.md](docs/19-phase-0-verification-evidence.md) | Real command output and PASS/FAIL results from verifying against Postgres (Phase 0) |
+| [docs/20-phase-1-crm-and-projects.md](docs/20-phase-1-crm-and-projects.md) | What Phase 1 implements: permission matrix, notes/activity/audit separation, cross-tenant integrity, concurrency, known limitations |
+| [docs/21-phase-1-data-model.md](docs/21-phase-1-data-model.md) | The 7 Phase 1 tables and the functions that mutate them |
+| [docs/22-phase-1-state-machines.md](docs/22-phase-1-state-machines.md) | The opportunity and project pipelines, and why they diverge from the original design sketch |
+| [docs/23-phase-1-rls-verification.md](docs/23-phase-1-rls-verification.md) | Real PASS/FAIL results for Phase 1 against Postgres, RLS policy coverage, checklist for adding a new tenant-scoped table |
+| [docs/24-phase-1-manual-testing.md](docs/24-phase-1-manual-testing.md) | Manual testing checklist — what's proven by automated tests vs. genuinely NOT RUN (no browser tool in this session) |
 | [docs/adr/](docs/adr/) | Architecture Decision Records |
 
 ## Project structure
 
 ```text
 src/
-  app/            Next.js App Router routes
-  actions/        Server Actions (auth, tenant, membership, profile)
+  app/            Next.js App Router routes (clients/opportunities/pipeline/projects added in Phase 1)
+  actions/        Server Actions (auth, tenant, membership, profile, clients, opportunities, projects, notes)
   components/     Shared UI components
   lib/
     supabase/     Client separation: browser, server, middleware, admin
     auth/         Session, tenant resolution, permissions
     audit/        Application-layer audit logging
-    validation/   Zod schemas
+    validation/   Zod schemas (schemas.ts: Phase 0, crm.ts: Phase 1)
+    crm/          Phase 1: state transition maps, activity labels, list-page data helpers
+    search.ts     Phase 1: safe ILIKE/PostgREST filter escaping for list-page search
   proxy.ts        Route protection (Next.js 16's successor to middleware.ts)
 supabase/
   migrations/     Versioned SQL — schema, functions, triggers, RLS, seeds
 tests/
   unit/           Pure function tests
-  rls/            Tenant isolation integration tests (requires Docker)
+  rls/            Tenant isolation + Phase 1 CRM integration tests (requires a real Postgres project)
 types/
-  database.ts     Hand-written Supabase types (replace with `npm run db:types` once a project exists)
+  database.ts     Supabase types, regenerated via `npm run db:types` (one hand-patch documented inline — see file header)
+  enums.ts        Hand-maintained literal unions for text+CHECK "enums" not captured by codegen
 docs/             Product design + architecture documentation
 ```
 

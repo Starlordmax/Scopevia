@@ -196,6 +196,55 @@ button,
   color: var(--color-primary);
 }
 
+.kanban-board {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.kanban-column {
+  flex: 0 0 260px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kanban-column-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-weight: 600;
+}
+
+.kanban-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Mobile: the board becomes a vertical stack of stage groups (a "list per
+   status"), never relying on drag-and-drop, per docs/20-phase-1-crm-and-projects.md. */
+@media (max-width: 640px) {
+  .kanban-board {
+    flex-direction: column;
+    overflow-x: visible;
+  }
+
+  .kanban-column {
+    flex: 1 1 auto;
+  }
+}
+
 table {
   width: 100%;
   border-collapse: collapse;

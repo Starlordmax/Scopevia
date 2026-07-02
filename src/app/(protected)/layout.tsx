@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "../../lib/auth/session";
 import { requireActiveTenant } from "../../lib/auth/tenant";
+import { hasPermission, PERMISSIONS } from "../../lib/auth/permissions";
 import { signOutAction } from "../../actions/auth";
 import { switchTenantAction } from "../../actions/tenant";
 
@@ -15,6 +16,13 @@ export const dynamic = "force-dynamic";
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   const { tenant, tenants } = await requireActiveTenant();
+
+  const [canViewClients, canViewOpportunities, canViewProjects, canViewMembers] = await Promise.all([
+    hasPermission(tenant.tenant_id, PERMISSIONS.CLIENTS_VIEW),
+    hasPermission(tenant.tenant_id, PERMISSIONS.OPPORTUNITIES_VIEW),
+    hasPermission(tenant.tenant_id, PERMISSIONS.PROJECTS_VIEW),
+    hasPermission(tenant.tenant_id, PERMISSIONS.MEMBERS_VIEW),
+  ]);
 
   return (
     <div className="app-shell">
@@ -40,7 +48,10 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
         <nav>
           <Link href="/">Home</Link>
-          <Link href="/members">Members</Link>
+          {canViewClients ? <Link href="/clients">Clients</Link> : null}
+          {canViewOpportunities ? <Link href="/pipeline">Pipeline</Link> : null}
+          {canViewProjects ? <Link href="/projects">Projects</Link> : null}
+          {canViewMembers ? <Link href="/members">Members</Link> : null}
           <Link href="/profile">Profile</Link>
         </nav>
 

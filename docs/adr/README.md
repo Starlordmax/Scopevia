@@ -1,6 +1,6 @@
 # Architecture Decision Records — Índice
 
-ADRs marcadas **Accepted** tienen su archivo completo (`NNNN-titulo-kebab-case.md`) escrito e implementado en Phase 0. Las marcadas **Proposed** siguen siendo decisiones de diseño preliminares de fases futuras (formalizar cuando esa fase comience). Formato de ADR completa: Context, Decision, Consequences, Status, Date.
+ADRs marcadas **Accepted** tienen su archivo completo (`NNNN-titulo-kebab-case.md`) escrito e implementado en Phase 0 o Phase 1. Las marcadas **Proposed** siguen siendo decisiones de diseño preliminares de fases futuras (formalizar cuando esa fase comience). Formato de ADR completa: Context, Decision, Consequences, Status, Date.
 
 | # | Título | Status | Decisión resumida | Documento relacionado |
 |---|---|---|---|---|
@@ -21,6 +21,13 @@ ADRs marcadas **Accepted** tienen su archivo completo (`NNNN-titulo-kebab-case.m
 | ADR-015 | [Active tenant resolution](0003-tenant-resolution-strategy.md) | **Accepted** (Phase 0) | Cookie httpOnly como *hint* únicamente; toda resolución re-valida contra `get_user_tenants()` server-side antes de conceder acceso | [14](../14-phase-0-foundations.md) |
 | ADR-016 | [Transactional tenant creation](0005-transactional-tenant-creation.md) | **Accepted** (Phase 0) | `create_tenant_with_owner()` crea tenant + membership owner + audit trail en una sola transacción PL/pgSQL; imposible que exista un tenant sin owner | [14](../14-phase-0-foundations.md) |
 | ADR-017 | [Supabase client separation](0006-supabase-client-separation.md) | **Accepted** (Phase 0) | Cuatro clientes de Supabase distintos (`client.ts`, `server.ts`, `middleware.ts`, `admin.ts`) con `import "server-only"` en todo módulo que no debe llegar al navegador | [14](../14-phase-0-foundations.md) |
+| ADR-018 | [Cross-tenant integrity via composite foreign keys](0007-cross-tenant-integrity-via-composite-foreign-keys.md) | **Accepted** (Phase 1) | Toda tabla hija tiene una FK compuesta `(child_id, tenant_id) references parent (id, tenant_id)`; el parent tiene `unique (id, tenant_id)`. Imposible insertar un hijo con `tenant_id` distinto del padre, incluso vía `service_role` | [21](../21-phase-1-data-model.md) |
+| ADR-019 | [CRM notes and activity model](0008-crm-notes-and-activity-model.md) | **Accepted** (Phase 1) | `crm_notes`/`crm_activities` únicas, con columnas `client_id`/`opportunity_id`/`project_id` nullable + FK compuesta cada una ("exclusive arc") en vez de `entity_type`/`entity_id` polimórfico o tablas por-entidad duplicadas | [20](../20-phase-1-crm-and-projects.md), [21](../21-phase-1-data-model.md) |
+| ADR-020 | [Assignee reference strategy](0009-assignee-reference-strategy.md) | **Accepted** (Phase 1) | `assigned_to` referencia `tenant_memberships`, no `auth.users` — permite FK compuesta cross-tenant y nunca queda huérfano al suspender/remover a alguien (la membresía nunca se borra) | [21](../21-phase-1-data-model.md) |
+| ADR-021 | [Archive and restore strategy](0010-archive-and-restore-strategy.md) | **Accepted** (Phase 1) | `archived_at`/`archived_by` simple para entidades binarias; `status='archived'` + `pre_archive_status` para las que ya tienen una máquina de estados (opportunities, projects) | [21](../21-phase-1-data-model.md) |
+| ADR-022 | [Opportunity state machine for Phase 1](0011-opportunity-state-machine-for-phase-1.md) | **Accepted** (Phase 1) | 8 estados; `lost` es reactivable (no terminal); `archived` solo alcanzable vía `archive_opportunity()`, no como transición ordinaria; la conversión a proyecto no cambia el status de la oportunidad | [22](../22-phase-1-state-machines.md) |
+| ADR-023 | [Project state machine for Phase 1](0012-project-state-machine-for-phase-1.md) | **Accepted** (Phase 1) | 6 estados (sin `active`/`on_hold`/`completed` — no hay ejecución que rastrear todavía); `cancelled` es reversible a `draft` | [22](../22-phase-1-state-machines.md) |
+| ADR-024 | [Concurrency control for idempotent mutations](0013-concurrency-control-for-idempotent-mutations.md) | **Accepted** (Phase 1) | Lock de fila (`FOR UPDATE`) + índice único parcial como backstop declarativo + reintentos idempotentes, para primary contact/address y para `convert_opportunity_to_project()` | [21](../21-phase-1-data-model.md), [23](../23-phase-1-rls-verification.md) |
 
 ## Cómo usar este índice
 
