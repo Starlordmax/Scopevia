@@ -5,6 +5,7 @@ import { createClient } from "../lib/supabase/server";
 import { requireUser } from "../lib/auth/session";
 import { uuidSchema } from "../lib/validation/schemas";
 import { createNoteSchema, updateNoteSchema } from "../lib/validation/crm";
+import { friendlyRpcErrorMessage } from "../lib/errors/friendly-message";
 import type { ActionResult } from "./auth";
 
 function parentPath(clientId?: string, opportunityId?: string, projectId?: string): string {
@@ -37,7 +38,7 @@ export async function createNoteAction(_prev: ActionResult, formData: FormData):
     p_project_id: parsed.data.projectId,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyRpcErrorMessage(error.message) };
 
   revalidatePath(parentPath(parsed.data.clientId, parsed.data.opportunityId, parsed.data.projectId));
   return {};
@@ -61,7 +62,7 @@ export async function updateNoteAction(_prev: ActionResult, formData: FormData):
   const supabase = await createClient();
   const { error } = await supabase.rpc("update_note", { p_note_id: noteId.data, p_body: parsed.data.body });
 
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyRpcErrorMessage(error.message) };
 
   revalidatePath(redirectPath);
   return {};
@@ -82,7 +83,7 @@ export async function archiveNoteAction(_prev: ActionResult, formData: FormData)
   const supabase = await createClient();
   const { error } = await supabase.rpc("archive_note", { p_note_id: noteId.data });
 
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyRpcErrorMessage(error.message) };
 
   revalidatePath(redirectPath);
   return {};

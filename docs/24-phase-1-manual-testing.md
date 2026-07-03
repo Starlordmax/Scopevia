@@ -1,5 +1,18 @@
 # 24 — Phase 1 Manual Testing
 
+**Update (2026-07-02, Phase 1.5 verification round):** the browser-automation
+gap this document originally recorded is now closed — a real Playwright
+E2E suite (Chromium, headless) exercises every flow marked `NOT RUN` below,
+stable at 48/48 across three consecutive full runs, plus dedicated
+automated coverage for all five restore operations. See
+[25-phase-1-e2e-verification.md](25-phase-1-e2e-verification.md) for the
+full scenario list, results, and the real bugs that browser testing found
+(including one that crashed the entire app for any multi-tenant user).
+This document is kept as-is below for the historical record of what was
+and wasn't verified at the time Phase 1 was first delivered.
+
+---
+
 Honesty note, matching the discipline set in
 [19-phase-0-verification-evidence.md](19-phase-0-verification-evidence.md#5-auth--profile-trigger-verification):
 this session has no browser-automation tool available, so a true

@@ -4,6 +4,61 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Phase 1.5 — Real browser E2E verification and restore coverage
+
+Closed the two gaps flagged in
+[docs/24-phase-1-manual-testing.md](docs/24-phase-1-manual-testing.md):
+a real Playwright browser walkthrough of the Phase 1 UI, and dedicated
+automated coverage for the five restore operations. See
+[docs/25-phase-1-e2e-verification.md](docs/25-phase-1-e2e-verification.md)
+for full results.
+
+**Fixed** (all found via real browser testing, not code review)
+
+- **Critical**: the tenant-switcher `<select onChange={...}>` was rendered
+  directly inside a Server Component (`(protected)/layout.tsx`) — React
+  forbids event handlers on host elements there. Any signed-in user
+  belonging to 2+ tenants got a 500 on every protected page, since Phase 0.
+  Extracted into `src/app/(protected)/tenant-switcher.tsx`, a Client
+  Component.
+- Cross-tenant data exposure: `/clients/[id]`, `/clients/[id]/edit`,
+  `/opportunities/[id]`, `/projects/[id]`, `/projects/[id]/edit` fetched
+  their row by id alone with no `tenant_id` filter, relying entirely on
+  RLS — which checks the row's own tenant, not the caller's active tenant.
+  A user in two tenants with overlapping permissions could load another
+  tenant's record via a stale URL. Added the missing tenant filter to all
+  five queries.
+- RPC error messages (e.g. `"Missing permission: opportunities.archive"`,
+  `"... uses archive_opportunity()/restore_opportunity() instead"`) were
+  shown to users unsanitized, exposing internal permission-key and
+  function names. Added `src/lib/errors/friendly-message.ts`, applied at
+  every RPC-error-to-banner call site in the Phase 1 action files.
+- Accessibility: the tenant-switcher `<select>` had no label at all —
+  added `aria-label="Switch business"`.
+- A flaky `tests/rls/*.test.ts` timeout under real network latency (5s
+  default) — raised `testTimeout`/`hookTimeout` to 15s in
+  `vitest.config.ts`.
+
+**Added**
+
+- `tests/e2e/` — a Playwright suite (48 tests, 9 spec files) covering
+  authentication, Clients, Contacts, Opportunities, Pipeline (desktop +
+  real 390×844 mobile viewport), Projects (conversion idempotency,
+  address primary-switching), Notes/Activities, and permissions
+  (Viewer/Sales/Field Worker/tenant switching, including a manipulated
+  tenant-id rejection test) — stable at 48/48 across three consecutive
+  full runs, against a production build and the real `scopevia-test`
+  database.
+- `tests/rls/phase1-restore.test.ts` — 27 new cases covering
+  `restore_client`/`restore_client_contact`/`restore_opportunity`/
+  `restore_project`/`restore_project_address`: correct-permission restore,
+  safe no-op on non-archived resources, Viewer/cross-tenant/suspended-user
+  rejection, audit/activity logging accuracy, and two concurrency races
+  (simultaneous restores; archive-vs-restore).
+- `playwright.config.ts` — desktop + mobile projects, an auth setup
+  project with real UI logins reused via `storageState`, trace-on-failure,
+  screenshot-on-failure, no retries (so a pass means it actually worked).
+
 ### Phase 1 — CRM & Projects
 
 Built the CRM/pipeline module on top of the verified Phase 0 foundation:

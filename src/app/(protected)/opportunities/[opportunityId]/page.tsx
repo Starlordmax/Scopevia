@@ -31,6 +31,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
     .from("opportunities")
     .select("*, clients(id, display_name)")
     .eq("id", opportunityId)
+    .eq("tenant_id", tenant.tenant_id)
     .single();
   if (!opportunity) notFound();
 

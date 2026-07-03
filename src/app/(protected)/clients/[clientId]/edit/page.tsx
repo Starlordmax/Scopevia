@@ -14,7 +14,12 @@ export default async function EditClientPage({ params }: { params: Promise<{ cli
   if (!canUpdate) redirect(`/clients/${clientId}`);
 
   const supabase = await createClient();
-  const { data: client } = await supabase.from("clients").select("*").eq("id", clientId).single();
+  const { data: client } = await supabase
+    .from("clients")
+    .select("*")
+    .eq("id", clientId)
+    .eq("tenant_id", tenant.tenant_id)
+    .single();
   if (!client) notFound();
 
   return (

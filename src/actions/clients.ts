@@ -8,6 +8,7 @@ import { requirePermission } from "../lib/auth/permissions";
 import { PERMISSIONS } from "../lib/auth/permission-keys";
 import { uuidSchema } from "../lib/validation/schemas";
 import { createClientSchema, createClientContactSchema, updateClientContactSchema } from "../lib/validation/crm";
+import { friendlyRpcErrorMessage } from "../lib/errors/friendly-message";
 import type { ActionResult } from "./auth";
 import type { Database } from "../../types/database";
 
@@ -65,7 +66,7 @@ export async function createClientAction(_prev: ActionResult, formData: FormData
     })
     .single();
 
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyRpcErrorMessage(error.message) };
 
   const client = data as Client;
   redirect(`/clients/${client.id}`);
@@ -97,7 +98,7 @@ export async function updateClientAction(_prev: ActionResult, formData: FormData
     p_source: parsed.data.source ?? undefined,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyRpcErrorMessage(error.message) };
 
   revalidatePath(`/clients/${clientId.data}`);
   redirect(`/clients/${clientId.data}`);
@@ -162,7 +163,7 @@ export async function createClientContactAction(_prev: ActionResult, formData: F
     p_is_primary: parsed.data.isPrimary,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyRpcErrorMessage(error.message) };
 
   revalidatePath(`/clients/${parsed.data.clientId}`);
   return {};
@@ -198,7 +199,7 @@ export async function updateClientContactAction(_prev: ActionResult, formData: F
     p_notes: parsed.data.notes,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyRpcErrorMessage(error.message) };
 
   revalidatePath(`/clients/${clientId.data}`);
   return {};

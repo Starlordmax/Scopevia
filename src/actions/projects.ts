@@ -14,6 +14,7 @@ import {
   createProjectAddressSchema,
   updateProjectAddressSchema,
 } from "../lib/validation/crm";
+import { friendlyRpcErrorMessage } from "../lib/errors/friendly-message";
 import type { ActionResult } from "./auth";
 import type { Database } from "../../types/database";
 
@@ -54,7 +55,7 @@ export async function createProjectAction(_prev: ActionResult, formData: FormDat
     })
     .single();
 
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyRpcErrorMessage(error.message) };
 
   const project = data as Project;
   redirect(`/projects/${project.id}`);
@@ -87,7 +88,7 @@ export async function updateProjectAction(_prev: ActionResult, formData: FormDat
     p_primary_contact_id: parsed.data.primaryContactId,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyRpcErrorMessage(error.message) };
 
   revalidatePath(`/projects/${projectId.data}`);
   redirect(`/projects/${projectId.data}`);
@@ -112,7 +113,7 @@ export async function changeProjectStatusAction(_prev: ActionResult, formData: F
     p_inspection_scheduled_at: parsed.data.inspectionScheduledAt,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyRpcErrorMessage(error.message) };
 
   revalidatePath(`/projects/${projectId.data}`);
   return {};
@@ -177,7 +178,7 @@ export async function createProjectAddressAction(_prev: ActionResult, formData: 
     p_is_primary: parsed.data.isPrimary,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyRpcErrorMessage(error.message) };
 
   revalidatePath(`/projects/${parsed.data.projectId}`);
   return {};
@@ -213,7 +214,7 @@ export async function updateProjectAddressAction(_prev: ActionResult, formData: 
     p_access_instructions: parsed.data.accessInstructions,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyRpcErrorMessage(error.message) };
 
   revalidatePath(`/projects/${projectId.data}`);
   return {};

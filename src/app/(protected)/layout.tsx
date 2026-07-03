@@ -3,7 +3,7 @@ import { requireUser } from "../../lib/auth/session";
 import { requireActiveTenant } from "../../lib/auth/tenant";
 import { hasPermission, PERMISSIONS } from "../../lib/auth/permissions";
 import { signOutAction } from "../../actions/auth";
-import { switchTenantAction } from "../../actions/tenant";
+import { TenantSwitcher } from "./tenant-switcher";
 
 // Every page under this layout reads the caller's session and tenant
 // membership from the database on every request — there is no meaningful
@@ -33,15 +33,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
         </div>
 
         {tenants.length > 1 ? (
-          <form action={switchTenantAction} className="tenant-form">
-            <select name="tenantId" defaultValue={tenant.tenant_id} onChange={(e) => e.currentTarget.form?.requestSubmit()}>
-              {tenants.map((t) => (
-                <option key={t.tenant_id} value={t.tenant_id}>
-                  {t.tenant_name}
-                </option>
-              ))}
-            </select>
-          </form>
+          <TenantSwitcher tenants={tenants} activeTenantId={tenant.tenant_id} />
         ) : (
           <strong>{tenant.tenant_name}</strong>
         )}

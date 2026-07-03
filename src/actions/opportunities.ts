@@ -13,6 +13,7 @@ import {
   changeOpportunityStatusSchema,
   convertOpportunitySchema,
 } from "../lib/validation/crm";
+import { friendlyRpcErrorMessage } from "../lib/errors/friendly-message";
 import type { ActionResult } from "./auth";
 import type { Database } from "../../types/database";
 
@@ -56,7 +57,7 @@ export async function createOpportunityAction(_prev: ActionResult, formData: For
     })
     .single();
 
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyRpcErrorMessage(error.message) };
 
   const opportunity = data as Opportunity;
   redirect(`/opportunities/${opportunity.id}`);
@@ -89,7 +90,7 @@ export async function updateOpportunityAction(_prev: ActionResult, formData: For
     p_assigned_to: parsed.data.assignedTo,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyRpcErrorMessage(error.message) };
 
   revalidatePath(`/opportunities/${opportunityId.data}`);
   redirect(`/opportunities/${opportunityId.data}`);
@@ -116,7 +117,7 @@ export async function changeOpportunityStatusAction(_prev: ActionResult, formDat
     p_inspection_scheduled_at: parsed.data.inspectionScheduledAt,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyRpcErrorMessage(error.message) };
 
   revalidatePath(`/opportunities/${opportunityId.data}`);
   revalidatePath("/pipeline");
@@ -172,7 +173,7 @@ export async function convertOpportunityAction(_prev: ActionResult, formData: Fo
     })
     .single();
 
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyRpcErrorMessage(error.message) };
 
   const project = data as Project;
   redirect(`/projects/${project.id}`);

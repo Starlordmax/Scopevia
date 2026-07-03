@@ -11,7 +11,8 @@ This repository is currently at **Phase 1: CRM & Projects**, built on top of **P
 - [Next.js](https://nextjs.org/) 16 (App Router) + TypeScript + React 19
 - [Supabase](https://supabase.com/) (Postgres, Auth, Row Level Security)
 - [Zod](https://zod.dev/) for runtime validation
-- [Vitest](https://vitest.dev/) for testing
+- [Vitest](https://vitest.dev/) for unit and RLS/integration testing
+- [Playwright](https://playwright.dev/) for real-browser end-to-end testing
 - Plain CSS (mobile-first) — no UI framework
 
 ## Getting started
@@ -43,7 +44,8 @@ Full walkthrough (installing, running migrations, creating a test user, verifyin
 | [docs/21-phase-1-data-model.md](docs/21-phase-1-data-model.md) | The 7 Phase 1 tables and the functions that mutate them |
 | [docs/22-phase-1-state-machines.md](docs/22-phase-1-state-machines.md) | The opportunity and project pipelines, and why they diverge from the original design sketch |
 | [docs/23-phase-1-rls-verification.md](docs/23-phase-1-rls-verification.md) | Real PASS/FAIL results for Phase 1 against Postgres, RLS policy coverage, checklist for adding a new tenant-scoped table |
-| [docs/24-phase-1-manual-testing.md](docs/24-phase-1-manual-testing.md) | Manual testing checklist — what's proven by automated tests vs. genuinely NOT RUN (no browser tool in this session) |
+| [docs/24-phase-1-manual-testing.md](docs/24-phase-1-manual-testing.md) | Original manual testing checklist (historical) — superseded by docs/25 |
+| [docs/25-phase-1-e2e-verification.md](docs/25-phase-1-e2e-verification.md) | Real Playwright browser test results (48/48, 3 stable runs), restore operation coverage, real bugs found and fixed via browser testing |
 | [docs/adr/](docs/adr/) | Architecture Decision Records |
 
 ## Project structure
@@ -65,7 +67,9 @@ supabase/
   migrations/     Versioned SQL — schema, functions, triggers, RLS, seeds
 tests/
   unit/           Pure function tests
-  rls/            Tenant isolation + Phase 1 CRM integration tests (requires a real Postgres project)
+  rls/            Tenant isolation + Phase 1 CRM/restore integration tests (requires a real Postgres project)
+  e2e/            Playwright browser tests (requires a real Postgres project; spins up a production build)
+playwright.config.ts  Playwright config — desktop + mobile (390x844) projects
 types/
   database.ts     Supabase types, regenerated via `npm run db:types` (one hand-patch documented inline — see file header)
   enums.ts        Hand-maintained literal unions for text+CHECK "enums" not captured by codegen
@@ -74,7 +78,7 @@ docs/             Product design + architecture documentation
 
 ## Commands
 
-See [docs/15-local-development.md](docs/15-local-development.md#comandos-disponibles) for the full list (`dev`, `build`, `lint`, `typecheck`, `test`, `test:rls`, `db:*`).
+See [docs/15-local-development.md](docs/15-local-development.md#comandos-disponibles) for the full list (`dev`, `build`, `lint`, `typecheck`, `test`, `test:rls`, `test:e2e`, `test:e2e:ui`, `db:*`).
 
 ## Security model
 

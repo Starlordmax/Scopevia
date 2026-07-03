@@ -1,0 +1,222 @@
+import { test, expect } from "@playwright/test";
+import { authFile, uniqueSuffix } from "./fixtures/session";
+
+test.describe("Viewer permissions", () => {
+  test.use({ storageState: authFile("viewer-a") });
+
+  test("can view clients/opportunities/projects but sees no mutation controls", async ({ page }) => {
+    await page.goto("/clients");
+    await expect(page.getByRole("heading", { name: "Clients" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "+ New client" })).toHaveCount(0);
+
+    await page.goto("/opportunities");
+    await expect(page.getByRole("heading", { name: "Opportunities" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "+ New" })).toHaveCount(0);
+
+    await page.goto("/projects");
+    await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "+ New project" })).toHaveCount(0);
+  });
+
+  test("direct URL access to creation routes redirects away instead of rendering the form", async ({ page }) => {
+    await page.goto("/clients/new");
+    await page.waitForURL(/\/clients$/);
+    await expect(page.getByLabel("Display name")).toHaveCount(0);
+
+    await page.goto("/opportunities/new");
+    await page.waitForURL(/\/opportunities$/);
+
+    await page.goto("/projects/new");
+    await page.waitForURL(/\/projects$/);
+  });
+
+  test("Members admin is denied without leaking member data", async ({ page }) => {
+    await page.goto("/members");
+    await expect(page.getByText(/does not include access to this page/)).toBeVisible();
+    await expect(page.locator("table")).toHaveCount(0);
+  });
+});
+
+test.describe("Sales permissions", () => {
+  test.use({ storageState: authFile("sales-a") });
+
+  test("can create a client and an opportunity, and change its status", async ({ page }) => {
+    const suffix = uniqueSuffix();
+    const clientName = `E2E Sales Client ${suffix}`;
+
+    await page.goto("/clients/new");
+    await page.getByLabel("Display name").fill(clientName);
+    await page.getByRole("button", { name: "Create client" }).click();
+    await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
+
+    await page.goto("/opportunities/new");
+    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.getByLabel("Title").fill(`E2E Sales Opp ${suffix}`);
+    await page.getByRole("button", { name: "Create opportunity" }).click();
+    await page.waitForURL(/\/opportunities\/[0-9a-f-]+$/);
+
+    await page.getByRole("button", { name: "Move to contacted" }).click();
+    await page.getByRole("button", { name: "Confirm: move to contacted" }).click();
+    await page.waitForLoadState("networkidle");
+    await expect(page.locator(".badge").filter({ hasText: "contacted" })).toBeVisible();
+  });
+
+  test("can create a project but has no update controls and direct edit access is denied", async ({ page }) => {
+    const suffix = uniqueSuffix();
+    const clientName = `E2E Sales Project Client ${suffix}`;
+
+    await page.goto("/clients/new");
+    await page.getByLabel("Display name").fill(clientName);
+    await page.getByRole("button", { name: "Create client" }).click();
+    await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
+
+    await page.goto("/projects/new");
+    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.getByLabel("Project name").fill(`E2E Sales Project ${suffix}`);
+    await page.getByRole("button", { name: "Create project" }).click();
+    await page.waitForURL(/\/projects\/[0-9a-f-]+$/);
+    const url = page.url();
+
+    // No Edit link, no status-change buttons — Sales lacks projects.update.
+    await expect(page.getByRole("link", { name: "Edit" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^Move to/ })).toHaveCount(0);
+
+    await page.goto(`${url}/edit`);
+    await page.waitForURL(url); // redirected straight back, form never rendered
+    await expect(page.getByLabel("Project name")).toHaveCount(0);
+  });
+
+  test("cannot access Members admin", async ({ page }) => {
+    await page.goto("/members");
+    await expect(page.getByText(/does not include access to this page/)).toBeVisible();
+  });
+});
+
+test.describe("Field Worker permissions", () => {
+  test("sees projects tenant-wide (not assignment-scoped) but not clients/opportunities, and can add a note", async ({
+    browser,
+  }) => {
+    const suffix = uniqueSuffix();
+    const clientName = `E2E FW Client ${suffix}`;
+    const projectName = `E2E FW Project ${suffix}`;
+
+    const ownerContext = await browser.newContext({ storageState: authFile("owner-a") });
+    const ownerPage = await ownerContext.newPage();
+    await ownerPage.goto("/clients/new");
+    await ownerPage.getByLabel("Display name").fill(clientName);
+    await ownerPage.getByRole("button", { name: "Create client" }).click();
+    await ownerPage.waitForURL(/\/clients\/[0-9a-f-]+$/);
+
+    await ownerPage.goto("/projects/new");
+    await ownerPage.getByLabel("Client").selectOption({ label: clientName });
+    await ownerPage.getByLabel("Project name").fill(projectName);
+    await ownerPage.getByRole("button", { name: "Create project" }).click();
+    await ownerPage.waitForURL(/\/projects\/[0-9a-f-]+$/);
+    const projectUrl = ownerPage.url();
+    await ownerContext.close();
+
+    const fwContext = await browser.newContext({ storageState: authFile("field-worker-a") });
+    const fwPage = await fwContext.newPage();
+
+    // Tenant-wide visibility: Field Worker sees this project even though it
+    // was created by (and never assigned to) someone else — documented as a
+    // deliberate limitation, not per-assignment security, in docs/20.
+    await fwPage.goto("/projects");
+    await expect(fwPage.getByRole("link", { name: projectName })).toBeVisible();
+
+    await fwPage.goto("/clients");
+    await expect(fwPage.getByText(/does not include access to this page/)).toBeVisible();
+
+    await fwPage.goto("/opportunities");
+    await expect(fwPage.getByText(/does not include access to this page/)).toBeVisible();
+
+    await fwPage.goto(projectUrl);
+    await expect(fwPage.getByRole("heading", { name: projectName })).toBeVisible();
+    // No update controls at all — Field Worker lacks projects.update.
+    await expect(fwPage.getByRole("link", { name: "Edit" })).toHaveCount(0);
+    await expect(fwPage.getByRole("button", { name: /^Move to/ })).toHaveCount(0);
+
+    const note = `Field note ${suffix}`;
+    await fwPage.getByLabel("Add a note").fill(note);
+    await fwPage.getByRole("button", { name: "Add note" }).click();
+    await fwPage.waitForLoadState("networkidle");
+    await expect(fwPage.locator("p").filter({ hasText: note })).toBeVisible();
+
+    await fwContext.close();
+  });
+});
+
+test.describe("Tenant switching", () => {
+  test.use({ storageState: authFile("owner-a") });
+
+  test("switching tenant changes visible data and hides the previous tenant's records", async ({ page }) => {
+    const suffix = uniqueSuffix();
+    const clientNameInA = `E2E TenantSwitch A ${suffix}`;
+
+    await page.goto("/");
+    // Owner A's default active tenant (no cookie yet) is Tenant A — its name
+    // sorts first (see tests/e2e/global-setup.ts).
+    await page.goto("/clients/new");
+    await page.getByLabel("Display name").fill(clientNameInA);
+    await page.getByRole("button", { name: "Create client" }).click();
+    await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
+    const clientAUrl = page.url();
+
+    // Search rather than just visiting /clients: this suite shares ONE
+    // Tenant A across every spec file, which by full-suite run time holds
+    // far more than one page's worth of clients (DEFAULT_PAGE_SIZE = 20,
+    // sorted alphabetically, not by creation time) — the just-created
+    // client is easily pushed past page 1. Searching filters server-side
+    // and is unaffected by how many other clients exist.
+    await page.goto("/clients");
+    await page.getByPlaceholder("Search by name, email, phone…").fill(clientNameInA);
+    await page.getByRole("button", { name: "Search" }).click();
+    await expect(page.getByRole("link", { name: clientNameInA })).toBeVisible();
+
+    // Switch to Tenant B (Owner A is a viewer there).
+    await page.goto("/");
+    const switcher = page.getByLabel("Switch business");
+    await expect(switcher).toBeVisible();
+    const optionsText = await switcher.locator("option").allTextContents();
+    const tenantBOption = optionsText.find((t) => t.includes("E2E Tenant B"));
+    expect(tenantBOption).toBeTruthy();
+    await switcher.selectOption({ label: tenantBOption! });
+    // Not waitForURL("/") — we're already AT "/", so that would resolve
+    // instantly without waiting for switchTenantAction's round trip to
+    // actually set the cookie. Wait for proof the switch really happened:
+    // the SSR'd heading only shows Tenant B's name after the server
+    // re-renders "/" under the new active tenant.
+    await expect(page.getByRole("heading", { name: tenantBOption! })).toBeVisible({ timeout: 15_000 });
+
+    await page.goto("/clients");
+    // Tenant A's client must not appear under Tenant B.
+    await expect(page.getByRole("link", { name: clientNameInA })).toHaveCount(0);
+    // Viewer role in Tenant B: no create control either.
+    await expect(page.getByRole("link", { name: "+ New client" })).toHaveCount(0);
+
+    // A stale URL to the Tenant A client must not expose it while active in
+    // B — Next.js's notFound() renders its built-in 404, and critically the
+    // client's name/details are never present in the response at all.
+    await page.goto(clientAUrl);
+    await expect(page.getByRole("heading", { name: "404" })).toBeVisible();
+    await expect(page.getByText(clientNameInA)).toHaveCount(0);
+  });
+
+  test("a manipulated tenant id in the switcher is rejected, not silently accepted", async ({ page }) => {
+    await page.goto("/");
+    const switcher = page.getByLabel("Switch business");
+    await expect(switcher).toBeVisible();
+
+    const fakeTenantId = "00000000-0000-0000-0000-000000000000";
+    await switcher.evaluate((el: HTMLSelectElement, value: string) => {
+      const opt = document.createElement("option");
+      opt.value = value;
+      opt.textContent = "Injected fake tenant";
+      el.appendChild(opt);
+    }, fakeTenantId);
+    await switcher.selectOption(fakeTenantId);
+
+    await page.waitForURL(/\/select-tenant\?error=not_a_member/);
+    await expect(page.getByText("That workspace is not available. Choose another.")).toBeVisible();
+  });
+});

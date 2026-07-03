@@ -20,7 +20,12 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
   if (!canView) redirect("/clients");
 
   const supabase = await createClient();
-  const { data: client } = await supabase.from("clients").select("*").eq("id", clientId).single();
+  const { data: client } = await supabase
+    .from("clients")
+    .select("*")
+    .eq("id", clientId)
+    .eq("tenant_id", tenant.tenant_id)
+    .single();
   if (!client) notFound();
 
   const [

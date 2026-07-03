@@ -15,7 +15,12 @@ export default async function EditProjectPage({ params }: { params: Promise<{ pr
   if (!canUpdate) redirect(`/projects/${projectId}`);
 
   const supabase = await createClient();
-  const { data: project } = await supabase.from("projects").select("*").eq("id", projectId).single();
+  const { data: project } = await supabase
+    .from("projects")
+    .select("*")
+    .eq("id", projectId)
+    .eq("tenant_id", tenant.tenant_id)
+    .single();
   if (!project) notFound();
 
   const [members, { data: contactRows }] = await Promise.all([

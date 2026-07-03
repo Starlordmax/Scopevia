@@ -26,6 +26,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     .from("projects")
     .select("*, clients(id, display_name), opportunities(id, title)")
     .eq("id", projectId)
+    .eq("tenant_id", tenant.tenant_id)
     .single();
   if (!project) notFound();
 
