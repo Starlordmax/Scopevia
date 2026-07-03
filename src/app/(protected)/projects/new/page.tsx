@@ -21,7 +21,7 @@ export default async function NewProjectPage({ searchParams }: { searchParams: P
   return (
     <div className="stack">
       <h1>New project</h1>
-      <div className="card">
+      <div className="form-card">
         <ProjectForm tenantId={tenant.tenant_id} clients={clients} members={members} contacts={[]} defaultClientId={clientId} />
       </div>
     </div>

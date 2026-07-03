@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { Kanban } from "lucide-react";
 import { requireActiveTenant } from "../../../lib/auth/tenant";
 import { hasPermission, PERMISSIONS } from "../../../lib/auth/permissions";
 import { createClient } from "../../../lib/supabase/server";
 import { opportunityStatusLabel } from "../../../lib/crm/opportunity-transitions";
+import { PageHeader } from "../../../components/page-header";
 import { QuickAdvance } from "./quick-advance";
 import type { OpportunityStatus } from "../../../../types/enums";
 
@@ -46,6 +48,7 @@ export default async function PipelinePage() {
     );
   }
   const canChangeStatus = await hasPermission(tenant.tenant_id, PERMISSIONS.OPPORTUNITIES_CHANGE_STATUS);
+  const canCreate = await hasPermission(tenant.tenant_id, PERMISSIONS.OPPORTUNITIES_CREATE);
 
   const supabase = await createClient();
   const { data: opportunities, error } = await supabase
@@ -64,12 +67,22 @@ export default async function PipelinePage() {
 
   return (
     <div className="stack">
-      <div className="tenant-form" style={{ justifyContent: "space-between", width: "100%" }}>
-        <h1>Pipeline</h1>
-        <Link href="/opportunities" className="button-secondary">
-          List view
-        </Link>
-      </div>
+      <PageHeader
+        icon={Kanban}
+        title="Pipeline"
+        secondary={
+          <Link href="/opportunities" className="button-secondary">
+            List view
+          </Link>
+        }
+        action={
+          canCreate ? (
+            <Link href="/opportunities/new" className="button-primary">
+              + New opportunity
+            </Link>
+          ) : null
+        }
+      />
 
       {error ? <p className="error-banner">{error.message}</p> : null}
 

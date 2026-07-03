@@ -10,6 +10,7 @@ import { NotesSection } from "../../../../components/notes-section";
 import { OpportunityStatusActions } from "./status-actions";
 import { ConvertToProjectForm } from "./convert-form";
 import { archiveOpportunityAction, restoreOpportunityAction } from "../../../../actions/opportunities";
+import { opportunityBadgeClass } from "../../../../lib/crm/status-badge";
 import type { OpportunityStatus } from "../../../../../types/enums";
 
 export const dynamic = "force-dynamic";
@@ -71,10 +72,10 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
             {opportunity.clients ? <Link href={`/clients/${opportunity.clients.id}`}>{opportunity.clients.display_name}</Link> : "—"}
           </span>
         </div>
-        <span className="badge">{opportunity.status.replace(/_/g, " ")}</span>
+        <span className={`badge ${opportunityBadgeClass(opportunity.status)}`.trim()}>{opportunity.status.replace(/_/g, " ")}</span>
       </div>
 
-      <div className="card stack">
+      <div className="section-card stack">
         <div>Estimated value: {formatMoney(opportunity.estimated_value_cents)}</div>
         {opportunity.probability !== null ? <div>Probability: {opportunity.probability}%</div> : null}
         {opportunity.expected_close_date ? <div>Expected close: {opportunity.expected_close_date}</div> : null}
@@ -86,20 +87,20 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
       </div>
 
       {existingProject ? (
-        <div className="card">
+        <div className="section-card">
           <span className="hint">Converted to project: </span>
           <Link href={`/projects/${existingProject.id}`}>{existingProject.name}</Link>
         </div>
       ) : null}
 
       {canChangeStatus && !isArchived ? (
-        <div className="card">
+        <div className="section-card">
           <OpportunityStatusActions opportunityId={opportunityId} status={opportunity.status as OpportunityStatus} />
         </div>
       ) : null}
 
       {canConvert && !existingProject && (opportunity.status === "ready_for_estimate" || opportunity.status === "won") ? (
-        <div className="card">
+        <div className="section-card">
           <ConvertToProjectForm opportunityId={opportunityId} defaultName={opportunity.title} />
         </div>
       ) : null}
@@ -124,8 +125,8 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
       </div>
 
       {notesView ? (
-        <div className="card stack">
-          <h2 style={{ fontSize: "1rem" }}>Notes</h2>
+        <div className="section-card stack">
+          <h2>Notes</h2>
           <NotesSection
             tenantId={tenant.tenant_id}
             opportunityId={opportunityId}
@@ -138,8 +139,8 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
       ) : null}
 
       {activitiesView ? (
-        <div className="card stack">
-          <h2 style={{ fontSize: "1rem" }}>Activity</h2>
+        <div className="section-card stack">
+          <h2>Activity</h2>
           <ActivityFeed items={activity} />
         </div>
       ) : null}

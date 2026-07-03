@@ -1,10 +1,13 @@
 import Link from "next/link";
+import { Users, Archive } from "lucide-react";
 import { requireActiveTenant } from "../../../lib/auth/tenant";
 import { hasPermission, PERMISSIONS } from "../../../lib/auth/permissions";
 import { createClient } from "../../../lib/supabase/server";
 import { containsPattern, rangeFor, DEFAULT_PAGE_SIZE } from "../../../lib/search";
 import { SearchForm } from "../../../components/search-form";
 import { Pagination } from "../../../components/pagination";
+import { PageHeader } from "../../../components/page-header";
+import { EmptyState } from "../../../components/empty-state";
 
 export const dynamic = "force-dynamic";
 
@@ -50,14 +53,17 @@ export default async function ClientsPage({
 
   return (
     <div className="stack">
-      <div className="tenant-form" style={{ justifyContent: "space-between", width: "100%" }}>
-        <h1>Clients</h1>
-        {canCreate ? (
-          <Link href="/clients/new" className="button-primary">
-            + New client
-          </Link>
-        ) : null}
-      </div>
+      <PageHeader
+        icon={Users}
+        title="Clients"
+        action={
+          canCreate ? (
+            <Link href="/clients/new" className="button-primary">
+              + New client
+            </Link>
+          ) : null
+        }
+      />
 
       <SearchForm placeholder="Search by name, email, phone…" defaultValue={q ?? ""} />
 
@@ -70,11 +76,28 @@ export default async function ClientsPage({
       {error ? <p className="error-banner">{error.message}</p> : null}
 
       {!clients || clients.length === 0 ? (
-        <div className="card">
-          <p className="hint">{q ? "No clients match your search." : "No clients yet."}</p>
+        <div className="section-card">
+          {q ? (
+            <EmptyState icon={Users} title="No matches" description="No clients match your search. Try a different name, email, or phone number." />
+          ) : showArchived ? (
+            <EmptyState icon={Archive} title="No archived clients" description="Clients you archive will show up here, so you can restore them later if needed." />
+          ) : (
+            <EmptyState
+              icon={Users}
+              title="No clients yet"
+              description="Clients are the people or businesses you do work for. Add your first client to start tracking opportunities and projects for them."
+              action={
+                canCreate ? (
+                  <Link href="/clients/new" className="button-primary">
+                    + New client
+                  </Link>
+                ) : undefined
+              }
+            />
+          )}
         </div>
       ) : (
-        <div className="card" style={{ overflowX: "auto" }}>
+        <div className="table-card">
           <table>
             <thead>
               <tr>

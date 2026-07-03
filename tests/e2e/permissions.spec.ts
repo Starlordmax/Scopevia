@@ -177,16 +177,32 @@ test.describe("Tenant switching", () => {
     await page.goto("/");
     const switcher = page.getByLabel("Switch business");
     await expect(switcher).toBeVisible();
-    const optionsText = await switcher.locator("option").allTextContents();
-    const tenantBOption = optionsText.find((t) => t.includes("E2E Tenant B"));
-    expect(tenantBOption).toBeTruthy();
-    await switcher.selectOption({ label: tenantBOption! });
-    // Not waitForURL("/") — we're already AT "/", so that would resolve
-    // instantly without waiting for switchTenantAction's round trip to
-    // actually set the cookie. Wait for proof the switch really happened:
-    // the SSR'd heading only shows Tenant B's name after the server
-    // re-renders "/" under the new active tenant.
-    await expect(page.getByRole("heading", { name: tenantBOption! })).toBeVisible({ timeout: 15_000 });
+    const options = await switcher.locator("option").evaluateAll((els) =>
+      els.map((el) => ({ value: (el as HTMLOptionElement).value, text: el.textContent }))
+    );
+    const tenantB = options.find((o) => o.text?.includes("E2E Tenant B"));
+    expect(tenantB).toBeTruthy();
+    await switcher.selectOption({ value: tenantB!.value });
+    // selectOption() writes the <select>'s DOM value synchronously and fires
+    // "change" — it does NOT wait for the onChange handler's
+    // form.requestSubmit() to finish the switchTenantAction round trip.
+    // That round trip is a Server Action submit, which React/Next.js handle
+    // via fetch and a client-side router update, never a hard navigation —
+    // so waitForLoadState("load") never sees a new "load" event, and
+    // option:checked reflects the DOM write Playwright itself just made, not
+    // anything server-confirmed. Both looked like valid sync signals and
+    // both passed instantly while the action was still in flight, letting
+    // the very next page.goto("/clients") race ahead of the cookie actually
+    // being set — it would load with the OLD (or no) active-tenant cookie
+    // and silently fall back to Tenant A. The cookie itself is the only
+    // signal that's actually tied to the server having processed the
+    // switch, so poll for it directly instead of trusting the DOM.
+    await expect
+      .poll(
+        async () => (await page.context().cookies()).find((c) => c.name === "scopevia_active_tenant")?.value,
+        { timeout: 15_000 }
+      )
+      .toBe(tenantB!.value);
 
     await page.goto("/clients");
     // Tenant A's client must not appear under Tenant B.

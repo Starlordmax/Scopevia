@@ -1,5 +1,7 @@
+import { CircleUserRound } from "lucide-react";
 import { requireUser } from "../../../lib/auth/session";
 import { createClient } from "../../../lib/supabase/server";
+import { PageHeader } from "../../../components/page-header";
 import { ProfileForm } from "./profile-form";
 
 export default async function ProfilePage() {
@@ -13,8 +15,8 @@ export default async function ProfilePage() {
 
   return (
     <div className="stack">
-      <h1>Profile</h1>
-      <div className="card">
+      <PageHeader icon={CircleUserRound} title="Profile" />
+      <div className="form-card">
         <ProfileForm
           email={user.email ?? ""}
           fullName={profile?.full_name ?? ""}

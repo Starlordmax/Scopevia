@@ -1,9 +1,13 @@
 import Link from "next/link";
+import { CircleUserRound, LogOut } from "lucide-react";
 import { requireUser } from "../../lib/auth/session";
 import { requireActiveTenant } from "../../lib/auth/tenant";
 import { hasPermission, PERMISSIONS } from "../../lib/auth/permissions";
 import { signOutAction } from "../../actions/auth";
 import { TenantSwitcher } from "./tenant-switcher";
+import { SidebarNav } from "./sidebar-nav";
+import { BottomNav } from "./bottom-nav";
+import { buildNavItems } from "./nav-items";
 
 // Every page under this layout reads the caller's session and tenant
 // membership from the database on every request — there is no meaningful
@@ -24,37 +28,40 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     hasPermission(tenant.tenant_id, PERMISSIONS.MEMBERS_VIEW),
   ]);
 
+  const navItems = buildNavItems({ canViewClients, canViewOpportunities, canViewProjects, canViewMembers });
+
   return (
     <div className="app-shell">
-      <header className="app-header">
-        <div>
-          <strong>Scopevia</strong>
-          <div className="hint">{user.email}</div>
-        </div>
+      <SidebarNav items={navItems} />
 
-        {tenants.length > 1 ? (
-          <TenantSwitcher tenants={tenants} activeTenantId={tenant.tenant_id} />
-        ) : (
-          <strong>{tenant.tenant_name}</strong>
-        )}
+      <div className="app-body">
+        <header className="topbar">
+          <div className="topbar-context">
+            {tenants.length > 1 ? (
+              <TenantSwitcher tenants={tenants} activeTenantId={tenant.tenant_id} />
+            ) : (
+              <strong>{tenant.tenant_name}</strong>
+            )}
+          </div>
 
-        <nav>
-          <Link href="/">Home</Link>
-          {canViewClients ? <Link href="/clients">Clients</Link> : null}
-          {canViewOpportunities ? <Link href="/pipeline">Pipeline</Link> : null}
-          {canViewProjects ? <Link href="/projects">Projects</Link> : null}
-          {canViewMembers ? <Link href="/members">Members</Link> : null}
-          <Link href="/profile">Profile</Link>
-        </nav>
+          <div className="topbar-account">
+            <span className="hint">{user.email}</span>
+            <Link href="/profile" className="button-secondary" aria-label="Profile" title="Profile">
+              <CircleUserRound className="icon" size={18} aria-hidden="true" />
+            </Link>
+            <form action={signOutAction}>
+              <button type="submit" className="button-secondary">
+                <LogOut className="icon" size={16} aria-hidden="true" />
+                Sign out
+              </button>
+            </form>
+          </div>
+        </header>
 
-        <form action={signOutAction}>
-          <button type="submit" className="button-secondary">
-            Sign out
-          </button>
-        </form>
-      </header>
+        <main className="app-main">{children}</main>
 
-      <main className="app-main">{children}</main>
+        <BottomNav items={navItems} />
+      </div>
     </div>
   );
 }

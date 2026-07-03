@@ -13,7 +13,7 @@ export default async function NewClientPage() {
   return (
     <div className="stack">
       <h1>New client</h1>
-      <div className="card">
+      <div className="form-card">
         <ClientForm tenantId={tenant.tenant_id} />
       </div>
     </div>

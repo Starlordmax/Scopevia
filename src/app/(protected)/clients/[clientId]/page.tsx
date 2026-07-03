@@ -9,6 +9,7 @@ import { ActivityFeed } from "../../../../components/activity-feed";
 import { NotesSection } from "../../../../components/notes-section";
 import { ContactsSection } from "./contacts-section";
 import { archiveClientAction, restoreClientAction } from "../../../../actions/clients";
+import { opportunityBadgeClass, projectBadgeClass } from "../../../../lib/crm/status-badge";
 
 export const dynamic = "force-dynamic";
 
@@ -128,8 +129,8 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
         </div>
       </div>
 
-      <div className="card stack">
-        <h2 style={{ fontSize: "1rem" }}>Details</h2>
+      <div className="section-card stack">
+        <h2>Details</h2>
         <div className="stack" style={{ gap: 4 }}>
           {client.email ? <div>Email: {client.email}</div> : null}
           {client.phone ? <div>Phone: {client.phone}</div> : null}
@@ -141,8 +142,8 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
       </div>
 
       {contactsView ? (
-        <div className="card stack">
-          <h2 style={{ fontSize: "1rem" }}>Contacts</h2>
+        <div className="section-card stack">
+          <h2>Contacts</h2>
           <ContactsSection
             clientId={clientId}
             contacts={contacts}
@@ -155,15 +156,16 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
       ) : null}
 
       {opportunitiesView ? (
-        <div className="card stack">
-          <h2 style={{ fontSize: "1rem" }}>Opportunities</h2>
+        <div className="section-card stack">
+          <h2>Opportunities</h2>
           {opportunities.length === 0 ? (
             <p className="hint">No opportunities yet.</p>
           ) : (
             <ul className="stack" style={{ gap: 6, listStyle: "none", padding: 0, margin: 0 }}>
               {opportunities.map((o) => (
                 <li key={o.id}>
-                  <Link href={`/opportunities/${o.id}`}>{o.title}</Link> <span className="badge">{o.status}</span>
+                  <Link href={`/opportunities/${o.id}`}>{o.title}</Link>{" "}
+                  <span className={`badge ${opportunityBadgeClass(o.status)}`.trim()}>{o.status.replace(/_/g, " ")}</span>
                 </li>
               ))}
             </ul>
@@ -175,15 +177,16 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
       ) : null}
 
       {projectsView ? (
-        <div className="card stack">
-          <h2 style={{ fontSize: "1rem" }}>Projects</h2>
+        <div className="section-card stack">
+          <h2>Projects</h2>
           {projects.length === 0 ? (
             <p className="hint">No projects yet.</p>
           ) : (
             <ul className="stack" style={{ gap: 6, listStyle: "none", padding: 0, margin: 0 }}>
               {projects.map((p) => (
                 <li key={p.id}>
-                  <Link href={`/projects/${p.id}`}>{p.name}</Link> <span className="badge">{p.status}</span>
+                  <Link href={`/projects/${p.id}`}>{p.name}</Link>{" "}
+                  <span className={`badge ${projectBadgeClass(p.status)}`.trim()}>{p.status.replace(/_/g, " ")}</span>
                 </li>
               ))}
             </ul>
@@ -192,8 +195,8 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
       ) : null}
 
       {notesView ? (
-        <div className="card stack">
-          <h2 style={{ fontSize: "1rem" }}>Notes</h2>
+        <div className="section-card stack">
+          <h2>Notes</h2>
           <NotesSection
             tenantId={tenant.tenant_id}
             clientId={clientId}
@@ -206,8 +209,8 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
       ) : null}
 
       {activitiesView ? (
-        <div className="card stack">
-          <h2 style={{ fontSize: "1rem" }}>Activity</h2>
+        <div className="section-card stack">
+          <h2>Activity</h2>
           <ActivityFeed items={activity} />
         </div>
       ) : null}

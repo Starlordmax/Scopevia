@@ -1,9 +1,11 @@
+import { UserCog } from "lucide-react";
 import { requireUser } from "../../../lib/auth/session";
 import { requireActiveTenant } from "../../../lib/auth/tenant";
 import { hasPermission, PERMISSIONS } from "../../../lib/auth/permissions";
 import { createClient } from "../../../lib/supabase/server";
 import { InviteMemberForm } from "./invite-form";
 import { MemberRow } from "./member-row";
+import { PageHeader } from "../../../components/page-header";
 
 type MembershipRow = {
   id: string;
@@ -52,10 +54,10 @@ export default async function MembersPage() {
 
   return (
     <div className="stack">
-      <h1>Members</h1>
+      <PageHeader icon={UserCog} title="Members" />
       {error ? <p className="error-banner">{error.message}</p> : null}
 
-      <div className="card" style={{ overflowX: "auto" }}>
+      <div className="table-card">
         <table>
           <thead>
             <tr>
@@ -95,8 +97,8 @@ export default async function MembersPage() {
       </div>
 
       {canInvite ? (
-        <div className="card stack">
-          <h2 style={{ fontSize: "1rem" }}>Invite a member</h2>
+        <div className="section-card stack">
+          <h2>Invite a member</h2>
           <p className="hint">
             Phase 0 can only add someone who already has a Scopevia account — ask them to sign up first. They
             won&apos;t have access until they sign in and accept the invitation themselves.

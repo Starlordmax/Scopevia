@@ -19,8 +19,11 @@ test.describe("Sign in", () => {
     await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
     // Owner A belongs to two tenants; get_user_tenants() orders by name, so
     // "E2E Tenant A ..." sorts before "E2E Tenant B ..." and is the default.
-    // (Not getByText: the tenant switcher's <option> has the same text.)
-    await expect(page.getByRole("heading", { name: manifest.tenantAName })).toBeVisible();
+    // Checked via the topbar's tenant switcher (a <select>, since Owner A
+    // has 2+ tenants) rather than the dashboard heading — the redesign
+    // moved tenant identity out of the page title (now just "Dashboard")
+    // and into the topbar, where it's always shown regardless of page.
+    await expect(page.locator("option:checked")).toHaveText(manifest.tenantAName);
     await expect(page.locator(".error-banner")).toHaveCount(0);
   });
 

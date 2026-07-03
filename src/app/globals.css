@@ -1,17 +1,67 @@
 :root {
   color-scheme: light;
-  --color-bg: #f7f7f5;
+
+  /* ---- Palette --------------------------------------------------------- */
+  --color-background: #f6f7f9;
   --color-surface: #ffffff;
-  --color-border: #e2e2df;
-  --color-text: #1c1c1a;
-  --color-text-muted: #6b6b66;
-  --color-primary: #1f6f5c;
-  --color-primary-hover: #185a4a;
-  --color-danger: #b3261e;
-  --color-danger-bg: #fdecea;
+  --color-sidebar: #101828;
+  --color-sidebar-hover: #1d2939;
+  --color-sidebar-text: #cbd5e1;
+  --color-sidebar-text-muted: #8994a6;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-primary-soft: #eff6ff;
+  --color-accent: #f59e0b;
+  --color-accent-soft: #fffbeb;
+  --color-success: #16a34a;
+  --color-success-soft: #f0fdf4;
+  --color-warning: #d97706;
+  --color-warning-soft: #fffbeb;
+  --color-danger: #dc2626;
+  --color-danger-soft: #fef2f2;
+  --color-text: #101828;
+  --color-text-muted: #667085;
+  --color-border: #e4e7ec;
+
+  /* Kept as aliases so any earlier reference to the old token names still
+     resolves to the same visual result under the new palette. */
+  --color-bg: var(--color-background);
+  --color-danger-bg: var(--color-danger-soft);
+
+  /* ---- Typography -------------------------------------------------------
+     next/font (Inter, self-hosted at build time — see src/app/layout.tsx)
+     supplies --font-sans on <html> via the `inter.variable` class. This
+     --font-sans-fallback only feeds the var()'s second argument below — a
+     custom property can't reference its own name as a fallback within its
+     own declaration (that's a cycle, which CSS spec makes invalid at
+     computed-value time, silently dropping the whole font stack to the
+     browser default serif). Found by comparing a real rendered screenshot
+     against the intended sans-serif typography; see
+     docs/26-phase-1.6-ui-redesign.md. */
+  --font-sans-fallback: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --text-page-title: 1.5rem;
+  --text-section-title: 1.0625rem;
+  --text-card-title: 0.9375rem;
+  --text-body: 0.9375rem;
+  --text-small: 0.8125rem;
+  --text-label: 0.8125rem;
+  --text-metric: 1.75rem;
+
+  /* ---- Shape & elevation ------------------------------------------------ */
+  --radius-sm: 6px;
   --radius: 10px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow: 0 1px 3px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.04);
+
+  /* ---- Layout ------------------------------------------------------------ */
   --max-width: 480px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --content-max-width: 1180px;
+  --sidebar-width: 232px;
+  --topbar-height: 60px;
+  --bottom-nav-height: 60px;
+
+  font-family: var(--font-sans, var(--font-sans-fallback));
 }
 
 * {
@@ -25,9 +75,10 @@ body {
 }
 
 body {
-  background: var(--color-bg);
+  background: var(--color-background);
   color: var(--color-text);
-  line-height: 1.5;
+  font-size: var(--text-body);
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -38,7 +89,29 @@ a {
 h1,
 h2,
 h3 {
-  line-height: 1.2;
+  line-height: 1.25;
+  font-weight: 700;
+  margin: 0;
+}
+
+h1 {
+  font-size: var(--text-page-title);
+}
+
+h2 {
+  font-size: var(--text-section-title);
+  font-weight: 600;
+}
+
+h3 {
+  font-size: var(--text-card-title);
+  font-weight: 600;
+}
+
+small,
+.hint {
+  font-size: var(--text-small);
+  color: var(--color-text-muted);
 }
 
 .page {
@@ -53,6 +126,7 @@ h3 {
   align-items: center;
   justify-content: center;
   padding: 24px 16px;
+  background: var(--color-background);
 }
 
 .card {
@@ -60,7 +134,29 @@ h3 {
   max-width: var(--max-width);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 24px;
+}
+
+/* Item cards inside a list (a note, a contact, a work-site address) use
+   `li.card` — real content cards that should fill their list's width, not
+   the narrow 480px meant for a centered auth form. More specific than
+   `.card` alone, so it doesn't affect the auth pages. */
+li.card {
+  max-width: none;
+}
+
+/* A form that needs more room than a narrow auth card (e.g. two-column
+   first/last name rows) but shouldn't stretch to the full content width
+   either — used by the Create/Edit pages for clients/opportunities/projects. */
+.form-card {
+  width: 100%;
+  max-width: 640px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
   padding: 24px;
 }
 
@@ -77,38 +173,72 @@ h3 {
 }
 
 .field label {
-  font-size: 0.875rem;
+  font-size: var(--text-label);
   font-weight: 600;
+  color: var(--color-text);
 }
 
 input,
-select {
+select,
+textarea {
   font: inherit;
   padding: 12px 14px;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
   width: 100%;
   min-height: 44px;
 }
 
+textarea {
+  min-height: unset;
+}
+
 input:focus,
 select:focus,
-button:focus-visible {
+textarea:focus,
+button:focus-visible,
+a:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;
 }
 
+/* Real pre-existing bug (present since Phase 0, confirmed against the
+   baseline screenshots taken before this redesign): this rule's selector
+   was `button, .button`, which does NOT match an element whose class is
+   `button-primary`/`button-secondary`/`button-danger` — CSS class selectors
+   require an exact class-name token match, not a substring/prefix match.
+   A real <button> tag still got these styles for free (via the `button`
+   tag selector), which hid the bug on plain buttons — but every
+   <Link className="button-primary"> (e.g. "+ New client", "Edit") rendered
+   as an unstyled, oversized block box with only a background color, never
+   this shared box model. Fixed by listing every variant class explicitly. */
 button,
-.button {
+.button,
+.button-primary,
+.button-secondary,
+.button-danger {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   font: inherit;
   font-weight: 600;
-  padding: 12px 16px;
-  border-radius: 8px;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
   border: 1px solid transparent;
+  white-space: nowrap;
   cursor: pointer;
-  min-height: 44px;
+  min-height: 40px;
+  text-decoration: none;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .button-primary {
@@ -121,94 +251,425 @@ button,
 }
 
 .button-secondary {
-  background: transparent;
+  background: var(--color-surface);
   border-color: var(--color-border);
   color: var(--color-text);
 }
 
+.button-secondary:hover {
+  background: var(--color-background);
+}
+
 .button-danger {
-  background: transparent;
+  background: var(--color-surface);
   border-color: var(--color-danger);
   color: var(--color-danger);
 }
 
-.hint {
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
+.button-danger:hover {
+  background: var(--color-danger-soft);
+}
+
+.icon {
+  flex-shrink: 0;
 }
 
 .error-banner {
-  background: var(--color-danger-bg);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-danger-soft);
   color: var(--color-danger);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 10px 12px;
-  font-size: 0.875rem;
+  font-size: var(--text-small);
 }
+
+/* =============================================================================
+   Application shell — Sidebar (desktop nav) + TopBar (context) + BottomNav
+   (mobile nav). Separating these three is the core structural fix: nav,
+   tenant/user identity, and page content no longer compete in one header.
+   ========================================================================== */
 
 .app-shell {
   min-height: 100dvh;
   display: flex;
-  flex-direction: column;
 }
 
-.app-header {
+.sidebar {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  background: var(--color-sidebar);
+  color: var(--color-sidebar-text);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 14px;
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  overflow-y: auto;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 1.0625rem;
+  padding: 6px 10px 24px;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--color-sidebar-text);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.sidebar-link:hover {
+  background: var(--color-sidebar-hover);
+  color: #ffffff;
+}
+
+.sidebar-link[data-active="true"] {
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.app-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.topbar {
+  min-height: var(--topbar-height);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 10px 20px;
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface);
-  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 40;
 }
 
-.app-header nav {
+.topbar-context {
   display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
-.app-header nav a {
-  font-size: 0.9rem;
-  text-decoration: none;
-  color: var(--color-text-muted);
+.topbar-context select {
+  min-height: 36px;
+  padding: 6px 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  width: auto;
+  max-width: 220px;
 }
 
-.app-header nav a:hover {
-  color: var(--color-text);
+.topbar-account {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.topbar-account .hint {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-main {
   flex: 1;
-  padding: 20px 16px 40px;
-  max-width: 720px;
+  padding: 24px 24px 40px;
+  max-width: var(--content-max-width);
   width: 100%;
   margin: 0 auto;
 }
 
+.bottom-nav {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .sidebar {
+    display: none;
+  }
+
+  .app-main {
+    padding: 16px 16px calc(var(--bottom-nav-height) + 24px);
+  }
+
+  .topbar-account .hint {
+    display: none;
+  }
+
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--bottom-nav-height);
+    padding-bottom: env(safe-area-inset-bottom);
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    z-index: 50;
+  }
+
+  .bottom-nav-link {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    text-decoration: none;
+    color: var(--color-text-muted);
+    font-size: 0.6875rem;
+    font-weight: 600;
+  }
+
+  .bottom-nav-link[data-active="true"] {
+    color: var(--color-primary);
+  }
+}
+
+/* =============================================================================
+   Page structure helpers
+   ========================================================================== */
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.page-header-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.page-header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.section-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 20px;
+}
+
+/* A section-card variant for wrapping a <table>: no inner padding (the
+   table's own cells provide it), and on mobile — where the table becomes a
+   column of individually-cardded rows (see the table/tr rules below) — the
+   wrapper itself goes transparent so rows aren't double-boxed. */
+.table-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow-x: auto;
+}
+
+@media (max-width: 640px) {
+  .table-card {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    overflow-x: visible;
+  }
+}
+
+.section-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.section-card-header .icon {
+  color: var(--color-text-muted);
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.metric-tile {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 18px;
+}
+
+.metric-tile-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.metric-tile-value {
+  font-size: var(--text-metric);
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.metric-tile-label {
+  font-size: var(--text-small);
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: 40px 24px;
+  color: var(--color-text-muted);
+}
+
+.empty-state-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  margin-bottom: 8px;
+}
+
+.empty-state h3 {
+  color: var(--color-text);
+}
+
+.empty-state p {
+  max-width: 40ch;
+  margin: 0;
+}
+
+.empty-state .button {
+  margin-top: 10px;
+}
+
+.list-row-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  flex-shrink: 0;
+}
+
+/* =============================================================================
+   Badges — one shared base class (kept exactly as-is for existing hooks),
+   plus optional status-color modifiers applied alongside it.
+   ========================================================================== */
+
 .badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   font-size: 0.75rem;
   font-weight: 600;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 999px;
-  background: #eef3f1;
+  background: var(--color-primary-soft);
   color: var(--color-primary);
+  white-space: nowrap;
 }
+
+.badge-success {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.badge-warning {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+
+.badge-danger {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.badge-neutral {
+  background: var(--color-background);
+  color: var(--color-text-muted);
+}
+
+/* =============================================================================
+   Kanban pipeline
+   ========================================================================== */
 
 .kanban-board {
   display: flex;
   flex-direction: row;
-  gap: 12px;
+  gap: 14px;
   overflow-x: auto;
   padding-bottom: 8px;
 }
 
 .kanban-column {
-  flex: 0 0 260px;
-  background: var(--color-surface);
+  flex: 0 0 280px;
+  background: var(--color-background);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   padding: 12px;
   display: flex;
   flex-direction: column;
@@ -218,15 +679,18 @@ button,
 .kanban-column-header {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   font-weight: 600;
+  text-transform: capitalize;
+  padding: 2px 4px;
 }
 
 .kanban-card {
-  background: var(--color-bg);
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 10px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -245,25 +709,42 @@ button,
   }
 }
 
+/* =============================================================================
+   Tables — desktop grid, mobile card list (same DOM/data-label contract).
+   ========================================================================== */
+
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.9rem;
+  font-size: var(--text-body);
 }
 
-th,
+th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: var(--text-small);
+  color: var(--color-text-muted);
+  font-weight: 600;
+  border-bottom: 1px solid var(--color-border);
+}
+
 td {
   text-align: left;
-  padding: 10px 8px;
+  padding: 12px;
   border-bottom: 1px solid var(--color-border);
+}
+
+tbody tr:hover {
+  background: var(--color-background);
 }
 
 .tenant-form {
   display: inline-flex;
-  gap: 6px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 640px) {
   table,
   thead,
   tbody,
@@ -277,9 +758,22 @@ td {
     display: none;
   }
 
+  tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
   tr {
-    border-bottom: 1px solid var(--color-border);
-    padding: 8px 0;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    padding: 12px 14px;
+  }
+
+  tr:hover {
+    background: var(--color-surface);
   }
 
   td {
@@ -290,7 +784,15 @@ td {
   td::before {
     content: attr(data-label);
     display: block;
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
     color: var(--color-text-muted);
+    margin-bottom: 1px;
+  }
+
+  td[data-label="Name"] {
+    font-weight: 600;
+    font-size: 1rem;
   }
 }

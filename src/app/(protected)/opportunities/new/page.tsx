@@ -25,7 +25,7 @@ export default async function NewOpportunityPage({
   return (
     <div className="stack">
       <h1>New opportunity</h1>
-      <div className="card">
+      <div className="form-card">
         <OpportunityForm tenantId={tenant.tenant_id} clients={clients} members={members} defaultClientId={clientId} />
       </div>
     </div>

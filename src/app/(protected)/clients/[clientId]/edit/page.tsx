@@ -25,7 +25,7 @@ export default async function EditClientPage({ params }: { params: Promise<{ cli
   return (
     <div className="stack">
       <h1>Edit client</h1>
-      <div className="card">
+      <div className="form-card">
         <ClientForm tenantId={tenant.tenant_id} client={client} />
       </div>
     </div>

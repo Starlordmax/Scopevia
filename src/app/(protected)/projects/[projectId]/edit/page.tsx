@@ -37,7 +37,7 @@ export default async function EditProjectPage({ params }: { params: Promise<{ pr
   return (
     <div className="stack">
       <h1>Edit project</h1>
-      <div className="card">
+      <div className="form-card">
         <ProjectForm tenantId={tenant.tenant_id} clients={[]} members={members} contacts={contacts} project={project} />
       </div>
     </div>

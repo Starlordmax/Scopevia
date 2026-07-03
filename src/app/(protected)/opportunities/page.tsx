@@ -1,10 +1,14 @@
 import Link from "next/link";
+import { Kanban as KanbanIcon, Archive } from "lucide-react";
 import { requireActiveTenant } from "../../../lib/auth/tenant";
 import { hasPermission, PERMISSIONS } from "../../../lib/auth/permissions";
 import { createClient } from "../../../lib/supabase/server";
 import { containsPattern, rangeFor, DEFAULT_PAGE_SIZE } from "../../../lib/search";
 import { SearchForm } from "../../../components/search-form";
 import { Pagination } from "../../../components/pagination";
+import { PageHeader } from "../../../components/page-header";
+import { EmptyState } from "../../../components/empty-state";
+import { opportunityBadgeClass } from "../../../lib/crm/status-badge";
 
 export const dynamic = "force-dynamic";
 
@@ -49,19 +53,22 @@ export default async function OpportunitiesPage({
 
   return (
     <div className="stack">
-      <div className="tenant-form" style={{ justifyContent: "space-between", width: "100%" }}>
-        <h1>Opportunities</h1>
-        <div className="tenant-form">
+      <PageHeader
+        icon={KanbanIcon}
+        title="Opportunities"
+        secondary={
           <Link href="/pipeline" className="button-secondary">
             Pipeline view
           </Link>
-          {canCreate ? (
+        }
+        action={
+          canCreate ? (
             <Link href="/opportunities/new" className="button-primary">
               + New
             </Link>
-          ) : null}
-        </div>
-      </div>
+          ) : null
+        }
+      />
 
       <SearchForm placeholder="Search by title…" defaultValue={q ?? ""} />
 
@@ -74,11 +81,28 @@ export default async function OpportunitiesPage({
       {error ? <p className="error-banner">{error.message}</p> : null}
 
       {!opportunities || opportunities.length === 0 ? (
-        <div className="card">
-          <p className="hint">{q ? "No opportunities match your search." : "No opportunities yet."}</p>
+        <div className="section-card">
+          {q ? (
+            <EmptyState icon={KanbanIcon} title="No matches" description="No opportunities match your search. Try a different title." />
+          ) : showArchived ? (
+            <EmptyState icon={Archive} title="No archived opportunities" description="Opportunities you archive after winning or losing them will show up here." />
+          ) : (
+            <EmptyState
+              icon={KanbanIcon}
+              title="No opportunities yet"
+              description="An opportunity tracks a potential job from first contact through to a scheduled inspection or a converted project. Create your first one to start working the pipeline."
+              action={
+                canCreate ? (
+                  <Link href="/opportunities/new" className="button-primary">
+                    + New
+                  </Link>
+                ) : undefined
+              }
+            />
+          )}
         </div>
       ) : (
-        <div className="card" style={{ overflowX: "auto" }}>
+        <div className="table-card">
           <table>
             <thead>
               <tr>
@@ -96,7 +120,7 @@ export default async function OpportunitiesPage({
                   </td>
                   <td data-label="Client">{o.clients?.display_name ?? "—"}</td>
                   <td data-label="Status">
-                    <span className="badge">{o.status.replace(/_/g, " ")}</span>
+                    <span className={`badge ${opportunityBadgeClass(o.status)}`.trim()}>{o.status.replace(/_/g, " ")}</span>
                   </td>
                   <td data-label="Value">{formatMoney(o.estimated_value_cents)}</td>
                 </tr>

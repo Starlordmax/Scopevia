@@ -10,6 +10,7 @@ import { NotesSection } from "../../../../components/notes-section";
 import { ProjectStatusActions } from "./status-actions";
 import { AddressesSection } from "./addresses-section";
 import { archiveProjectAction, restoreProjectAction } from "../../../../actions/projects";
+import { projectBadgeClass } from "../../../../lib/crm/status-badge";
 import type { ProjectStatus } from "../../../../../types/enums";
 
 export const dynamic = "force-dynamic";
@@ -62,10 +63,10 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           <h1>{project.name}</h1>
           <span className="hint">{project.clients ? <Link href={`/clients/${project.clients.id}`}>{project.clients.display_name}</Link> : "—"}</span>
         </div>
-        <span className="badge">{project.status.replace(/_/g, " ")}</span>
+        <span className={`badge ${projectBadgeClass(project.status)}`.trim()}>{project.status.replace(/_/g, " ")}</span>
       </div>
 
-      <div className="card stack">
+      <div className="section-card stack">
         {project.service_type ? <div>Service type: {project.service_type}</div> : null}
         {project.description ? <div>{project.description}</div> : null}
         {project.tentative_start_date ? <div>Tentative start: {project.tentative_start_date}</div> : null}
@@ -86,7 +87,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       ) : null}
 
       {canUpdate && !isArchived ? (
-        <div className="card">
+        <div className="section-card">
           <ProjectStatusActions projectId={projectId} status={project.status as ProjectStatus} />
         </div>
       ) : null}
@@ -110,14 +111,14 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         ) : null}
       </div>
 
-      <div className="card stack">
-        <h2 style={{ fontSize: "1rem" }}>Work-site address</h2>
+      <div className="section-card stack">
+        <h2>Work-site address</h2>
         <AddressesSection projectId={projectId} addresses={addresses} canUpdate={canUpdate && !isArchived} />
       </div>
 
       {notesView ? (
-        <div className="card stack">
-          <h2 style={{ fontSize: "1rem" }}>Notes</h2>
+        <div className="section-card stack">
+          <h2>Notes</h2>
           <NotesSection
             tenantId={tenant.tenant_id}
             projectId={projectId}
@@ -130,8 +131,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       ) : null}
 
       {activitiesView ? (
-        <div className="card stack">
-          <h2 style={{ fontSize: "1rem" }}>Activity</h2>
+        <div className="section-card stack">
+          <h2>Activity</h2>
           <ActivityFeed items={activity} />
         </div>
       ) : null}

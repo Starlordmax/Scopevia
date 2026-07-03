@@ -115,7 +115,10 @@ test.describe("Notes and activity", () => {
     await page.getByRole("button", { name: "Create client" }).click();
     await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
-    const activitySection = page.locator(".card").filter({ has: page.getByRole("heading", { name: "Activity" }) });
+    // ".section-card": the redesign renamed the full-width detail-page
+    // section wrapper from ".card" (a narrow, 480px-max auth-style card) to
+    // ".section-card" (full width) — see docs/26-phase-1.6-ui-redesign.md.
+    const activitySection = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Activity" }) });
     await expect(activitySection).toBeVisible();
     // No form controls of any kind inside the activity card — it is
     // view-only, backed by an append-only, trigger-enforced table.
