@@ -4,7 +4,7 @@ import { authFile, uniqueSuffix } from "./fixtures/session";
 test.describe("Viewer permissions", () => {
   test.use({ storageState: authFile("viewer-a") });
 
-  test("can view clients/opportunities/projects but sees no mutation controls", async ({ page }) => {
+  test("can view clients/opportunities/proposals but sees no mutation controls", async ({ page }) => {
     await page.goto("/clients");
     await expect(page.getByRole("heading", { name: "Clients" })).toBeVisible();
     await expect(page.getByRole("link", { name: "+ New client" })).toHaveCount(0);
@@ -13,9 +13,9 @@ test.describe("Viewer permissions", () => {
     await expect(page.getByRole("heading", { name: "Opportunities" })).toBeVisible();
     await expect(page.getByRole("link", { name: "+ New" })).toHaveCount(0);
 
-    await page.goto("/projects");
-    await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "+ New project" })).toHaveCount(0);
+    await page.goto("/proposals");
+    await expect(page.getByRole("heading", { name: "Proposals", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "+ New proposal" })).toHaveCount(0);
   });
 
   test("direct URL access to creation routes redirects away instead of rendering the form", async ({ page }) => {
@@ -26,8 +26,12 @@ test.describe("Viewer permissions", () => {
     await page.goto("/opportunities/new");
     await page.waitForURL(/\/opportunities$/);
 
+    // /projects/new is a legacy route that now redirects unconditionally
+    // for every user, permission or not — Projects is no longer a UI
+    // module at all (docs/38-navigation-simplification.md). See
+    // projects.spec.ts for dedicated redirect coverage.
     await page.goto("/projects/new");
-    await page.waitForURL(/\/projects$/);
+    await page.waitForURL(/\/proposals$/);
   });
 
   test("Members admin is denied without leaking member data", async ({ page }) => {
@@ -61,30 +65,14 @@ test.describe("Sales permissions", () => {
     await expect(page.locator(".badge").filter({ hasText: "contacted" })).toBeVisible();
   });
 
-  test("can create a project but has no update controls and direct edit access is denied", async ({ page }) => {
-    const suffix = uniqueSuffix();
-    const clientName = `E2E Sales Project Client ${suffix}`;
-
-    await page.goto("/clients/new");
-    await page.getByLabel("Display name").fill(clientName);
-    await page.getByRole("button", { name: "Create client" }).click();
-    await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
-
-    await page.goto("/projects/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
-    await page.getByLabel("Project name").fill(`E2E Sales Project ${suffix}`);
-    await page.getByRole("button", { name: "Create project" }).click();
-    await page.waitForURL(/\/projects\/[0-9a-f-]+$/);
-    const url = page.url();
-
-    // No Edit link, no status-change buttons — Sales lacks projects.update.
-    await expect(page.getByRole("link", { name: "Edit" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: /^Move to/ })).toHaveCount(0);
-
-    await page.goto(`${url}/edit`);
-    await page.waitForURL(url); // redirected straight back, form never rendered
-    await expect(page.getByLabel("Project name")).toHaveCount(0);
-  });
+  // The old "Sales can create a project but has no update controls" UI test
+  // is gone along with the Projects module it exercised (Projects has no
+  // reachable UI for any user now — see projects.spec.ts). The equivalent
+  // permission differentiation for the new primary workflow is covered by
+  // tests/e2e/proposals.spec.ts ("Proposals — Sales permissions"), and the
+  // backend check independent of any UI is
+  // tests/rls/phase1-crm.test.ts "Sales can create a project but cannot
+  // update it (no projects.update)".
 
   test("cannot access Members admin", async ({ page }) => {
     await page.goto("/members");
@@ -93,12 +81,22 @@ test.describe("Sales permissions", () => {
 });
 
 test.describe("Field Worker permissions", () => {
-  test("sees projects tenant-wide (not assignment-scoped) but not clients/opportunities, and can add a note", async ({
-    browser,
-  }) => {
+  // The old version of this test used a Project (created by, never
+  // assigned to, Field Worker) to demonstrate tenant-wide — not
+  // assignment-scoped — visibility, per docs/20. Projects has no reachable
+  // UI at all now (see projects.spec.ts), so this is adapted to the same
+  // underlying claim using Proposals, which Field Worker can view
+  // tenant-wide under the new primary workflow (field_worker has
+  // proposals.view — see supabase/migrations/20260706141600). The
+  // "add a note" assertion from the old test is dropped, not silently
+  // preserved: Field Worker's only Phase-1 UI surface for notes.create was
+  // the Project detail page, which no longer exists in the UI for anyone.
+  // This is a real, documented regression in docs/38-navigation-simplification.md
+  // ("Known limitations"), not something faked here to keep the test green.
+  test("sees proposals tenant-wide (not assignment-scoped) but not clients/opportunities", async ({ browser }) => {
     const suffix = uniqueSuffix();
     const clientName = `E2E FW Client ${suffix}`;
-    const projectName = `E2E FW Project ${suffix}`;
+    const proposalTitle = `E2E FW Proposal ${suffix}`;
 
     const ownerContext = await browser.newContext({ storageState: authFile("owner-a") });
     const ownerPage = await ownerContext.newPage();
@@ -107,22 +105,23 @@ test.describe("Field Worker permissions", () => {
     await ownerPage.getByRole("button", { name: "Create client" }).click();
     await ownerPage.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
-    await ownerPage.goto("/projects/new");
+    await ownerPage.goto("/proposals/new");
     await ownerPage.getByLabel("Client").selectOption({ label: clientName });
-    await ownerPage.getByLabel("Project name").fill(projectName);
-    await ownerPage.getByRole("button", { name: "Create project" }).click();
-    await ownerPage.waitForURL(/\/projects\/[0-9a-f-]+$/);
-    const projectUrl = ownerPage.url();
+    await ownerPage.waitForURL(/clientId=/);
+    await ownerPage.getByLabel("Proposal title").fill(proposalTitle);
+    await ownerPage.getByLabel("Service type").selectOption("custom");
+    await ownerPage.getByRole("button", { name: "Save and continue" }).click();
+    await ownerPage.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=scope/);
+    const proposalUrl = ownerPage.url().replace(/\/edit\?step=scope$/, "");
     await ownerContext.close();
 
     const fwContext = await browser.newContext({ storageState: authFile("field-worker-a") });
     const fwPage = await fwContext.newPage();
 
-    // Tenant-wide visibility: Field Worker sees this project even though it
-    // was created by (and never assigned to) someone else — documented as a
-    // deliberate limitation, not per-assignment security, in docs/20.
-    await fwPage.goto("/projects");
-    await expect(fwPage.getByRole("link", { name: projectName })).toBeVisible();
+    // Tenant-wide visibility: Field Worker sees this proposal even though
+    // it was created by (and never assigned to) someone else.
+    await fwPage.goto("/proposals");
+    await expect(fwPage.getByRole("link", { name: proposalTitle })).toBeVisible();
 
     await fwPage.goto("/clients");
     await expect(fwPage.getByText(/does not include access to this page/)).toBeVisible();
@@ -130,17 +129,12 @@ test.describe("Field Worker permissions", () => {
     await fwPage.goto("/opportunities");
     await expect(fwPage.getByText(/does not include access to this page/)).toBeVisible();
 
-    await fwPage.goto(projectUrl);
-    await expect(fwPage.getByRole("heading", { name: projectName })).toBeVisible();
-    // No update controls at all — Field Worker lacks projects.update.
-    await expect(fwPage.getByRole("link", { name: "Edit" })).toHaveCount(0);
-    await expect(fwPage.getByRole("button", { name: /^Move to/ })).toHaveCount(0);
-
-    const note = `Field note ${suffix}`;
-    await fwPage.getByLabel("Add a note").fill(note);
-    await fwPage.getByRole("button", { name: "Add note" }).click();
-    await fwPage.waitForLoadState("networkidle");
-    await expect(fwPage.locator("p").filter({ hasText: note })).toBeVisible();
+    await fwPage.goto(proposalUrl);
+    await expect(fwPage.getByText(proposalTitle)).toBeVisible();
+    // No pricing/mark-ready/archive controls — Field Worker lacks
+    // proposals.manage_pricing and the mark-ready/archive permissions.
+    await expect(fwPage.getByRole("button", { name: "Mark ready" })).toHaveCount(0);
+    await expect(fwPage.getByRole("button", { name: "Archive" })).toHaveCount(0);
 
     await fwContext.close();
   });

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileText, Users, Plus, Kanban } from "lucide-react";
+import { FileText, Users, Plus } from "lucide-react";
 import { requireUser } from "../../lib/auth/session";
 import { requireActiveTenant } from "../../lib/auth/tenant";
 import { hasPermission, PERMISSIONS } from "../../lib/auth/permissions";
@@ -77,11 +77,6 @@ export default async function HomePage() {
       <PageHeader
         title="Dashboard"
         description={`Welcome back, ${user.email}.`}
-        secondary={
-          <Link href="/pipeline" className="button-secondary">
-            View pipeline
-          </Link>
-        }
         action={
           canCreateProposal ? (
             <Link href="/proposals/new" className="button-primary">
@@ -169,7 +164,6 @@ export default async function HomePage() {
       ) : (
         <div className="metrics-grid">
           <MetricTile icon={Users} label="Clients" href="/clients" />
-          <MetricTile icon={Kanban} label="Pipeline" href="/pipeline" />
         </div>
       )}
 

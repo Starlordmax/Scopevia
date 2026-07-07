@@ -56,11 +56,6 @@ export default async function OpportunitiesPage({
       <PageHeader
         icon={KanbanIcon}
         title="Opportunities"
-        secondary={
-          <Link href="/pipeline" className="button-secondary">
-            Pipeline view
-          </Link>
-        }
         action={
           canCreate ? (
             <Link href="/opportunities/new" className="button-primary">
@@ -90,7 +85,7 @@ export default async function OpportunitiesPage({
             <EmptyState
               icon={KanbanIcon}
               title="No opportunities yet"
-              description="An opportunity tracks a potential job from first contact through to a scheduled inspection or a converted project. Create your first one to start working the pipeline."
+              description="An opportunity tracks a potential job from first contact through to a scheduled inspection or an accepted proposal."
               action={
                 canCreate ? (
                   <Link href="/opportunities/new" className="button-primary">

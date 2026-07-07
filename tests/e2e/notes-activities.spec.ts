@@ -82,29 +82,37 @@ test.describe("Notes and activity", () => {
     await expect(page.getByText(opportunityNote)).toHaveCount(0);
   });
 
-  test("notes are scoped to exactly one resource: a note on the project does not appear on the client", async ({ page }) => {
+  // The old version of this test used a Project's Notes section to prove
+  // resource-scoping (a note on a project doesn't leak to its client).
+  // Projects has no reachable UI at all now — see
+  // docs/38-navigation-simplification.md — so that specific pairing can no
+  // longer be exercised through the browser. The same underlying claim
+  // (notes are scoped to exactly the resource they were created on) is
+  // still demonstrated by the opportunity/client pairing above, and the
+  // `notes` table's `project_id` column and its RLS are unchanged and
+  // still exercised directly in tests/rls/phase1-crm.test.ts.
+  test("notes are scoped to exactly one resource: a note on one client does not appear on another", async ({ page }) => {
     const suffix = uniqueSuffix();
-    const clientName = `E2E Note Scope 2 Client ${suffix}`;
+    const clientAName = `E2E Note Scope A ${suffix}`;
+    const clientBName = `E2E Note Scope B ${suffix}`;
+
     await page.goto("/clients/new");
-    await page.getByLabel("Display name").fill(clientName);
+    await page.getByLabel("Display name").fill(clientAName);
     await page.getByRole("button", { name: "Create client" }).click();
     await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
-    const clientUrl = page.url();
 
-    await page.goto("/projects/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
-    await page.getByLabel("Project name").fill(`E2E Note Scope Project ${suffix}`);
-    await page.getByRole("button", { name: "Create project" }).click();
-    await page.waitForURL(/\/projects\/[0-9a-f-]+$/);
-
-    const projectNote = `Project-only note ${suffix}`;
-    await page.getByLabel("Add a note").fill(projectNote);
+    const clientOnlyNote = `Client-A-only note ${suffix}`;
+    await page.getByLabel("Add a note").fill(clientOnlyNote);
     await page.getByRole("button", { name: "Add note" }).click();
     await page.waitForLoadState("networkidle");
-    await expect(page.locator("p").filter({ hasText: projectNote })).toBeVisible();
+    await expect(page.locator("p").filter({ hasText: clientOnlyNote })).toBeVisible();
 
-    await page.goto(clientUrl);
-    await expect(page.getByText(projectNote)).toHaveCount(0);
+    await page.goto("/clients/new");
+    await page.getByLabel("Display name").fill(clientBName);
+    await page.getByRole("button", { name: "Create client" }).click();
+    await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
+
+    await expect(page.getByText(clientOnlyNote)).toHaveCount(0);
   });
 
   test("the activity feed has no edit/delete controls and shows no raw technical metadata", async ({ page }) => {

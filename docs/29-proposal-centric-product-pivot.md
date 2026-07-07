@@ -5,6 +5,16 @@ instance.** Builds on Phase 0 ([14](14-phase-0-foundations.md)) and
 Phase 1 ([20](20-phase-1-crm-and-projects.md)/[26](26-phase-1.6-ui-redesign.md))
 without removing or weakening any of their guarantees.
 
+> **Nota de estado (2026-07-07):** Un follow-up post-Phase-2A corrigió un
+> bug real en `update_proposal_scope` (ver
+> [37-proposal-scope-rpc-fix.md](37-proposal-scope-rpc-fix.md)) y eliminó
+> Pipeline y Projects como módulos visibles de la UI, yendo más allá de lo
+> descrito aquí — ver
+> [38-navigation-simplification.md](38-navigation-simplification.md).
+> Notablemente, esto **revierte** la decisión de esta fase de mantener
+> "Convert to project" como acción secundaria en Opportunity detail. Las
+> tablas, RPCs, y RLS de `opportunities`/`projects` no cambiaron.
+
 ## The pivot
 
 **Previous primary flow:** Client → Opportunity → Project → *(future

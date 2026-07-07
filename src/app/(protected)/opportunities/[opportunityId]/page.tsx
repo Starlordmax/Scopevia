@@ -8,7 +8,6 @@ import { getNotes } from "../../../../lib/crm/notes-data";
 import { ActivityFeed } from "../../../../components/activity-feed";
 import { NotesSection } from "../../../../components/notes-section";
 import { OpportunityStatusActions } from "./status-actions";
-import { ConvertToProjectForm } from "./convert-form";
 import { archiveOpportunityAction, restoreOpportunityAction } from "../../../../actions/opportunities";
 import { opportunityBadgeClass, proposalBadgeClass } from "../../../../lib/crm/status-badge";
 import { formatCents } from "../../../../lib/proposals/format";
@@ -37,18 +36,11 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
     .single();
   if (!opportunity) notFound();
 
-  const { data: existingProject } = await supabase
-    .from("projects")
-    .select("id, name")
-    .eq("opportunity_id", opportunityId)
-    .maybeSingle();
-
-  const [canChangeStatus, canArchive, canRestore, canConvert, notesView, notesCreate, notesUpdate, notesArchive, activitiesView, canViewProposals, canCreateProposal] =
+  const [canChangeStatus, canArchive, canRestore, notesView, notesCreate, notesUpdate, notesArchive, activitiesView, canViewProposals, canCreateProposal] =
     await Promise.all([
       hasPermission(tenant.tenant_id, PERMISSIONS.OPPORTUNITIES_CHANGE_STATUS),
       hasPermission(tenant.tenant_id, PERMISSIONS.OPPORTUNITIES_ARCHIVE),
       hasPermission(tenant.tenant_id, PERMISSIONS.OPPORTUNITIES_RESTORE),
-      hasPermission(tenant.tenant_id, PERMISSIONS.OPPORTUNITIES_CONVERT_TO_PROJECT),
       hasPermission(tenant.tenant_id, PERMISSIONS.NOTES_VIEW),
       hasPermission(tenant.tenant_id, PERMISSIONS.NOTES_CREATE),
       hasPermission(tenant.tenant_id, PERMISSIONS.NOTES_UPDATE),
@@ -99,13 +91,6 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
         {opportunity.source ? <div>Source: {opportunity.source}</div> : null}
       </div>
 
-      {existingProject ? (
-        <div className="section-card">
-          <span className="hint">Converted to project: </span>
-          <Link href={`/projects/${existingProject.id}`}>{existingProject.name}</Link>
-        </div>
-      ) : null}
-
       {canChangeStatus && !isArchived ? (
         <div className="section-card">
           <OpportunityStatusActions opportunityId={opportunityId} status={opportunity.status as OpportunityStatus} />
@@ -142,13 +127,6 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
           ) : (
             <p className="hint">No proposal yet.</p>
           )}
-        </div>
-      ) : null}
-
-      {canConvert && !existingProject && (opportunity.status === "ready_for_estimate" || opportunity.status === "won") ? (
-        <div className="section-card">
-          <p className="hint">Legacy flow: convert directly to a project without a proposal.</p>
-          <ConvertToProjectForm opportunityId={opportunityId} defaultName={opportunity.title} />
         </div>
       ) : null}
 

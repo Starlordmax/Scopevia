@@ -4,6 +4,33 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Phase 2A.1 — Job Summary RPC fix and navigation simplification
+
+Fixes a real bug where saving the Proposal Builder's Job Summary step
+with any optional field left blank failed with a raw "Could not find the
+function ... in the schema cache" error, caused by the client omitting
+empty fields (serialized as JSON `undefined`, which `JSON.stringify`
+drops) instead of sending them as `null`, combined with
+`update_proposal_scope` having no SQL `DEFAULT` on any optional
+parameter. Fixed on both sides: the SQL function now accepts
+`DEFAULT NULL` on all four optional parameters, and the client always
+sends every optional key explicitly (as `null` when empty, never
+omitted). See [docs/37-proposal-scope-rpc-fix.md](docs/37-proposal-scope-rpc-fix.md).
+
+Also removes Pipeline and Projects as visible UI modules — the
+underlying `opportunities`/`projects` tables, RPCs, and RLS are
+completely untouched. `/pipeline` and `/projects` (and its children) now
+redirect to `/proposals` rather than rendering. Client detail's
+Projects/Opportunities sections are replaced by a Proposals section
+("Create proposal" is now its primary action); Opportunity detail's
+"Convert to project" legacy CTA is removed (reversing a Phase 2A
+decision). Navigation is now Dashboard/Proposals/Clients/Portfolio
+(main) + Members/Proposal Settings/Profile (Administration); mobile adds
+a 5th "More" bottom-nav slot (an in-page disclosure, not a new route)
+that also fixes a pre-existing gap where Members/Proposal Settings had
+no mobile entry point at all. See
+[docs/38-navigation-simplification.md](docs/38-navigation-simplification.md).
+
 ### Phase 2A — Proposal-centric pivot
 
 Pivots the primary product flow from Client → Opportunity → Project →

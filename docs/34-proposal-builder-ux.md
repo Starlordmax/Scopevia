@@ -5,6 +5,12 @@ Status: **Implemented**, verified by a full manual browser walkthrough
 return to draft → archive → restore) and by the E2E suite in
 [docs/36](36-phase-2a-e2e-verification.md).
 
+> **Nota de estado (2026-07-07):** El paso Scope (Job Summary) tenía un
+> bug real que impedía guardarlo si el usuario dejaba campos opcionales
+> vacíos ("Could not find the function ... in the schema cache") — nunca
+> cubierto por el E2E original, que no llegaba a ejercitar ese formulario.
+> Corregido; ver [37-proposal-scope-rpc-fix.md](37-proposal-scope-rpc-fix.md).
+
 ## Routes
 
 | Route | Purpose |

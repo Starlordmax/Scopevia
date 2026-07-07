@@ -122,6 +122,19 @@ describe.skipIf(!canRun)("Phase 2A Proposal-centric pivot (requires real Postgre
     }
   });
 
+  async function createDraftProposal(title: string): Promise<{ proposalId: string; versionId: string }> {
+    const { data: proposal } = await aClient
+      .rpc("create_proposal_direct", {
+        p_tenant_id: tenantAId,
+        p_client_id: clientAId,
+        p_title: title,
+        p_service_type: "custom",
+      })
+      .single();
+    const p = proposal as { id: string; current_version_id: string };
+    return { proposalId: p.id, versionId: p.current_version_id };
+  }
+
   // ===========================================================================
   // Proposal creation
   // ===========================================================================
@@ -408,6 +421,276 @@ describe.skipIf(!canRun)("Phase 2A Proposal-centric pivot (requires real Postgre
         });
         expect(error).not.toBeNull();
       }
+    });
+  });
+
+  // ===========================================================================
+  // Job summary (update_proposal_scope) — regression coverage for the bug
+  // where PostgREST failed to resolve the RPC overload when a client
+  // omitted an empty optional argument instead of sending it as null.
+  // ===========================================================================
+  describe("update_proposal_scope (Job summary)", () => {
+    it("accepts all five parameters at once", async () => {
+      const { versionId } = await createDraftProposal("Scope: all fields");
+      const { data, error } = await aClient
+        .rpc("update_proposal_scope", {
+          p_proposal_version_id: versionId,
+          p_summary: "Painting house",
+          p_scope_intro: "Full exterior repaint",
+          p_estimated_start_date: "2026-01-20",
+          p_estimated_duration_days: 5,
+        })
+        .single();
+      expect(error).toBeNull();
+      const v = data as {
+        summary: string;
+        scope_intro: string;
+        estimated_start_date: string;
+        estimated_duration_days: number;
+      };
+      expect(v.summary).toBe("Painting house");
+      expect(v.scope_intro).toBe("Full exterior repaint");
+      expect(v.estimated_start_date).toBe("2026-01-20");
+      expect(v.estimated_duration_days).toBe(5);
+    });
+
+    it("accepts only p_summary, with the other three explicitly null — the exact reported bug", async () => {
+      const { versionId } = await createDraftProposal("Scope: summary + start date only");
+      const { data, error } = await aClient
+        .rpc("update_proposal_scope", {
+          p_proposal_version_id: versionId,
+          p_summary: "Painting house",
+          p_scope_intro: null,
+          p_estimated_start_date: "2026-01-20",
+          p_estimated_duration_days: null,
+        })
+        .single();
+      expect(error).toBeNull();
+      const v = data as {
+        summary: string;
+        scope_intro: string | null;
+        estimated_start_date: string;
+        estimated_duration_days: number | null;
+      };
+      expect(v.summary).toBe("Painting house");
+      expect(v.scope_intro).toBeNull();
+      expect(v.estimated_start_date).toBe("2026-01-20");
+      expect(v.estimated_duration_days).toBeNull();
+    });
+
+    it("accepts only summary, the other three omitted entirely (relies on SQL DEFAULT NULL)", async () => {
+      const { versionId } = await createDraftProposal("Scope: summary only, omitted keys");
+      const { data, error } = await aClient
+        .rpc("update_proposal_scope", {
+          p_proposal_version_id: versionId,
+          p_summary: "Only summary",
+        })
+        .single();
+      expect(error).toBeNull();
+      const v = data as { summary: string; scope_intro: string | null };
+      expect(v.summary).toBe("Only summary");
+      expect(v.scope_intro).toBeNull();
+    });
+
+    it("accepts only estimated_start_date", async () => {
+      const { versionId } = await createDraftProposal("Scope: start date only");
+      const { data, error } = await aClient
+        .rpc("update_proposal_scope", {
+          p_proposal_version_id: versionId,
+          p_summary: null,
+          p_scope_intro: null,
+          p_estimated_start_date: "2026-03-01",
+          p_estimated_duration_days: null,
+        })
+        .single();
+      expect(error).toBeNull();
+      expect((data as { estimated_start_date: string }).estimated_start_date).toBe("2026-03-01");
+    });
+
+    it("accepts only scope_intro", async () => {
+      const { versionId } = await createDraftProposal("Scope: intro only");
+      const { data, error } = await aClient
+        .rpc("update_proposal_scope", {
+          p_proposal_version_id: versionId,
+          p_summary: null,
+          p_scope_intro: "Just the intro",
+          p_estimated_start_date: null,
+          p_estimated_duration_days: null,
+        })
+        .single();
+      expect(error).toBeNull();
+      expect((data as { scope_intro: string }).scope_intro).toBe("Just the intro");
+    });
+
+    it("accepts only estimated_duration_days", async () => {
+      const { versionId } = await createDraftProposal("Scope: duration only");
+      const { data, error } = await aClient
+        .rpc("update_proposal_scope", {
+          p_proposal_version_id: versionId,
+          p_summary: null,
+          p_scope_intro: null,
+          p_estimated_start_date: null,
+          p_estimated_duration_days: 12,
+        })
+        .single();
+      expect(error).toBeNull();
+      expect((data as { estimated_duration_days: number }).estimated_duration_days).toBe(12);
+    });
+
+    it("all fields explicitly null clears previously-saved values", async () => {
+      const { versionId } = await createDraftProposal("Scope: clearing to null");
+      await aClient.rpc("update_proposal_scope", {
+        p_proposal_version_id: versionId,
+        p_summary: "Will be cleared",
+        p_scope_intro: "Will be cleared",
+        p_estimated_start_date: "2026-01-01",
+        p_estimated_duration_days: 3,
+      });
+      const { data, error } = await aClient
+        .rpc("update_proposal_scope", {
+          p_proposal_version_id: versionId,
+          p_summary: null,
+          p_scope_intro: null,
+          p_estimated_start_date: null,
+          p_estimated_duration_days: null,
+        })
+        .single();
+      expect(error).toBeNull();
+      const v = data as {
+        summary: string | null;
+        scope_intro: string | null;
+        estimated_start_date: string | null;
+        estimated_duration_days: number | null;
+      };
+      expect(v.summary).toBeNull();
+      expect(v.scope_intro).toBeNull();
+      expect(v.estimated_start_date).toBeNull();
+      expect(v.estimated_duration_days).toBeNull();
+    });
+
+    it("an invalid calendar date is rejected, not silently accepted", async () => {
+      const { versionId } = await createDraftProposal("Scope: invalid date");
+      const { error } = await aClient.rpc("update_proposal_scope", {
+        p_proposal_version_id: versionId,
+        p_summary: null,
+        p_scope_intro: null,
+        p_estimated_start_date: "2026-02-30",
+        p_estimated_duration_days: null,
+      });
+      expect(error).not.toBeNull();
+    });
+
+    it("a negative or zero estimated_duration_days is rejected server-side", async () => {
+      const { versionId } = await createDraftProposal("Scope: invalid duration");
+      for (const bad of [0, -1]) {
+        const { error } = await aClient.rpc("update_proposal_scope", {
+          p_proposal_version_id: versionId,
+          p_summary: null,
+          p_scope_intro: null,
+          p_estimated_start_date: null,
+          p_estimated_duration_days: bad,
+        });
+        expect(error).not.toBeNull();
+      }
+    });
+
+    it("a locked version is rejected", async () => {
+      const { versionId } = await createDraftProposal("Scope: locked version");
+      await admin.from("proposal_versions").update({ version_status: "locked", locked_at: new Date().toISOString() }).eq("id", versionId);
+
+      const { error } = await aClient.rpc("update_proposal_scope", {
+        p_proposal_version_id: versionId,
+        p_summary: "Should not save",
+        p_scope_intro: null,
+        p_estimated_start_date: null,
+        p_estimated_duration_days: null,
+      });
+      expect(error).not.toBeNull();
+
+      await admin.from("proposal_versions").update({ version_status: "superseded" }).eq("id", versionId);
+    });
+
+    it("Viewer is rejected", async () => {
+      const { versionId } = await createDraftProposal("Scope: viewer rejected");
+      const { error } = await viewerClient.rpc("update_proposal_scope", {
+        p_proposal_version_id: versionId,
+        p_summary: "Viewer should not save this",
+        p_scope_intro: null,
+        p_estimated_start_date: null,
+        p_estimated_duration_days: null,
+      });
+      expect(error).not.toBeNull();
+    });
+
+    it("cross-tenant: Tenant B cannot update Tenant A's proposal version", async () => {
+      const { versionId } = await createDraftProposal("Scope: cross-tenant");
+      const { error } = await bClient.rpc("update_proposal_scope", {
+        p_proposal_version_id: versionId,
+        p_summary: "Tenant B should not save this",
+        p_scope_intro: null,
+        p_estimated_start_date: null,
+        p_estimated_duration_days: null,
+      });
+      expect(error).not.toBeNull();
+
+      const { data: unchanged } = await admin.from("proposal_versions").select("summary").eq("id", versionId).single();
+      expect((unchanged as { summary: string | null }).summary).not.toBe("Tenant B should not save this");
+    });
+
+    it("a suspended user's existing session cannot save, even with an otherwise-valid permission", async () => {
+      const suspendAddr = email("scope-suspend");
+      const { data: created, error: createUserErr } = await admin.auth.admin.createUser({
+        email: suspendAddr,
+        password: PASSWORD,
+        email_confirm: true,
+      });
+      if (createUserErr || !created.user) throw createUserErr ?? new Error("Failed to create suspend-test user");
+      allUserIds.push(created.user.id);
+      const suspendClient = await signIn(suspendAddr);
+
+      const { data: invite, error: inviteErr } = await aClient
+        .rpc("invite_member_by_email", { p_tenant_id: tenantAId, p_email: suspendAddr, p_role_key: "sales" })
+        .single();
+      if (inviteErr) throw inviteErr;
+      const membershipId = (invite as { id: string }).id;
+      const { error: acceptErr } = await suspendClient.rpc("accept_invitation", { p_membership_id: membershipId });
+      if (acceptErr) throw acceptErr;
+
+      const { versionId } = await createDraftProposal("Scope: suspended user");
+
+      const { error: suspendErr } = await aClient.rpc("update_membership", {
+        p_membership_id: membershipId,
+        p_new_status: "suspended",
+      });
+      expect(suspendErr).toBeNull();
+
+      const { error } = await suspendClient.rpc("update_proposal_scope", {
+        p_proposal_version_id: versionId,
+        p_summary: "Suspended user should not save this",
+        p_scope_intro: null,
+        p_estimated_start_date: null,
+        p_estimated_duration_days: null,
+      });
+      expect(error).not.toBeNull();
+    });
+
+    it("writes an audit log entry on success", async () => {
+      const { versionId } = await createDraftProposal("Scope: audit log");
+      await aClient.rpc("update_proposal_scope", {
+        p_proposal_version_id: versionId,
+        p_summary: "Audited change",
+        p_scope_intro: null,
+        p_estimated_start_date: null,
+        p_estimated_duration_days: null,
+      });
+
+      const { data: logs } = await admin
+        .from("audit_logs")
+        .select("action, entity_type, entity_id")
+        .eq("tenant_id", tenantAId)
+        .eq("entity_id", versionId)
+        .eq("action", "proposal.updated");
+      expect((logs ?? []).length).toBeGreaterThan(0);
     });
   });
 

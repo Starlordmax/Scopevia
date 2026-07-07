@@ -109,21 +109,33 @@ export async function updateProposalScopeAction(_prev: ActionResult, formData: F
   const proposalId = uuidSchema.safeParse(formData.get("proposalId"));
   if (!proposalVersionId.success || !proposalId.success) return { error: "Invalid request" };
 
+  // Raw values (including "") are passed straight to the schema, which is
+  // solely responsible for normalizing "" / missing -> null. Do NOT
+  // pre-filter with `|| undefined` here: that pattern is exactly what
+  // produced the original bug (see the RPC call below).
   const parsed = updateProposalScopeSchema.safeParse({
-    summary: formData.get("summary") || undefined,
-    scopeIntro: formData.get("scopeIntro") || undefined,
-    estimatedStartDate: formData.get("estimatedStartDate") || undefined,
-    estimatedDurationDays: formData.get("estimatedDurationDays") || undefined,
+    summary: formData.get("summary"),
+    scopeIntro: formData.get("scopeIntro"),
+    estimatedStartDate: formData.get("estimatedStartDate"),
+    estimatedDurationDays: formData.get("estimatedDurationDays"),
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
 
   const supabase = await createClient();
+  // update_proposal_scope's optional params carry a SQL DEFAULT NULL (see
+  // supabase/migrations/20260707150000_fix_update_proposal_scope_optional_args.sql),
+  // but every key below is still sent explicitly, even when its value is
+  // null. Supabase-js JSON-encodes this args object, and JSON.stringify
+  // silently drops any key whose value is `undefined` -- if a key were
+  // omitted or set to undefined here, PostgREST would see a request with
+  // fewer arguments than any known overload and fail with "function not
+  // found in schema cache", which was the original reported bug.
+  // `as string`/`as number` casts are required because the generated RPC
+  // arg types come out non-nullable even for DEFAULT-NULL params (a known
+  // generator limitation also documented in src/lib/audit/log.ts) --
+  // Postgres itself accepts null for all four.
   const { error } = await supabase.rpc("update_proposal_scope", {
     p_proposal_version_id: proposalVersionId.data,
-    // update_proposal_scope's params have no SQL DEFAULT, so the generated
-    // RPC types come out non-optional even though Postgres accepts NULL for
-    // any of them — same generator limitation documented in
-    // src/lib/audit/log.ts. These fields are genuinely optional in the UI.
     p_summary: parsed.data.summary as string,
     p_scope_intro: parsed.data.scopeIntro as string,
     p_estimated_start_date: parsed.data.estimatedStartDate as string,

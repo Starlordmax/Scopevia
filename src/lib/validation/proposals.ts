@@ -65,11 +65,58 @@ export const createProposalFromOpportunitySchema = z.object({
   serviceType: serviceTypeSchema,
 });
 
+const isoDateSchema = z
+  .string()
+  .trim()
+  .refine((v) => /^\d{4}-\d{2}-\d{2}$/.test(v), "Enter a valid date (YYYY-MM-DD)")
+  .refine((v) => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+    if (!match) return false;
+    const y = Number(match[1]);
+    const m = Number(match[2]);
+    const d = Number(match[3]);
+    const parsed = new Date(Date.UTC(y, m - 1, d));
+    return parsed.getUTCFullYear() === y && parsed.getUTCMonth() === m - 1 && parsed.getUTCDate() === d;
+  }, "Enter a valid date");
+
+/**
+ * Normalizes a raw (possibly empty) form field to `null`, never `undefined`.
+ * update_proposal_scope's RPC call must always send every optional key
+ * explicitly as `null` -- Supabase-js JSON-encodes the RPC args, and
+ * JSON.stringify silently drops keys whose value is `undefined`, which is
+ * what let PostgREST resolve a different (nonexistent) function overload
+ * and fail with a "not found in schema cache" error.
+ */
+const nullableTrimmedText = (max: number, message?: string) =>
+  z
+    .string()
+    .nullable()
+    .optional()
+    .transform((v) => (v === undefined || v === null ? null : v.trim()))
+    .transform((v) => (v === "" ? null : v))
+    .refine((v) => v === null || v.length <= max, message ?? `Must be ${max} characters or fewer`);
+
 export const updateProposalScopeSchema = z.object({
-  summary: optionalText(500),
-  scopeIntro: optionalText(4000),
-  estimatedStartDate: optionalText(10),
-  estimatedDurationDays: z.coerce.number().int().min(1).max(3650).optional(),
+  summary: nullableTrimmedText(500, "Short summary is too long"),
+  scopeIntro: nullableTrimmedText(4000, "Scope introduction is too long"),
+  estimatedStartDate: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((v) => (v === undefined || v === null || v.trim() === "" ? null : v.trim()))
+    .refine((v) => v === null || isoDateSchema.safeParse(v).success, "Enter a valid date (YYYY-MM-DD)"),
+  // A dedicated string-first pipeline, not z.coerce.number(): Number("") is
+  // 0 in JavaScript, so coercing an empty field directly would silently
+  // turn "duration left blank" into "duration of zero days" instead of
+  // null.
+  estimatedDurationDays: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((v) => (v === undefined || v === null || v.trim() === "" ? null : v.trim()))
+    .refine((v) => v === null || /^\d+$/.test(v), "Estimated duration must be a whole number of days")
+    .transform((v) => (v === null ? null : Number(v)))
+    .refine((v) => v === null || (v >= 1 && v <= 3650), "Estimated duration must be greater than zero"),
 });
 
 export const addProposalSectionSchema = z.object({

@@ -9,7 +9,8 @@ import { ActivityFeed } from "../../../../components/activity-feed";
 import { NotesSection } from "../../../../components/notes-section";
 import { ContactsSection } from "./contacts-section";
 import { archiveClientAction, restoreClientAction } from "../../../../actions/clients";
-import { opportunityBadgeClass, projectBadgeClass } from "../../../../lib/crm/status-badge";
+import { proposalBadgeClass } from "../../../../lib/crm/status-badge";
+import { formatCents } from "../../../../lib/proposals/format";
 
 export const dynamic = "force-dynamic";
 
@@ -38,8 +39,8 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
     contactsUpdate,
     contactsArchive,
     contactsRestore,
-    opportunitiesView,
-    projectsView,
+    proposalsView,
+    canCreateProposal,
     notesView,
     notesCreate,
     notesUpdate,
@@ -54,8 +55,8 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
     hasPermission(tenant.tenant_id, PERMISSIONS.CONTACTS_UPDATE),
     hasPermission(tenant.tenant_id, PERMISSIONS.CONTACTS_ARCHIVE),
     hasPermission(tenant.tenant_id, PERMISSIONS.CONTACTS_RESTORE),
-    hasPermission(tenant.tenant_id, PERMISSIONS.OPPORTUNITIES_VIEW),
-    hasPermission(tenant.tenant_id, PERMISSIONS.PROJECTS_VIEW),
+    hasPermission(tenant.tenant_id, PERMISSIONS.PROPOSALS_VIEW),
+    hasPermission(tenant.tenant_id, PERMISSIONS.PROPOSALS_CREATE),
     hasPermission(tenant.tenant_id, PERMISSIONS.NOTES_VIEW),
     hasPermission(tenant.tenant_id, PERMISSIONS.NOTES_CREATE),
     hasPermission(tenant.tenant_id, PERMISSIONS.NOTES_UPDATE),
@@ -63,7 +64,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
     hasPermission(tenant.tenant_id, PERMISSIONS.ACTIVITIES_VIEW),
   ]);
 
-  const [contacts, opportunities, projects, notes, activity] = await Promise.all([
+  const [contacts, proposals, notes, activity] = await Promise.all([
     contactsView
       ? supabase
           .from("client_contacts")
@@ -73,21 +74,13 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
           .order("first_name", { ascending: true })
           .then((r) => r.data ?? [])
       : Promise.resolve([]),
-    opportunitiesView
+    proposalsView
       ? supabase
-          .from("opportunities")
-          .select("id, title, status, estimated_value_cents")
+          .from("proposals")
+          .select("id, proposal_number, title, status, updated_at, proposal_versions!proposals_current_version_id_fkey(total_cents)")
           .eq("client_id", clientId)
-          .order("created_at", { ascending: false })
-          .limit(10)
-          .then((r) => r.data ?? [])
-      : Promise.resolve([]),
-    projectsView
-      ? supabase
-          .from("projects")
-          .select("id, name, status")
-          .eq("client_id", clientId)
-          .order("created_at", { ascending: false })
+          .is("archived_at", null)
+          .order("updated_at", { ascending: false })
           .limit(10)
           .then((r) => r.data ?? [])
       : Promise.resolve([]),
@@ -105,6 +98,11 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
           <span className="hint">{client.client_type}</span>
         </div>
         <div className="tenant-form">
+          {canCreateProposal && !client.archived_at ? (
+            <Link href={`/proposals/new?clientId=${clientId}`} className="button-primary">
+              Create proposal
+            </Link>
+          ) : null}
           {canUpdate && !client.archived_at ? (
             <Link href={`/clients/${clientId}/edit`} className="button-secondary">
               Edit
@@ -155,42 +153,32 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
         </div>
       ) : null}
 
-      {opportunitiesView ? (
+      {proposalsView ? (
         <div className="section-card stack">
-          <h2>Opportunities</h2>
-          {opportunities.length === 0 ? (
-            <p className="hint">No opportunities yet.</p>
+          <h2>Proposals</h2>
+          {proposals.length === 0 ? (
+            <p className="hint">No proposals yet.</p>
           ) : (
             <ul className="stack" style={{ gap: 6, listStyle: "none", padding: 0, margin: 0 }}>
-              {opportunities.map((o) => (
-                <li key={o.id}>
-                  <Link href={`/opportunities/${o.id}`}>{o.title}</Link>{" "}
-                  <span className={`badge ${opportunityBadgeClass(o.status)}`.trim()}>{o.status.replace(/_/g, " ")}</span>
-                </li>
-              ))}
+              {proposals.map((p) => {
+                const version = Array.isArray(p.proposal_versions) ? p.proposal_versions[0] : p.proposal_versions;
+                return (
+                  <li key={p.id}>
+                    <Link href={`/proposals/${p.id}`}>
+                      #{p.proposal_number} · {p.title}
+                    </Link>{" "}
+                    <span className={`badge ${proposalBadgeClass(p.status)}`.trim()}>{p.status}</span>{" "}
+                    <span className="hint">{version ? formatCents(version.total_cents) : "—"}</span>
+                  </li>
+                );
+              })}
             </ul>
           )}
-          <Link href={`/opportunities/new?clientId=${clientId}`} className="hint">
-            + New opportunity for this client
-          </Link>
-        </div>
-      ) : null}
-
-      {projectsView ? (
-        <div className="section-card stack">
-          <h2>Projects</h2>
-          {projects.length === 0 ? (
-            <p className="hint">No projects yet.</p>
-          ) : (
-            <ul className="stack" style={{ gap: 6, listStyle: "none", padding: 0, margin: 0 }}>
-              {projects.map((p) => (
-                <li key={p.id}>
-                  <Link href={`/projects/${p.id}`}>{p.name}</Link>{" "}
-                  <span className={`badge ${projectBadgeClass(p.status)}`.trim()}>{p.status.replace(/_/g, " ")}</span>
-                </li>
-              ))}
-            </ul>
-          )}
+          {canCreateProposal ? (
+            <Link href={`/proposals/new?clientId=${clientId}`} className="hint">
+              + New proposal for this client
+            </Link>
+          ) : null}
         </div>
       ) : null}
 

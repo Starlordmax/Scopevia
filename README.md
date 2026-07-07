@@ -42,6 +42,8 @@ Full walkthrough (installing, running migrations, creating a test user, verifyin
 | [docs/34-proposal-builder-ux.md](docs/34-proposal-builder-ux.md) | The 7-step builder, preview, dashboard, navigation |
 | [docs/35-phase-2a-rls-verification.md](docs/35-phase-2a-rls-verification.md) | Real PASS/FAIL results for Phase 2A against Postgres + Storage |
 | [docs/36-phase-2a-e2e-verification.md](docs/36-phase-2a-e2e-verification.md) | Real Playwright browser test results for the proposal flow |
+| [docs/37-proposal-scope-rpc-fix.md](docs/37-proposal-scope-rpc-fix.md) | Root cause and fix for the `update_proposal_scope` "schema cache" bug |
+| [docs/38-navigation-simplification.md](docs/38-navigation-simplification.md) | Pipeline and Projects removed as visible UI modules; what changed, what didn't, known limitations |
 | [docs/14-phase-0-foundations.md](docs/14-phase-0-foundations.md) | What Phase 0 implements and why, including deviations from the original design |
 | [docs/15-local-development.md](docs/15-local-development.md) | Local setup, commands, troubleshooting |
 | [docs/16-environments-and-deployment.md](docs/16-environments-and-deployment.md) | Dev/staging/production separation, migrations, secrets |
@@ -60,8 +62,9 @@ Full walkthrough (installing, running migrations, creating a test user, verifyin
 
 ```text
 src/
-  app/            Next.js App Router routes (clients/opportunities/pipeline/projects: Phase 1;
-                  proposals/portfolio/settings/proposals: Phase 2A)
+  app/            Next.js App Router routes (clients/opportunities: Phase 1, still a visible
+                  module; pipeline/projects: Phase 1, now legacy redirect-only stubs — see
+                  docs/38; proposals/portfolio/settings/proposals: Phase 2A, the primary flow)
   actions/        Server Actions (auth, tenant, membership, profile, clients, opportunities,
                   projects, notes, proposals, media, portfolio, proposal-settings)
   components/     Shared UI components

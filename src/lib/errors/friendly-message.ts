@@ -13,7 +13,18 @@ export function friendlyRpcErrorMessage(raw: string): string {
     return "You do not have permission to do that.";
   }
 
-  if (raw.includes("()")) {
+  // PostgREST couldn't resolve an RPC call to a known function overload
+  // (stale schema cache, or a client/server signature mismatch). The raw
+  // message spells out the fully-qualified function name, schema, and
+  // every parameter name -- pure internal detail with no reason to reach
+  // a contractor using the app. This must be caught before the generic
+  // paren-stripping check below, since slicing before the first "("
+  // would still leave "public.function_name" exposed.
+  if (/schema cache/i.test(raw) || /^Could not find the function\b/i.test(raw)) {
+    return "We couldn't complete that action. Please try again.";
+  }
+
+  if (/[a-zA-Z_][\w.]*\([^)]*\)/.test(raw)) {
     const parenIndex = raw.indexOf("(");
     const stripped = parenIndex === -1 ? raw : raw.slice(0, parenIndex).trim();
     return stripped || "That action is not allowed right now.";

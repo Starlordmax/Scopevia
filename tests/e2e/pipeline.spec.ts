@@ -1,63 +1,29 @@
 import { test, expect } from "@playwright/test";
-import { authFile, uniqueSuffix } from "./fixtures/session";
+import { authFile } from "./fixtures/session";
 
+// Pipeline (the Opportunity kanban board) is no longer a visible module —
+// see docs/38-navigation-simplification.md. The old version of this file
+// exercised the kanban UI itself (columns, drag-free quick-advance); that
+// UI is gone. The underlying opportunities table and its status-transition
+// RPCs are untouched and remain covered by tests/rls/phase1-crm.test.ts and
+// tests/e2e/opportunities.spec.ts, which never depended on the Pipeline
+// view.
 test.use({ storageState: authFile("owner-a") });
 
-test.describe("Pipeline (desktop)", () => {
-  test("shows the expected columns and a newly created opportunity as a card", async ({ page }) => {
-    const suffix = uniqueSuffix();
-    const clientName = `E2E Pipeline Client ${suffix}`;
-    const title = `E2E Pipeline Opp ${suffix}`;
-
-    await page.goto("/clients/new");
-    await page.getByLabel("Display name").fill(clientName);
-    await page.getByRole("button", { name: "Create client" }).click();
-    await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
-
-    await page.goto("/opportunities/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
-    await page.getByLabel("Title").fill(title);
-    await page.getByRole("button", { name: "Create opportunity" }).click();
-    await page.waitForURL(/\/opportunities\/[0-9a-f-]+$/);
-
+test.describe("Pipeline (legacy route)", () => {
+  test("/pipeline redirects to /proposals instead of rendering the kanban board", async ({ page }) => {
     await page.goto("/pipeline");
-    for (const label of ["new", "contacted", "qualified", "inspection scheduled", "ready for estimate", "won", "lost"]) {
-      await expect(page.locator(".kanban-column-header").filter({ hasText: label })).toBeVisible();
-    }
-
-    const newColumn = page.locator(".kanban-column").filter({ has: page.locator(".kanban-column-header", { hasText: "new" }) });
-    const card = newColumn.locator(".kanban-card").filter({ hasText: title });
-    await expect(card).toBeVisible();
-    await expect(card.getByText(clientName)).toBeVisible();
+    await page.waitForURL(/\/proposals$/);
+    await expect(page.getByRole("heading", { name: "Pipeline" })).toHaveCount(0);
   });
 
-  test("quick-advance select moves a card to the next column without drag-and-drop, and persists", async ({ page }) => {
-    const suffix = uniqueSuffix();
-    const clientName = `E2E Quick Advance ${suffix}`;
-    const title = `E2E Advance ${suffix}`;
+  test("does not appear anywhere in the desktop sidebar", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.locator(".sidebar").getByRole("link", { name: "Pipeline", exact: true })).toHaveCount(0);
+  });
 
-    await page.goto("/clients/new");
-    await page.getByLabel("Display name").fill(clientName);
-    await page.getByRole("button", { name: "Create client" }).click();
-    await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
-
-    await page.goto("/opportunities/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
-    await page.getByLabel("Title").fill(title);
-    await page.getByRole("button", { name: "Create opportunity" }).click();
-    await page.waitForURL(/\/opportunities\/[0-9a-f-]+$/);
-
-    await page.goto("/pipeline");
-    const card = page.locator(".kanban-card").filter({ hasText: title });
-    await card.getByRole("combobox", { name: "Move to stage" }).selectOption("contacted");
-    await page.waitForLoadState("networkidle");
-
-    const contactedColumn = page
-      .locator(".kanban-column")
-      .filter({ has: page.locator(".kanban-column-header", { hasText: "contacted" }) });
-    await expect(contactedColumn.locator(".kanban-card").filter({ hasText: title })).toBeVisible();
-
-    await page.reload();
-    await expect(contactedColumn.locator(".kanban-card").filter({ hasText: title })).toBeVisible();
+  test("the Opportunities list page no longer links to a Pipeline view", async ({ page }) => {
+    await page.goto("/opportunities");
+    await expect(page.getByRole("link", { name: /pipeline/i })).toHaveCount(0);
   });
 });

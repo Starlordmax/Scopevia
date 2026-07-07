@@ -178,6 +178,75 @@ test.describe("Proposals — full builder flow", () => {
   });
 });
 
+test.describe("Job summary (update_proposal_scope)", () => {
+  test.use({ storageState: authFile("owner-a") });
+
+  test("saving with only Short summary and Estimated start date filled succeeds and advances to Labor", async ({ page }) => {
+    const suffix = uniqueSuffix();
+    const clientName = `E2E Scope Partial Client ${suffix}`;
+
+    await page.goto("/clients/new");
+    await page.getByLabel("Display name").fill(clientName);
+    await page.getByRole("button", { name: "Create client" }).click();
+    await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
+
+    await page.goto("/proposals/new");
+    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.waitForURL(/clientId=/);
+    await page.getByLabel("Proposal title").fill(`E2E Scope Partial ${suffix}`);
+    await page.getByLabel("Service type").selectOption("custom");
+    await page.getByRole("button", { name: "Save and continue" }).click();
+    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=scope/);
+
+    // The exact reported bug: only Short summary + Estimated start date are
+    // filled; Scope introduction and Estimated duration are left empty.
+    // Previously this failed with "Could not find the function
+    // public.update_proposal_scope(...) in the schema cache" because the
+    // client omitted the two empty fields instead of sending them as null,
+    // and PostgREST could not resolve a matching overload. See
+    // docs/37-proposal-scope-rpc-fix.md.
+    await page.getByLabel("Short summary").fill("Painting house");
+    await page.getByLabel("Estimated start date").fill("2026-01-20");
+    await page.getByRole("button", { name: "Save and continue" }).click();
+
+    // Must actually advance to the next step — not error, not stay put.
+    await page.waitForURL(/step=labor/);
+    await expect(page.getByText(/could not find the function/i)).toHaveCount(0);
+    await expect(page.getByText(/schema cache/i)).toHaveCount(0);
+
+    // Confirm the values actually persisted (not silently dropped), and
+    // that the two untouched fields saved as genuinely empty, not "0".
+    await page.goto(page.url().replace(/step=labor/, "step=scope"));
+    await expect(page.getByLabel("Short summary")).toHaveValue("Painting house");
+    await expect(page.getByLabel("Estimated start date")).toHaveValue("2026-01-20");
+    await expect(page.getByLabel("Scope introduction")).toHaveValue("");
+    await expect(page.getByLabel("Estimated duration (days)")).toHaveValue("");
+  });
+
+  test("saving with every Job summary field empty succeeds (all fields are optional)", async ({ page }) => {
+    const suffix = uniqueSuffix();
+    const clientName = `E2E Scope Empty Client ${suffix}`;
+
+    await page.goto("/clients/new");
+    await page.getByLabel("Display name").fill(clientName);
+    await page.getByRole("button", { name: "Create client" }).click();
+    await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
+
+    await page.goto("/proposals/new");
+    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.waitForURL(/clientId=/);
+    await page.getByLabel("Proposal title").fill(`E2E Scope Empty ${suffix}`);
+    await page.getByLabel("Service type").selectOption("custom");
+    await page.getByRole("button", { name: "Save and continue" }).click();
+    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=scope/);
+
+    // Every optional field left blank — no error of any kind.
+    await page.getByRole("button", { name: "Save and continue" }).click();
+    await page.waitForURL(/step=labor/);
+    await expect(page.getByText(/could not find the function/i)).toHaveCount(0);
+  });
+});
+
 test.describe("Proposals — Viewer permissions", () => {
   test.use({ storageState: authFile("viewer-a") });
 

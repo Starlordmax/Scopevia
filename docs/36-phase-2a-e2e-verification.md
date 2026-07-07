@@ -16,6 +16,16 @@ diagnosed and confirmed external before being retried; the retry passed
 **55/55 clean** in 5.2 minutes with zero network-error noise, reconfirming
 this document's numbers were not stale.
 
+> **Nota de estado (2026-07-07):** Phase 2A.1 (the `update_proposal_scope`
+> fix + navigation simplification, see [docs/37](37-proposal-scope-rpc-fix.md)/
+> [docs/38](38-navigation-simplification.md)) re-verified this entire
+> suite plus 2 new Job Summary tests and updated versions of
+> `pipeline`/`pipeline.mobile`/`projects`/`notes-activities`/`permissions`
+> — **58/58 PASS**. See "Phase 2A.1 E2E re-verification" below for the
+> full account, including a genuine environment issue (browser/server
+> memory contention in this specific sandbox, unrelated to the code) and
+> two real bugs this pass found and fixed.
+
 ## Environment
 
 Identical to Phase 1: production build (`next build && next start`), the
@@ -204,3 +214,96 @@ happened to pass. `typecheck`, `lint`, the 87-test unit suite, and the
 clean, reconfirming every number in this report and in
 [docs/35](35-phase-2a-rls-verification.md) was current at final delivery
 time, not stale from an earlier pass.
+
+## Phase 2A.1 E2E re-verification
+
+Phase 2A.1 (docs/37, docs/38) touched navigation, four detail/list pages,
+and the Job Summary form, so the full suite was re-run rather than just
+the new tests. **Final result: 58/58 PASS.**
+
+### A genuine environment issue: browser/server memory contention, not a code bug
+
+The first full-suite run (default `workers: 2`) failed dramatically: 7
+tests passed, then every subsequent test across completely unrelated spec
+files (`clients`, `contacts`, `notes-activities`, `opportunities`,
+`permissions`, `pipeline`) failed with a blank white page and a
+`toBeVisible` timeout. This was investigated, not assumed to be another
+network blip:
+
+1. A blank-page screenshot ruled out a normal application error (which
+   renders Next.js's own error page, not a blank one).
+2. `curl` confirmed both the app server and Supabase were healthy and
+   fast — ruling out the network-outage class of problem from the
+   previous verification pass.
+3. A one-off diagnostic spec, run directly, showed the *auth setup*
+   tests themselves — a plain sign-in against a static page, unrelated
+   to any change in this fix — timing out for 2 of 5 parallel workers
+   while the other 3 completed in 2-4 seconds each.
+4. `tasklist` showed 6 stray `node.exe` processes left over from an
+   earlier interrupted run; killing them and re-running still showed the
+   same pattern.
+5. Direct measurement (`Get-CimInstance Win32_OperatingSystem`) showed
+   only **2.02 GB of 15.31 GB RAM free** on this machine at the time —
+   severe memory pressure. Re-running the Playwright auth setup alone
+   with `--workers=1` passed all 5 cases reliably in under 3 seconds
+   each; `--workers=2` (running two Chromium instances plus the Next.js
+   server concurrently) was intermittently exceeding what this specific
+   sandbox's available memory could sustain without swapping.
+
+This is an environment condition local to this session's sandbox, not a
+regression introduced by this fix or a defect in the test suite's design
+(the checked-in `playwright.config.ts` `workers: 2` is unchanged — this
+was worked around via a one-off `--workers=1` CLI flag for this
+verification run, not a permanent config edit). It is recorded here in
+the interest of not silently discarding a large batch of red test results
+without explaining why they don't count.
+
+### Two real bugs found and fixed by this pass
+
+With `--workers=1` isolating genuine failures from environment noise, two
+real, code-level bugs surfaced (not network, not memory):
+
+1. **`tests/e2e/notes-activities.spec.ts`** — "a note on the project does
+   not appear on the client" still called `/projects/new`, which (as of
+   this fix) unconditionally redirects to `/proposals` — the form it
+   expected never renders. This test was missed by the initial
+   Pipeline/Projects survey because that survey was scoped to the files
+   explicitly named in the brief and to a grep for `/pipeline`/`/projects`
+   *links and headings*, not to every test file that happened to use
+   `/projects/new` as a means to an unrelated end (testing note
+   scoping, not testing Projects itself). Fixed by replacing the
+   project-vs-client scoping pairing with a client-vs-client pairing
+   (still real, still meaningful resource-scoping coverage, using only
+   UI that still exists) — see docs/38's "Tests updated" for the full
+   reasoning.
+2. **`tests/e2e/permissions.spec.ts`** — "can view clients/opportunities/proposals"
+   failed with a Playwright strict-mode violation:
+   `getByRole("heading", { name: "Proposals" })` matched *two* elements
+   (the page's `<h1>Proposals</h1>` and an empty-state `<h3>No proposals
+   yet</h3>`, both containing "Proposals" as a substring). This was a bug
+   in this fix's own test edit, not a pre-existing one — introduced when
+   adapting the test from Projects to Proposals — fixed with
+   `{ name: "Proposals", exact: true }`.
+
+Both were verified fixed by re-running the affected files in isolation
+(17/17 passed), then confirmed by a full clean single-worker run
+(58/58 passed, 9.2 minutes).
+
+### Updated/new spec files in this pass
+
+- `tests/e2e/pipeline.spec.ts` / `pipeline.mobile.spec.ts` — rewritten
+  from kanban-UI tests to redirect + absence tests (3 + 2 cases).
+- `tests/e2e/projects.spec.ts` — rewritten from Projects-CRUD-UI tests to
+  redirect + absence + Client/Opportunity-detail-no-longer-shows-Projects
+  tests (7 cases).
+- `tests/e2e/permissions.spec.ts` — Viewer/Sales/Field-Worker cases
+  adapted per docs/38 (net: -1 case, the Sales/Projects test removed as
+  superseded by existing Proposals coverage).
+- `tests/e2e/notes-activities.spec.ts` — one case adapted (see bug #1
+  above); test count unchanged.
+- `tests/e2e/proposals.spec.ts` — 2 new cases for
+  `update_proposal_scope` (see docs/37).
+
+Net change from the Phase 2A baseline (55): -1 (old projects.spec.ts had
+6 cases, new has 7, net +1) +2 (pipeline.spec.ts) +1 (pipeline.mobile) -1
+(permissions.spec.ts) +2 (Job Summary) = **58**.

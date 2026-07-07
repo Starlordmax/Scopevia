@@ -22,15 +22,26 @@ Storage uploads.
 | `tests/rls/tenant-isolation.test.ts` (Phase 0) | 40 | PASS |
 | `tests/rls/phase1-crm.test.ts` (Phase 1) | 28 | PASS |
 | `tests/rls/phase1-restore.test.ts` (Phase 1) | 27 | PASS |
-| `tests/rls/phase2a-proposals.test.ts` (Phase 2A) | 34 | PASS |
+| `tests/rls/phase2a-proposals.test.ts` (Phase 2A + 2A.1) | 48 | PASS |
 | `tests/rls/phase2a-storage.test.ts` (Phase 2A) | 14 | PASS |
-| **Total** | **143** | **143/143 PASS, zero regressions** |
+| **Total** | **157** | **157/157 PASS, zero regressions** |
 
-(One run during this phase showed a single flaky failure in
+`phase2a-proposals.test.ts` grew from 34 to 48 tests in Phase 2A.1: a new
+`describe("update_proposal_scope (Job summary)")` block with 14 cases —
+see [docs/37](37-proposal-scope-rpc-fix.md) for what it covers and why it
+was needed (the original Phase 2A suite never actually exercised this
+RPC).
+
+(One run during Phase 2A showed a single flaky failure in
 `tenant-isolation.test.ts`'s "exactly one of two concurrent demotions… is
 rejected" concurrency test — passed cleanly on immediate retry, unrelated
-to any Phase 2A change, no RLS/permission code touched by this phase. Not
-counted as a regression.)
+to any Phase 2A change, no RLS/permission code touched by this phase. The
+same test flaked once more during Phase 2A.1's verification of this fix,
+again confirmed to pass cleanly (40/40) when the file was re-run in
+isolation immediately afterward. Neither instance is counted as a
+regression; this specific concurrency test's occasional flakiness under
+full-suite parallel load, independent of any code in this repo, is now a
+recognized pattern across two separate phases.)
 
 ## What `phase2a-proposals.test.ts` covers
 
@@ -52,7 +63,10 @@ proposal" guarantee; tenant proposal settings (idempotent get-or-create,
 permission-gated update, concurrency-safe numbering); and
 `create_project_from_accepted_proposal()`'s architecture-prep behavior
 (rejected before acceptance, correct copy + idempotency once a
-`service_role`-forced `accepted` status is in place).
+`service_role`-forced `accepted` status is in place); and (Phase 2A.1)
+`update_proposal_scope`'s full optional-parameter matrix — see
+[docs/37](37-proposal-scope-rpc-fix.md) for the complete list of the 14
+cases this added.
 
 ## What `phase2a-storage.test.ts` covers
 
@@ -75,11 +89,14 @@ never merely by RLS.
 
 ## Final re-confirmation
 
-Re-run in full at final delivery time (after the Phase 2A commit, as part
-of the same pass documented in
+Re-run in full at Phase 2A final delivery time (after the Phase 2A
+commit, as part of the same pass documented in
 [docs/36](36-phase-2a-e2e-verification.md#a-second-environment-stability-episode-at-final-delivery)'s
 "second environment-stability episode"): **143/143 PASS**, no changes,
 confirming these numbers were current and not stale.
+
+A further Phase 2A.1 re-run (after the `update_proposal_scope` fix and
+its 14 new tests): **157/157 PASS** — see the Results table above.
 
 ## Known limitation carried forward
 

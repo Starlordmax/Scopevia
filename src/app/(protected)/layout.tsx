@@ -21,22 +21,19 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   const user = await requireUser();
   const { tenant, tenants } = await requireActiveTenant();
 
-  const [canViewProposals, canViewClients, canViewOpportunities, canViewProjects, canViewPortfolio, canViewMembers, canViewProposalSettings] =
-    await Promise.all([
-      hasPermission(tenant.tenant_id, PERMISSIONS.PROPOSALS_VIEW),
-      hasPermission(tenant.tenant_id, PERMISSIONS.CLIENTS_VIEW),
-      hasPermission(tenant.tenant_id, PERMISSIONS.OPPORTUNITIES_VIEW),
-      hasPermission(tenant.tenant_id, PERMISSIONS.PROJECTS_VIEW),
-      hasPermission(tenant.tenant_id, PERMISSIONS.PORTFOLIO_VIEW),
-      hasPermission(tenant.tenant_id, PERMISSIONS.MEMBERS_VIEW),
-      hasPermission(tenant.tenant_id, PERMISSIONS.PROPOSAL_SETTINGS_VIEW),
-    ]);
+  const [canViewProposals, canCreateProposal, canViewClients, canViewPortfolio, canViewMembers, canViewProposalSettings] = await Promise.all([
+    hasPermission(tenant.tenant_id, PERMISSIONS.PROPOSALS_VIEW),
+    hasPermission(tenant.tenant_id, PERMISSIONS.PROPOSALS_CREATE),
+    hasPermission(tenant.tenant_id, PERMISSIONS.CLIENTS_VIEW),
+    hasPermission(tenant.tenant_id, PERMISSIONS.PORTFOLIO_VIEW),
+    hasPermission(tenant.tenant_id, PERMISSIONS.MEMBERS_VIEW),
+    hasPermission(tenant.tenant_id, PERMISSIONS.PROPOSAL_SETTINGS_VIEW),
+  ]);
 
   const navItems = buildNavItems({
     canViewProposals,
+    canCreateProposal,
     canViewClients,
-    canViewOpportunities,
-    canViewProjects,
     canViewPortfolio,
     canViewMembers,
     canViewProposalSettings,
@@ -72,7 +69,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
         <main className="app-main">{children}</main>
 
-        <BottomNav items={navItems.bottomNav} />
+        <BottomNav items={navItems.bottomNav} more={navItems.more} />
       </div>
     </div>
   );
