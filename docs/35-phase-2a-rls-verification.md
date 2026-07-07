@@ -73,6 +73,14 @@ referencing a different tenant's `media_assets`, and a
 all three rejected by Postgres itself with `23503 foreign_key_violation`,
 never merely by RLS.
 
+## Final re-confirmation
+
+Re-run in full at final delivery time (after the Phase 2A commit, as part
+of the same pass documented in
+[docs/36](36-phase-2a-e2e-verification.md#a-second-environment-stability-episode-at-final-delivery)'s
+"second environment-stability episode"): **143/143 PASS**, no changes,
+confirming these numbers were current and not stale.
+
 ## Known limitation carried forward
 
 Same as Phase 1: no per-assignment RLS. Field Worker's proposal/media

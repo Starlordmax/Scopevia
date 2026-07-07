@@ -8,6 +8,14 @@ repeated twice in isolation, 0 failures) — see "A note on environment
 stability" for a real instability encountered mid-verification and how it
 was resolved (not papered over).
 
+A second, independent full-suite run was performed at final delivery time
+(post-commit, as a pre-report sanity check) and is recorded in full in "A
+second environment-stability episode at final delivery" below: it hit a
+severe network outage (7 failures, all infra-attributable) that was
+diagnosed and confirmed external before being retried; the retry passed
+**55/55 clean** in 5.2 minutes with zero network-error noise, reconfirming
+this document's numbers were not stale.
+
 ## Environment
 
 Identical to Phase 1: production build (`next build && next start`), the
@@ -156,3 +164,43 @@ The full-flow test (`proposals.spec.ts`, the longest single test in the
 suite) was additionally repeated twice in isolation with 0 failures, to
 confirm the same-URL-redirect fix (bug #4 above) was genuinely resolved
 and not a one-off pass.
+
+## A second environment-stability episode at final delivery
+
+After the commit covering all Phase 2A work, one more full 55-test run
+was performed as a final pre-report sanity check. It hit a severe,
+genuine network outage: 7 tests failed (6 Phase 0/1 tests spanning
+`opportunities`, `permissions`, plus 1 new `proposals.spec.ts` Sales-
+permissions test), every one with an infrastructure-level error signature
+— `net::ERR_NETWORK_IO_SUSPENDED`, `getaddrinfo ENOTFOUND
+msduefaopvxfjqktjymo.supabase.co`, `ECONNRESET`, and `Invalid Refresh
+Token: Already Used` (a symptom of the auth client silently retrying
+across the outage). The run's total wall-clock time was **12.8 hours**
+for a suite that normally completes in under 10 minutes — evidence the
+machine's network was suspended for an extended stretch (most likely an
+overnight sleep/suspend), not a brief blip. None of the 7 failures shared
+any signature with an application-logic problem, and the one Phase 2A
+test among them (`proposals.spec.ts` Sales permissions) failed at the
+exact same `page.goto`/`fill` infrastructure layer as the five Phase 0/1
+failures, not inside any proposal-specific assertion.
+
+This was verified, not assumed: a direct `curl` connectivity check
+immediately afterward showed both the Supabase project and an unrelated
+control host (`google.com`) fully unreachable, confirming the outage was
+external and not code-related. (A follow-up curl check briefly appeared
+to still show failure via `CRYPT_E_NO_REVOCATION_CHECK` — a Windows
+Schannel certificate-revocation-check quirk specific to `curl.exe` on
+this machine, unrelated to Node/Playwright's own TLS stack; retrying with
+`--ssl-no-revoke` confirmed the network had in fact already recovered.
+This is noted so the false-negative isn't mistaken for a second real
+outage.)
+
+Once connectivity was independently confirmed healthy (`curl` to both
+Supabase and the control host returning normal HTTP responses), the full
+55-test suite was re-run from a cold build: **55/55 PASS, 5.2 minutes,
+zero network-error log noise** — a clean result, not merely a retry that
+happened to pass. `typecheck`, `lint`, the 87-test unit suite, and the
+143-test RLS+Storage suite were also re-run at this point and all passed
+clean, reconfirming every number in this report and in
+[docs/35](35-phase-2a-rls-verification.md) was current at final delivery
+time, not stale from an earlier pass.
