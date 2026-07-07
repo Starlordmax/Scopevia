@@ -34,3 +34,22 @@ export function projectBadgeClass(status: string): string {
       return "";
   }
 }
+
+export function proposalBadgeClass(status: string): string {
+  switch (status) {
+    case "ready":
+    case "accepted":
+      return "badge-success";
+    case "declined":
+    case "expired":
+      return "badge-danger";
+    case "archived":
+    case "superseded":
+      return "badge-neutral";
+    case "sent":
+    case "viewed":
+      return "badge-warning";
+    default:
+      return "";
+  }
+}

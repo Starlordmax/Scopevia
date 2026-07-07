@@ -348,6 +348,15 @@ button:disabled {
   color: #ffffff;
 }
 
+.sidebar-section-label {
+  margin: 18px 10px 6px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-sidebar-text-muted);
+}
+
 .app-body {
   flex: 1;
   display: flex;
@@ -794,5 +803,125 @@ tbody tr:hover {
   td[data-label="Name"] {
     font-weight: 600;
     font-size: 1rem;
+  }
+}
+
+/* ---- Phase 2A: Proposal Builder ------------------------------------------ */
+
+.proposal-stepper {
+  display: flex;
+  overflow-x: auto;
+  gap: 4px;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.proposal-stepper-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-small);
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  border: 1px solid transparent;
+}
+
+.proposal-stepper-item[data-active="true"] {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.proposal-stepper-item[data-done="true"]:not([data-active="true"]) {
+  color: var(--color-success);
+}
+
+.proposal-stepper-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-border);
+  color: var(--color-text);
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.proposal-stepper-item[data-active="true"] .proposal-stepper-number {
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.proposal-stepper-item[data-done="true"]:not([data-active="true"]) .proposal-stepper-number {
+  background: var(--color-success);
+  color: #ffffff;
+}
+
+.pricing-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  background: var(--color-background);
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+}
+
+.pricing-summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-body);
+  color: var(--color-text-muted);
+}
+
+.pricing-summary-total {
+  border-top: 1px solid var(--color-border);
+  margin-top: 6px;
+  padding-top: 10px;
+  font-size: var(--text-section-title);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.proposal-document {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.proposal-document-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 16px;
+}
+
+.proposal-document-business {
+  font-size: var(--text-section-title);
+  font-weight: 700;
+}
+
+.proposal-document-total {
+  text-align: right;
+}
+
+@media (max-width: 900px) {
+  .proposal-stepper-label {
+    display: none;
+  }
+
+  .proposal-stepper-item {
+    padding: 8px 10px;
   }
 }

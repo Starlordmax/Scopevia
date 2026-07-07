@@ -4,7 +4,7 @@
 
 Scopevia is a mobile-first SaaS platform that helps contractors manage leads, calculate costs, produce Good/Better/Best proposals, and get paid — starting with painting contractors.
 
-This repository is currently at **Phase 1: CRM & Projects**, built on top of **Phase 0: Foundations** — authentication, multi-tenancy, roles/permissions and Row Level Security, since hardened and verified against a real Postgres instance. Phase 1 adds Clients, Contacts, Opportunities, Projects, Project Addresses, Notes, and an activity timeline. Estimating, proposals, and payments do not exist yet. See [docs/](docs/) for the full product and architecture design, [docs/14-phase-0-foundations.md](docs/14-phase-0-foundations.md) / [docs/20-phase-1-crm-and-projects.md](docs/20-phase-1-crm-and-projects.md) for what each phase implements, [docs/18-phase-0-security-hardening.md](docs/18-phase-0-security-hardening.md) / [docs/23-phase-1-rls-verification.md](docs/23-phase-1-rls-verification.md) for the security reviews, and [docs/19-phase-0-verification-evidence.md](docs/19-phase-0-verification-evidence.md) for real test-run evidence.
+This repository is currently at **Phase 2A: Proposal-centric pivot**, built on top of **Phase 1: CRM & Projects** and **Phase 0: Foundations**. The primary workflow is now Client → Opportunity → **Proposal** → *(future Sent/Viewed/Accepted)* → Project — a Project is no longer required before pricing a job. A contractor can build a professional proposal with a labor calculator, materials & costs, current-job and previous-work (Portfolio) photos, discounts/tax, and a live preview, all server-computed and tenant-isolated. Email delivery, the Client Portal, PDF generation, and payments do not exist yet. See [docs/](docs/) for the full product and architecture design, [docs/29-proposal-centric-product-pivot.md](docs/29-proposal-centric-product-pivot.md) for the pivot itself, [docs/14-phase-0-foundations.md](docs/14-phase-0-foundations.md) / [docs/20-phase-1-crm-and-projects.md](docs/20-phase-1-crm-and-projects.md) for the earlier phases, and [docs/35-phase-2a-rls-verification.md](docs/35-phase-2a-rls-verification.md) / [docs/36-phase-2a-e2e-verification.md](docs/36-phase-2a-e2e-verification.md) for real test-run evidence.
 
 ## Stack
 
@@ -33,7 +33,15 @@ Full walkthrough (installing, running migrations, creating a test user, verifyin
 
 | Doc | Covers |
 |---|---|
-| [docs/00-13](docs/) | Product vision, MVP scope, architecture, data model, security, estimating engine, roadmap, risks — the full pre-implementation design |
+| [docs/00-13](docs/) | Product vision, MVP scope, architecture, data model, security, estimating engine, roadmap, risks — the full pre-implementation design (see status notes at the top of docs/00, 01, 03, 05, 08, 12 for what's superseded by Phase 2A) |
+| [docs/29-proposal-centric-product-pivot.md](docs/29-proposal-centric-product-pivot.md) | The Phase 2A pivot: new flow, new value proposition, terminology, what's in/out of scope |
+| [docs/30-phase-2a-proposal-data-model.md](docs/30-phase-2a-proposal-data-model.md) | The 10 Phase 2A tables and the functions that mutate them |
+| [docs/31-proposal-state-machines.md](docs/31-proposal-state-machines.md) | The extended Opportunity pipeline and the new Proposal lifecycle |
+| [docs/32-proposal-calculation-engine.md](docs/32-proposal-calculation-engine.md) | Labor/line-item/discount/tax formulas, manipulation resistance, test coverage |
+| [docs/33-media-and-storage-security.md](docs/33-media-and-storage-security.md) | The private Storage bucket, RLS-equivalent policies, media model |
+| [docs/34-proposal-builder-ux.md](docs/34-proposal-builder-ux.md) | The 7-step builder, preview, dashboard, navigation |
+| [docs/35-phase-2a-rls-verification.md](docs/35-phase-2a-rls-verification.md) | Real PASS/FAIL results for Phase 2A against Postgres + Storage |
+| [docs/36-phase-2a-e2e-verification.md](docs/36-phase-2a-e2e-verification.md) | Real Playwright browser test results for the proposal flow |
 | [docs/14-phase-0-foundations.md](docs/14-phase-0-foundations.md) | What Phase 0 implements and why, including deviations from the original design |
 | [docs/15-local-development.md](docs/15-local-development.md) | Local setup, commands, troubleshooting |
 | [docs/16-environments-and-deployment.md](docs/16-environments-and-deployment.md) | Dev/staging/production separation, migrations, secrets |
@@ -52,26 +60,30 @@ Full walkthrough (installing, running migrations, creating a test user, verifyin
 
 ```text
 src/
-  app/            Next.js App Router routes (clients/opportunities/pipeline/projects added in Phase 1)
-  actions/        Server Actions (auth, tenant, membership, profile, clients, opportunities, projects, notes)
+  app/            Next.js App Router routes (clients/opportunities/pipeline/projects: Phase 1;
+                  proposals/portfolio/settings/proposals: Phase 2A)
+  actions/        Server Actions (auth, tenant, membership, profile, clients, opportunities,
+                  projects, notes, proposals, media, portfolio, proposal-settings)
   components/     Shared UI components
   lib/
     supabase/     Client separation: browser, server, middleware, admin
     auth/         Session, tenant resolution, permissions
     audit/        Application-layer audit logging
-    validation/   Zod schemas (schemas.ts: Phase 0, crm.ts: Phase 1)
-    crm/          Phase 1: state transition maps, activity labels, list-page data helpers
-    search.ts     Phase 1: safe ILIKE/PostgREST filter escaping for list-page search
+    validation/   Zod schemas (schemas.ts: Phase 0, crm.ts: Phase 1, proposals.ts: Phase 2A)
+    crm/          State transition maps, activity labels, list-page data helpers, status badges
+    proposals/    Phase 2A: calculation engine (mirror, not authority), data fetchers, formatting
+    storage/      Phase 2A: private Storage upload + signed URL helpers
+    search.ts     Safe ILIKE/PostgREST filter escaping for list-page search
   proxy.ts        Route protection (Next.js 16's successor to middleware.ts)
 supabase/
-  migrations/     Versioned SQL — schema, functions, triggers, RLS, seeds
+  migrations/     Versioned SQL — schema, functions, triggers, RLS, seeds, Storage bucket/policies
 tests/
-  unit/           Pure function tests
-  rls/            Tenant isolation + Phase 1 CRM/restore integration tests (requires a real Postgres project)
+  unit/           Pure function tests, including the proposal calculation engine
+  rls/            Tenant isolation + CRM/restore/proposal/Storage integration tests (requires a real Postgres project)
   e2e/            Playwright browser tests (requires a real Postgres project; spins up a production build)
 playwright.config.ts  Playwright config — desktop + mobile (390x844) projects
 types/
-  database.ts     Supabase types, regenerated via `npm run db:types` (one hand-patch documented inline — see file header)
+  database.ts     Supabase types, regenerated via `npm run db:types` (points at the linked project)
   enums.ts        Hand-maintained literal unions for text+CHECK "enums" not captured by codegen
 docs/             Product design + architecture documentation
 ```

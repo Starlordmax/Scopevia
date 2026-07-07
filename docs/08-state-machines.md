@@ -2,6 +2,16 @@
 
 Nota de diseño: se **fusiona** "Lead" y "Opportunity" en una única entidad/máquina de estados (`opportunities`) — ver [ADR](adr/README.md). Mantener dos tablas y dos máquinas de estado para lo que es el mismo objeto de negocio (una oportunidad comercial que evoluciona) habría duplicado lógica sin beneficio real en el MVP.
 
+> **Nota de estado (2026-07-06):** las máquinas de estado "Opportunity" y
+> "Proposal" de abajo son el diseño pre-implementación. Las versiones
+> realmente implementadas están en
+> [22-phase-1-state-machines.md](22-phase-1-state-machines.md) (Opportunity,
+> Phase 1) y [31-proposal-state-machines.md](31-proposal-state-machines.md)
+> (Opportunity extendida + Proposal, Phase 2A) — ambas más simples que lo
+> descrito aquí (por ejemplo, Proposal en Phase 2A no depende de
+> `estimate_versions`, y Opportunity nunca tuvo los estados `estimating`/
+> `negotiating` de este diseño original).
+
 ## Opportunity
 
 ```mermaid

@@ -10,7 +10,8 @@ import { NotesSection } from "../../../../components/notes-section";
 import { OpportunityStatusActions } from "./status-actions";
 import { ConvertToProjectForm } from "./convert-form";
 import { archiveOpportunityAction, restoreOpportunityAction } from "../../../../actions/opportunities";
-import { opportunityBadgeClass } from "../../../../lib/crm/status-badge";
+import { opportunityBadgeClass, proposalBadgeClass } from "../../../../lib/crm/status-badge";
+import { formatCents } from "../../../../lib/proposals/format";
 import type { OpportunityStatus } from "../../../../../types/enums";
 
 export const dynamic = "force-dynamic";
@@ -42,7 +43,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
     .eq("opportunity_id", opportunityId)
     .maybeSingle();
 
-  const [canChangeStatus, canArchive, canRestore, canConvert, notesView, notesCreate, notesUpdate, notesArchive, activitiesView] =
+  const [canChangeStatus, canArchive, canRestore, canConvert, notesView, notesCreate, notesUpdate, notesArchive, activitiesView, canViewProposals, canCreateProposal] =
     await Promise.all([
       hasPermission(tenant.tenant_id, PERMISSIONS.OPPORTUNITIES_CHANGE_STATUS),
       hasPermission(tenant.tenant_id, PERMISSIONS.OPPORTUNITIES_ARCHIVE),
@@ -53,7 +54,19 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
       hasPermission(tenant.tenant_id, PERMISSIONS.NOTES_UPDATE),
       hasPermission(tenant.tenant_id, PERMISSIONS.NOTES_ARCHIVE),
       hasPermission(tenant.tenant_id, PERMISSIONS.ACTIVITIES_VIEW),
+      hasPermission(tenant.tenant_id, PERMISSIONS.PROPOSALS_VIEW),
+      hasPermission(tenant.tenant_id, PERMISSIONS.PROPOSALS_CREATE),
     ]);
+
+  const { data: activeProposal } = canViewProposals
+    ? await supabase
+        .from("proposals")
+        .select("id, proposal_number, title, status, updated_at, proposal_versions!proposals_current_version_id_fkey(total_cents)")
+        .eq("tenant_id", tenant.tenant_id)
+        .eq("opportunity_id", opportunityId)
+        .is("archived_at", null)
+        .maybeSingle()
+    : { data: null };
 
   const [notes, activity] = await Promise.all([
     notesView ? getNotes({ opportunityId }) : Promise.resolve([]),
@@ -99,8 +112,42 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
         </div>
       ) : null}
 
+      {canViewProposals ? (
+        <div className="section-card stack">
+          <h2>Proposal</h2>
+          {activeProposal ? (
+            (() => {
+              const version = Array.isArray(activeProposal.proposal_versions)
+                ? activeProposal.proposal_versions[0]
+                : activeProposal.proposal_versions;
+              return (
+                <div className="page-header-heading">
+                  <div>
+                    <span className={`badge ${proposalBadgeClass(activeProposal.status)}`.trim()}>{activeProposal.status}</span>{" "}
+                    <span className="hint">
+                      #{activeProposal.proposal_number} · {version ? formatCents(version.total_cents) : "—"} · updated{" "}
+                      {new Date(activeProposal.updated_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <Link href={`/proposals/${activeProposal.id}`} className="button-primary">
+                    Open proposal
+                  </Link>
+                </div>
+              );
+            })()
+          ) : canCreateProposal && !isArchived ? (
+            <Link href={`/proposals/new?clientId=${opportunity.client_id}&opportunityId=${opportunityId}`} className="button-primary">
+              Create proposal
+            </Link>
+          ) : (
+            <p className="hint">No proposal yet.</p>
+          )}
+        </div>
+      ) : null}
+
       {canConvert && !existingProject && (opportunity.status === "ready_for_estimate" || opportunity.status === "won") ? (
         <div className="section-card">
+          <p className="hint">Legacy flow: convert directly to a project without a proposal.</p>
           <ConvertToProjectForm opportunityId={opportunityId} defaultName={opportunity.title} />
         </div>
       ) : null}

@@ -368,6 +368,71 @@ export type Database = {
           },
         ]
       }
+      media_assets: {
+        Row: {
+          archived_at: string | null
+          archived_by: string | null
+          caption: string
+          created_at: string
+          height: number | null
+          id: string
+          media_type: string
+          mime_type: string
+          original_filename: string
+          size_bytes: number
+          storage_bucket: string
+          storage_path: string
+          tenant_id: string
+          updated_at: string
+          uploaded_by: string
+          width: number | null
+        }
+        Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
+          caption?: string
+          created_at?: string
+          height?: number | null
+          id?: string
+          media_type: string
+          mime_type: string
+          original_filename: string
+          size_bytes: number
+          storage_bucket?: string
+          storage_path: string
+          tenant_id: string
+          updated_at?: string
+          uploaded_by: string
+          width?: number | null
+        }
+        Update: {
+          archived_at?: string | null
+          archived_by?: string | null
+          caption?: string
+          created_at?: string
+          height?: number | null
+          id?: string
+          media_type?: string
+          mime_type?: string
+          original_filename?: string
+          size_bytes?: number
+          storage_bucket?: string
+          storage_path?: string
+          tenant_id?: string
+          updated_at?: string
+          uploaded_by?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_assets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       opportunities: {
         Row: {
           archived_at: string | null
@@ -476,6 +541,111 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      portfolio_project_media: {
+        Row: {
+          caption: string
+          created_at: string
+          id: string
+          media_asset_id: string
+          portfolio_project_id: string
+          sort_order: number
+          tenant_id: string
+        }
+        Insert: {
+          caption?: string
+          created_at?: string
+          id?: string
+          media_asset_id: string
+          portfolio_project_id: string
+          sort_order?: number
+          tenant_id: string
+        }
+        Update: {
+          caption?: string
+          created_at?: string
+          id?: string
+          media_asset_id?: string
+          portfolio_project_id?: string
+          sort_order?: number
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolio_project_media_media_asset_id_tenant_id_fkey"
+            columns: ["media_asset_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "media_assets"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "portfolio_project_media_portfolio_project_id_tenant_id_fkey"
+            columns: ["portfolio_project_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "portfolio_projects"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "portfolio_project_media_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portfolio_projects: {
+        Row: {
+          archived_at: string | null
+          archived_by: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          description: string
+          id: string
+          location_label: string
+          service_type: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          description?: string
+          id?: string
+          location_label?: string
+          service_type: string
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          archived_by?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string
+          id?: string
+          location_label?: string
+          service_type?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolio_projects_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -684,6 +854,503 @@ export type Database = {
           },
         ]
       }
+      proposal_creation_requests: {
+        Row: {
+          created_at: string
+          idempotency_key: string
+          proposal_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          idempotency_key: string
+          proposal_id?: string | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          idempotency_key?: string
+          proposal_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_creation_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_labor_items: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          estimated_days: number
+          hourly_rate_cents: number
+          hours_per_day: number
+          id: string
+          label: string
+          proposal_version_id: string
+          sort_order: number
+          tenant_id: string
+          total_cents: number
+          total_hours: number
+          updated_at: string
+          worker_count: number
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          estimated_days: number
+          hourly_rate_cents: number
+          hours_per_day: number
+          id?: string
+          label: string
+          proposal_version_id: string
+          sort_order?: number
+          tenant_id: string
+          total_cents?: number
+          total_hours?: number
+          updated_at?: string
+          worker_count: number
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          estimated_days?: number
+          hourly_rate_cents?: number
+          hours_per_day?: number
+          id?: string
+          label?: string
+          proposal_version_id?: string
+          sort_order?: number
+          tenant_id?: string
+          total_cents?: number
+          total_hours?: number
+          updated_at?: string
+          worker_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_labor_items_proposal_version_id_tenant_id_fkey"
+            columns: ["proposal_version_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_versions"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_labor_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_line_items: {
+        Row: {
+          archived_at: string | null
+          category: string
+          created_at: string
+          description: string
+          id: string
+          line_total_cents: number
+          proposal_version_id: string
+          quantity: number
+          section_id: string | null
+          sort_order: number
+          taxable: boolean
+          tenant_id: string
+          unit: string
+          unit_price_cents: number
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          category: string
+          created_at?: string
+          description: string
+          id?: string
+          line_total_cents?: number
+          proposal_version_id: string
+          quantity: number
+          section_id?: string | null
+          sort_order?: number
+          taxable?: boolean
+          tenant_id: string
+          unit: string
+          unit_price_cents: number
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          category?: string
+          created_at?: string
+          description?: string
+          id?: string
+          line_total_cents?: number
+          proposal_version_id?: string
+          quantity?: number
+          section_id?: string | null
+          sort_order?: number
+          taxable?: boolean
+          tenant_id?: string
+          unit?: string
+          unit_price_cents?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_line_items_proposal_version_id_tenant_id_fkey"
+            columns: ["proposal_version_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_versions"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_line_items_section_id_tenant_id_fkey"
+            columns: ["section_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_sections"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_line_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_media: {
+        Row: {
+          archived_at: string | null
+          caption: string
+          created_at: string
+          id: string
+          media_asset_id: string
+          portfolio_project_id: string | null
+          proposal_version_id: string
+          sort_order: number
+          tenant_id: string
+          usage_type: string
+        }
+        Insert: {
+          archived_at?: string | null
+          caption?: string
+          created_at?: string
+          id?: string
+          media_asset_id: string
+          portfolio_project_id?: string | null
+          proposal_version_id: string
+          sort_order?: number
+          tenant_id: string
+          usage_type: string
+        }
+        Update: {
+          archived_at?: string | null
+          caption?: string
+          created_at?: string
+          id?: string
+          media_asset_id?: string
+          portfolio_project_id?: string | null
+          proposal_version_id?: string
+          sort_order?: number
+          tenant_id?: string
+          usage_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_media_media_asset_id_tenant_id_fkey"
+            columns: ["media_asset_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "media_assets"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_media_portfolio_project_id_tenant_id_fkey"
+            columns: ["portfolio_project_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "portfolio_projects"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_media_proposal_version_id_tenant_id_fkey"
+            columns: ["proposal_version_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_versions"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_media_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_sections: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          description: string
+          id: string
+          proposal_version_id: string
+          section_type: string
+          sort_order: number
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          proposal_version_id: string
+          section_type?: string
+          sort_order?: number
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          proposal_version_id?: string
+          section_type?: string
+          sort_order?: number
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_sections_proposal_version_id_tenant_id_fkey"
+            columns: ["proposal_version_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_versions"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_sections_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_versions: {
+        Row: {
+          calculation_version: number
+          created_at: string
+          created_by: string
+          default_hours_per_day: number | null
+          discount_cents: number
+          discount_type: string
+          discount_value: number
+          estimated_duration_days: number | null
+          estimated_start_date: string | null
+          exclusions: string
+          id: string
+          labor_total_cents: number
+          line_items_subtotal_cents: number
+          locked_at: string | null
+          notes_for_client: string
+          proposal_id: string
+          scope_intro: string | null
+          subtotal_cents: number
+          summary: string | null
+          tax_cents: number
+          tax_rate_bps: number
+          taxable_subtotal_cents: number
+          tenant_id: string
+          terms: string
+          total_cents: number
+          updated_at: string
+          version_number: number
+          version_status: string
+        }
+        Insert: {
+          calculation_version?: number
+          created_at?: string
+          created_by: string
+          default_hours_per_day?: number | null
+          discount_cents?: number
+          discount_type?: string
+          discount_value?: number
+          estimated_duration_days?: number | null
+          estimated_start_date?: string | null
+          exclusions?: string
+          id?: string
+          labor_total_cents?: number
+          line_items_subtotal_cents?: number
+          locked_at?: string | null
+          notes_for_client?: string
+          proposal_id: string
+          scope_intro?: string | null
+          subtotal_cents?: number
+          summary?: string | null
+          tax_cents?: number
+          tax_rate_bps?: number
+          taxable_subtotal_cents?: number
+          tenant_id: string
+          terms?: string
+          total_cents?: number
+          updated_at?: string
+          version_number: number
+          version_status?: string
+        }
+        Update: {
+          calculation_version?: number
+          created_at?: string
+          created_by?: string
+          default_hours_per_day?: number | null
+          discount_cents?: number
+          discount_type?: string
+          discount_value?: number
+          estimated_duration_days?: number | null
+          estimated_start_date?: string | null
+          exclusions?: string
+          id?: string
+          labor_total_cents?: number
+          line_items_subtotal_cents?: number
+          locked_at?: string | null
+          notes_for_client?: string
+          proposal_id?: string
+          scope_intro?: string | null
+          subtotal_cents?: number
+          summary?: string | null
+          tax_cents?: number
+          tax_rate_bps?: number
+          taxable_subtotal_cents?: number
+          tenant_id?: string
+          terms?: string
+          total_cents?: number
+          updated_at?: string
+          version_number?: number
+          version_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_versions_proposal_id_tenant_id_fkey"
+            columns: ["proposal_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_versions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposals: {
+        Row: {
+          archived_at: string | null
+          archived_by: string | null
+          client_contact_id: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          current_version_id: string | null
+          id: string
+          opportunity_id: string | null
+          pre_archive_status: string | null
+          proposal_number: number
+          service_type: string
+          source: string
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
+          client_contact_id?: string | null
+          client_id: string
+          created_at?: string
+          created_by: string
+          current_version_id?: string | null
+          id?: string
+          opportunity_id?: string | null
+          pre_archive_status?: string | null
+          proposal_number: number
+          service_type: string
+          source: string
+          status?: string
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          archived_by?: string | null
+          client_contact_id?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          current_version_id?: string | null
+          id?: string
+          opportunity_id?: string | null
+          pre_archive_status?: string | null
+          proposal_number?: number
+          service_type?: string
+          source?: string
+          status?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposals_client_contact_id_tenant_id_fkey"
+            columns: ["client_contact_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "client_contacts"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposals_client_id_tenant_id_fkey"
+            columns: ["client_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposals_current_version_id_fkey"
+            columns: ["current_version_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_versions"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposals_opportunity_id_tenant_id_fkey"
+            columns: ["opportunity_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposals_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       role_permissions: {
         Row: {
           created_at: string
@@ -809,6 +1476,59 @@ export type Database = {
           },
         ]
       }
+      tenant_proposal_settings: {
+        Row: {
+          created_at: string
+          currency_code: string
+          default_customer_hourly_rate_cents: number
+          default_exclusions: string
+          default_hours_per_day: number
+          default_proposal_valid_days: number
+          default_tax_rate_bps: number
+          default_terms: string
+          next_proposal_number: number
+          proposal_number_prefix: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency_code?: string
+          default_customer_hourly_rate_cents?: number
+          default_exclusions?: string
+          default_hours_per_day?: number
+          default_proposal_valid_days?: number
+          default_tax_rate_bps?: number
+          default_terms?: string
+          next_proposal_number?: number
+          proposal_number_prefix?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency_code?: string
+          default_customer_hourly_rate_cents?: number
+          default_exclusions?: string
+          default_hours_per_day?: number
+          default_proposal_valid_days?: number
+          default_tax_rate_bps?: number
+          default_terms?: string
+          next_proposal_number?: number
+          proposal_number_prefix?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_proposal_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           created_at: string
@@ -866,6 +1586,129 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      add_portfolio_project_media: {
+        Args: {
+          p_caption?: string
+          p_media_asset_id: string
+          p_portfolio_project_id: string
+          p_sort_order?: number
+        }
+        Returns: {
+          caption: string
+          created_at: string
+          id: string
+          media_asset_id: string
+          portfolio_project_id: string
+          sort_order: number
+          tenant_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "portfolio_project_media"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      add_proposal_labor_item: {
+        Args: {
+          p_estimated_days: number
+          p_hourly_rate_cents: number
+          p_hours_per_day: number
+          p_label: string
+          p_proposal_version_id: string
+          p_sort_order?: number
+          p_worker_count: number
+        }
+        Returns: {
+          archived_at: string | null
+          created_at: string
+          estimated_days: number
+          hourly_rate_cents: number
+          hours_per_day: number
+          id: string
+          label: string
+          proposal_version_id: string
+          sort_order: number
+          tenant_id: string
+          total_cents: number
+          total_hours: number
+          updated_at: string
+          worker_count: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_labor_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      add_proposal_line_item: {
+        Args: {
+          p_category: string
+          p_description: string
+          p_proposal_version_id: string
+          p_quantity: number
+          p_section_id?: string
+          p_sort_order?: number
+          p_taxable?: boolean
+          p_unit: string
+          p_unit_price_cents: number
+        }
+        Returns: {
+          archived_at: string | null
+          category: string
+          created_at: string
+          description: string
+          id: string
+          line_total_cents: number
+          proposal_version_id: string
+          quantity: number
+          section_id: string | null
+          sort_order: number
+          taxable: boolean
+          tenant_id: string
+          unit: string
+          unit_price_cents: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_line_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      add_proposal_section: {
+        Args: {
+          p_description?: string
+          p_proposal_version_id: string
+          p_section_type?: string
+          p_sort_order?: number
+          p_title: string
+        }
+        Returns: {
+          archived_at: string | null
+          created_at: string
+          description: string
+          id: string
+          proposal_version_id: string
+          section_type: string
+          sort_order: number
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_sections"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      allocate_next_proposal_number: {
+        Args: { p_tenant_id: string }
+        Returns: number
       }
       archive_client: {
         Args: { p_client_id: string }
@@ -975,6 +1818,29 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      archive_portfolio_project: {
+        Args: { p_portfolio_project_id: string }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          description: string
+          id: string
+          location_label: string
+          service_type: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "portfolio_projects"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       archive_project: {
         Args: { p_project_id: string }
         Returns: {
@@ -1029,6 +1895,134 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "project_addresses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      archive_proposal: {
+        Args: { p_proposal_id: string }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          client_contact_id: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          current_version_id: string | null
+          id: string
+          opportunity_id: string | null
+          pre_archive_status: string | null
+          proposal_number: number
+          service_type: string
+          source: string
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposals"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      archive_proposal_labor_item: {
+        Args: { p_labor_item_id: string }
+        Returns: {
+          archived_at: string | null
+          created_at: string
+          estimated_days: number
+          hourly_rate_cents: number
+          hours_per_day: number
+          id: string
+          label: string
+          proposal_version_id: string
+          sort_order: number
+          tenant_id: string
+          total_cents: number
+          total_hours: number
+          updated_at: string
+          worker_count: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_labor_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      archive_proposal_line_item: {
+        Args: { p_line_item_id: string }
+        Returns: {
+          archived_at: string | null
+          category: string
+          created_at: string
+          description: string
+          id: string
+          line_total_cents: number
+          proposal_version_id: string
+          quantity: number
+          section_id: string | null
+          sort_order: number
+          taxable: boolean
+          tenant_id: string
+          unit: string
+          unit_price_cents: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_line_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      archive_proposal_section: {
+        Args: { p_section_id: string }
+        Returns: {
+          archived_at: string | null
+          created_at: string
+          description: string
+          id: string
+          proposal_version_id: string
+          section_type: string
+          sort_order: number
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_sections"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      attach_media_to_proposal: {
+        Args: {
+          p_caption?: string
+          p_media_asset_id: string
+          p_portfolio_project_id?: string
+          p_proposal_version_id: string
+          p_sort_order?: number
+          p_usage_type: string
+        }
+        Returns: {
+          archived_at: string | null
+          caption: string
+          created_at: string
+          id: string
+          media_asset_id: string
+          portfolio_project_id: string | null
+          proposal_version_id: string
+          sort_order: number
+          tenant_id: string
+          usage_type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_media"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -1215,6 +2209,84 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_initial_proposal_version: {
+        Args: { p_actor: string; p_proposal_id: string; p_tenant_id: string }
+        Returns: {
+          calculation_version: number
+          created_at: string
+          created_by: string
+          default_hours_per_day: number | null
+          discount_cents: number
+          discount_type: string
+          discount_value: number
+          estimated_duration_days: number | null
+          estimated_start_date: string | null
+          exclusions: string
+          id: string
+          labor_total_cents: number
+          line_items_subtotal_cents: number
+          locked_at: string | null
+          notes_for_client: string
+          proposal_id: string
+          scope_intro: string | null
+          subtotal_cents: number
+          summary: string | null
+          tax_cents: number
+          tax_rate_bps: number
+          taxable_subtotal_cents: number
+          tenant_id: string
+          terms: string
+          total_cents: number
+          updated_at: string
+          version_number: number
+          version_status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_versions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_new_proposal_version: {
+        Args: { p_proposal_id: string }
+        Returns: {
+          calculation_version: number
+          created_at: string
+          created_by: string
+          default_hours_per_day: number | null
+          discount_cents: number
+          discount_type: string
+          discount_value: number
+          estimated_duration_days: number | null
+          estimated_start_date: string | null
+          exclusions: string
+          id: string
+          labor_total_cents: number
+          line_items_subtotal_cents: number
+          locked_at: string | null
+          notes_for_client: string
+          proposal_id: string
+          scope_intro: string | null
+          subtotal_cents: number
+          summary: string | null
+          tax_cents: number
+          tax_rate_bps: number
+          taxable_subtotal_cents: number
+          tenant_id: string
+          terms: string
+          total_cents: number
+          updated_at: string
+          version_number: number
+          version_status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_versions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_note: {
         Args: {
           p_body: string
@@ -1277,6 +2349,36 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "opportunities"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_portfolio_project: {
+        Args: {
+          p_completed_at?: string
+          p_description?: string
+          p_location_label?: string
+          p_service_type: string
+          p_tenant_id: string
+          p_title: string
+        }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          description: string
+          id: string
+          location_label: string
+          service_type: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "portfolio_projects"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -1357,6 +2459,77 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_proposal_direct: {
+        Args: {
+          p_client_contact_id?: string
+          p_client_id: string
+          p_idempotency_key?: string
+          p_opportunity_id?: string
+          p_service_type: string
+          p_tenant_id: string
+          p_title: string
+        }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          client_contact_id: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          current_version_id: string | null
+          id: string
+          opportunity_id: string | null
+          pre_archive_status: string | null
+          proposal_number: number
+          service_type: string
+          source: string
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposals"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_proposal_from_opportunity: {
+        Args: {
+          p_client_contact_id?: string
+          p_idempotency_key?: string
+          p_opportunity_id: string
+          p_service_type: string
+          p_tenant_id: string
+          p_title: string
+        }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          client_contact_id: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          current_version_id: string | null
+          id: string
+          opportunity_id: string | null
+          pre_archive_status: string | null
+          proposal_number: number
+          service_type: string
+          source: string
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposals"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_tenant_with_owner: {
         Args: { p_name: string; p_slug: string }
         Returns: {
@@ -1376,6 +2549,33 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      detach_media_from_proposal: {
+        Args: { p_proposal_media_id: string }
+        Returns: undefined
+      }
+      ensure_tenant_proposal_settings: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          created_at: string
+          currency_code: string
+          default_customer_hourly_rate_cents: number
+          default_exclusions: string
+          default_hours_per_day: number
+          default_proposal_valid_days: number
+          default_tax_rate_bps: number
+          default_terms: string
+          next_proposal_number: number
+          proposal_number_prefix: string
+          tenant_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tenant_proposal_settings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       get_pending_invitations: {
         Args: never
         Returns: {
@@ -1385,6 +2585,29 @@ export type Database = {
           tenant_id: string
           tenant_name: string
         }[]
+      }
+      get_tenant_proposal_settings: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          created_at: string
+          currency_code: string
+          default_customer_hourly_rate_cents: number
+          default_exclusions: string
+          default_hours_per_day: number
+          default_proposal_valid_days: number
+          default_tax_rate_bps: number
+          default_terms: string
+          next_proposal_number: number
+          proposal_number_prefix: string
+          tenant_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tenant_proposal_settings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       get_user_tenants: {
         Args: never
@@ -1425,17 +2648,12 @@ export type Database = {
       log_audit_event: {
         Args: {
           p_action: string
-          // Hand-corrected: p_actor_user_id/p_tenant_id have no SQL DEFAULT
-          // (so codegen can't mark them optional) but their column type is a
-          // nullable uuid, and application code (src/lib/audit/log.ts) must
-          // be able to pass an explicit null for tenant-less events like
-          // auth.signed_in. Keep this in sync if the migration changes.
-          p_actor_user_id: string | null
+          p_actor_user_id: string
           p_entity_id: string
           p_entity_type: string
           p_ip_address?: string
           p_metadata?: Json
-          p_tenant_id: string | null
+          p_tenant_id: string
           p_user_agent?: string
         }
         Returns: string
@@ -1451,6 +2669,114 @@ export type Database = {
           p_tenant_id: string
         }
         Returns: string
+      }
+      mark_proposal_ready: {
+        Args: { p_proposal_id: string }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          client_contact_id: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          current_version_id: string | null
+          id: string
+          opportunity_id: string | null
+          pre_archive_status: string | null
+          proposal_number: number
+          service_type: string
+          source: string
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposals"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      recalculate_proposal_version: {
+        Args: { p_proposal_version_id: string }
+        Returns: {
+          calculation_version: number
+          created_at: string
+          created_by: string
+          default_hours_per_day: number | null
+          discount_cents: number
+          discount_type: string
+          discount_value: number
+          estimated_duration_days: number | null
+          estimated_start_date: string | null
+          exclusions: string
+          id: string
+          labor_total_cents: number
+          line_items_subtotal_cents: number
+          locked_at: string | null
+          notes_for_client: string
+          proposal_id: string
+          scope_intro: string | null
+          subtotal_cents: number
+          summary: string | null
+          tax_cents: number
+          tax_rate_bps: number
+          taxable_subtotal_cents: number
+          tenant_id: string
+          terms: string
+          total_cents: number
+          updated_at: string
+          version_number: number
+          version_status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_versions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      register_media_asset: {
+        Args: {
+          p_caption?: string
+          p_height?: number
+          p_media_type: string
+          p_mime_type: string
+          p_original_filename: string
+          p_size_bytes: number
+          p_storage_path: string
+          p_tenant_id: string
+          p_width?: number
+        }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          caption: string
+          created_at: string
+          height: number | null
+          id: string
+          media_type: string
+          mime_type: string
+          original_filename: string
+          size_bytes: number
+          storage_bucket: string
+          storage_path: string
+          tenant_id: string
+          updated_at: string
+          uploaded_by: string
+          width: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "media_assets"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      reorder_proposal_sections: {
+        Args: { p_proposal_version_id: string; p_section_ids: string[] }
+        Returns: undefined
       }
       restore_client: {
         Args: { p_client_id: string }
@@ -1538,6 +2864,29 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      restore_portfolio_project: {
+        Args: { p_portfolio_project_id: string }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          description: string
+          id: string
+          location_label: string
+          service_type: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "portfolio_projects"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       restore_project: {
         Args: { p_project_id: string }
         Returns: {
@@ -1592,6 +2941,62 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "project_addresses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      restore_proposal: {
+        Args: { p_proposal_id: string }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          client_contact_id: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          current_version_id: string | null
+          id: string
+          opportunity_id: string | null
+          pre_archive_status: string | null
+          proposal_number: number
+          service_type: string
+          source: string
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposals"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      return_proposal_to_draft: {
+        Args: { p_proposal_id: string }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          client_contact_id: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          current_version_id: string | null
+          id: string
+          opportunity_id: string | null
+          pre_archive_status: string | null
+          proposal_number: number
+          service_type: string
+          source: string
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposals"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -1652,6 +3057,11 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      sync_opportunity_to_proposal_in_progress: {
+        Args: { p_opportunity_id: string; p_tenant_id: string }
+        Returns: undefined
+      }
+      try_parse_uuid: { Args: { p_text: string }; Returns: string }
       update_client: {
         Args: {
           p_client_id: string
@@ -1815,6 +3225,36 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      update_portfolio_project: {
+        Args: {
+          p_completed_at: string
+          p_description: string
+          p_location_label: string
+          p_portfolio_project_id: string
+          p_service_type: string
+          p_title: string
+        }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          description: string
+          id: string
+          location_label: string
+          service_type: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "portfolio_projects"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       update_project: {
         Args: {
           p_assigned_to?: string
@@ -1886,6 +3326,222 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "project_addresses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_proposal_labor_item: {
+        Args: {
+          p_estimated_days: number
+          p_hourly_rate_cents: number
+          p_hours_per_day: number
+          p_label: string
+          p_labor_item_id: string
+          p_worker_count: number
+        }
+        Returns: {
+          archived_at: string | null
+          created_at: string
+          estimated_days: number
+          hourly_rate_cents: number
+          hours_per_day: number
+          id: string
+          label: string
+          proposal_version_id: string
+          sort_order: number
+          tenant_id: string
+          total_cents: number
+          total_hours: number
+          updated_at: string
+          worker_count: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_labor_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_proposal_line_item: {
+        Args: {
+          p_category: string
+          p_description: string
+          p_line_item_id: string
+          p_quantity: number
+          p_taxable: boolean
+          p_unit: string
+          p_unit_price_cents: number
+        }
+        Returns: {
+          archived_at: string | null
+          category: string
+          created_at: string
+          description: string
+          id: string
+          line_total_cents: number
+          proposal_version_id: string
+          quantity: number
+          section_id: string | null
+          sort_order: number
+          taxable: boolean
+          tenant_id: string
+          unit: string
+          unit_price_cents: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_line_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_proposal_pricing: {
+        Args: {
+          p_discount_type: string
+          p_discount_value: number
+          p_exclusions: string
+          p_notes_for_client: string
+          p_proposal_version_id: string
+          p_tax_rate_bps: number
+          p_terms: string
+        }
+        Returns: {
+          calculation_version: number
+          created_at: string
+          created_by: string
+          default_hours_per_day: number | null
+          discount_cents: number
+          discount_type: string
+          discount_value: number
+          estimated_duration_days: number | null
+          estimated_start_date: string | null
+          exclusions: string
+          id: string
+          labor_total_cents: number
+          line_items_subtotal_cents: number
+          locked_at: string | null
+          notes_for_client: string
+          proposal_id: string
+          scope_intro: string | null
+          subtotal_cents: number
+          summary: string | null
+          tax_cents: number
+          tax_rate_bps: number
+          taxable_subtotal_cents: number
+          tenant_id: string
+          terms: string
+          total_cents: number
+          updated_at: string
+          version_number: number
+          version_status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_versions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_proposal_scope: {
+        Args: {
+          p_estimated_duration_days: number
+          p_estimated_start_date: string
+          p_proposal_version_id: string
+          p_scope_intro: string
+          p_summary: string
+        }
+        Returns: {
+          calculation_version: number
+          created_at: string
+          created_by: string
+          default_hours_per_day: number | null
+          discount_cents: number
+          discount_type: string
+          discount_value: number
+          estimated_duration_days: number | null
+          estimated_start_date: string | null
+          exclusions: string
+          id: string
+          labor_total_cents: number
+          line_items_subtotal_cents: number
+          locked_at: string | null
+          notes_for_client: string
+          proposal_id: string
+          scope_intro: string | null
+          subtotal_cents: number
+          summary: string | null
+          tax_cents: number
+          tax_rate_bps: number
+          taxable_subtotal_cents: number
+          tenant_id: string
+          terms: string
+          total_cents: number
+          updated_at: string
+          version_number: number
+          version_status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_versions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_proposal_section: {
+        Args: {
+          p_description: string
+          p_section_id: string
+          p_section_type: string
+          p_title: string
+        }
+        Returns: {
+          archived_at: string | null
+          created_at: string
+          description: string
+          id: string
+          proposal_version_id: string
+          section_type: string
+          sort_order: number
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_sections"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_tenant_proposal_settings: {
+        Args: {
+          p_default_customer_hourly_rate_cents: number
+          p_default_exclusions: string
+          p_default_hours_per_day: number
+          p_default_proposal_valid_days: number
+          p_default_tax_rate_bps: number
+          p_default_terms: string
+          p_proposal_number_prefix: string
+          p_tenant_id: string
+        }
+        Returns: {
+          created_at: string
+          currency_code: string
+          default_customer_hourly_rate_cents: number
+          default_exclusions: string
+          default_hours_per_day: number
+          default_proposal_valid_days: number
+          default_tax_rate_bps: number
+          default_terms: string
+          next_proposal_number: number
+          proposal_number_prefix: string
+          tenant_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tenant_proposal_settings"
           isOneToOne: true
           isSetofReturn: false
         }

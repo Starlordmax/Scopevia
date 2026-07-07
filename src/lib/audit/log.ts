@@ -41,8 +41,15 @@ export async function logAuditEvent(input: LogAuditEventInput): Promise<void> {
   try {
     const supabase = await createClient();
     const { error } = await supabase.rpc("log_audit_event", {
-      p_tenant_id: input.tenantId,
-      p_actor_user_id: input.actorUserId,
+      // log_audit_event's p_tenant_id/p_actor_user_id are plain `uuid` SQL
+      // params — Postgres accepts NULL for any argument regardless of
+      // declared type, but the generated RPC types can't express that (no
+      // SQL syntax marks a function argument nullable), so they come out
+      // non-null here. Casting reflects that real, valid runtime behavior
+      // (a null tenant/actor for system-level events), not widening away a
+      // genuine type-safety guarantee — same reasoning as p_metadata below.
+      p_tenant_id: input.tenantId as string,
+      p_actor_user_id: input.actorUserId as string,
       p_action: input.action,
       p_entity_type: input.entityType,
       p_entity_id: input.entityId,

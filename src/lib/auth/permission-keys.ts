@@ -8,8 +8,9 @@
  *
  * Mirrors the `permissions.key` values seeded in the database — keep in
  * sync with supabase/migrations/20260701120900_seed_roles_and_permissions.sql
- * (Phase 0) and supabase/migrations/20260702131100_seed_crm_permissions.sql
- * (Phase 1).
+ * (Phase 0), supabase/migrations/20260702131100_seed_crm_permissions.sql
+ * (Phase 1), and supabase/migrations/20260706141600_seed_proposal_permissions.sql
+ * (Phase 2A).
  */
 export const PERMISSIONS = {
   TENANT_VIEW: "tenant.view",
@@ -55,6 +56,32 @@ export const PERMISSIONS = {
   NOTES_ARCHIVE: "notes.archive",
 
   ACTIVITIES_VIEW: "activities.view",
+
+  // Phase 2A: Proposal-centric pivot
+  PROPOSALS_VIEW: "proposals.view",
+  PROPOSALS_CREATE: "proposals.create",
+  PROPOSALS_UPDATE: "proposals.update",
+  PROPOSALS_ARCHIVE: "proposals.archive",
+  PROPOSALS_RESTORE: "proposals.restore",
+  PROPOSALS_MARK_READY: "proposals.mark_ready",
+  PROPOSALS_MANAGE_PRICING: "proposals.manage_pricing",
+
+  PROPOSAL_VERSIONS_CREATE: "proposal_versions.create",
+  PROPOSAL_VERSIONS_VIEW: "proposal_versions.view",
+
+  PORTFOLIO_VIEW: "portfolio.view",
+  PORTFOLIO_CREATE: "portfolio.create",
+  PORTFOLIO_UPDATE: "portfolio.update",
+  PORTFOLIO_ARCHIVE: "portfolio.archive",
+  PORTFOLIO_RESTORE: "portfolio.restore",
+
+  MEDIA_VIEW: "media.view",
+  MEDIA_UPLOAD: "media.upload",
+  MEDIA_UPDATE: "media.update",
+  MEDIA_ARCHIVE: "media.archive",
+
+  PROPOSAL_SETTINGS_VIEW: "proposal_settings.view",
+  PROPOSAL_SETTINGS_UPDATE: "proposal_settings.update",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

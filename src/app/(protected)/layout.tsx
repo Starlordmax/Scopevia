@@ -21,18 +21,30 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   const user = await requireUser();
   const { tenant, tenants } = await requireActiveTenant();
 
-  const [canViewClients, canViewOpportunities, canViewProjects, canViewMembers] = await Promise.all([
-    hasPermission(tenant.tenant_id, PERMISSIONS.CLIENTS_VIEW),
-    hasPermission(tenant.tenant_id, PERMISSIONS.OPPORTUNITIES_VIEW),
-    hasPermission(tenant.tenant_id, PERMISSIONS.PROJECTS_VIEW),
-    hasPermission(tenant.tenant_id, PERMISSIONS.MEMBERS_VIEW),
-  ]);
+  const [canViewProposals, canViewClients, canViewOpportunities, canViewProjects, canViewPortfolio, canViewMembers, canViewProposalSettings] =
+    await Promise.all([
+      hasPermission(tenant.tenant_id, PERMISSIONS.PROPOSALS_VIEW),
+      hasPermission(tenant.tenant_id, PERMISSIONS.CLIENTS_VIEW),
+      hasPermission(tenant.tenant_id, PERMISSIONS.OPPORTUNITIES_VIEW),
+      hasPermission(tenant.tenant_id, PERMISSIONS.PROJECTS_VIEW),
+      hasPermission(tenant.tenant_id, PERMISSIONS.PORTFOLIO_VIEW),
+      hasPermission(tenant.tenant_id, PERMISSIONS.MEMBERS_VIEW),
+      hasPermission(tenant.tenant_id, PERMISSIONS.PROPOSAL_SETTINGS_VIEW),
+    ]);
 
-  const navItems = buildNavItems({ canViewClients, canViewOpportunities, canViewProjects, canViewMembers });
+  const navItems = buildNavItems({
+    canViewProposals,
+    canViewClients,
+    canViewOpportunities,
+    canViewProjects,
+    canViewPortfolio,
+    canViewMembers,
+    canViewProposalSettings,
+  });
 
   return (
     <div className="app-shell">
-      <SidebarNav items={navItems} />
+      <SidebarNav items={navItems.main} adminItems={navItems.admin} />
 
       <div className="app-body">
         <header className="topbar">
@@ -60,7 +72,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
         <main className="app-main">{children}</main>
 
-        <BottomNav items={navItems} />
+        <BottomNav items={navItems.bottomNav} />
       </div>
     </div>
   );

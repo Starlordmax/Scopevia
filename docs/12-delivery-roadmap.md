@@ -2,6 +2,34 @@
 
 Fases pequeñas, cada una entregable y verificable de forma independiente. Ninguna fase implica código en esta etapa de diseño — este roadmap es la guía para las fases de implementación posteriores.
 
+> **Nota de estado (2026-07-06): este roadmap es el diseño original
+> pre-implementación y ya no refleja el orden real de ejecución.** El
+> historial real de entrega es:
+>
+> - **Phase 0 — Foundations**: implementado ([14](14-phase-0-foundations.md)).
+> - **Phase 1 — CRM & Projects**: implementado, combinando lo que aquí
+>   aparece como "Phase 1 — Organization & Membership" y "Phase 2 — CRM &
+>   Projects" ([20](20-phase-1-crm-and-projects.md)).
+> - **Phase 1.6 — UI/UX Redesign**: implementado ([26](26-phase-1.6-ui-redesign.md)).
+> - **Phase 2A — Proposal-centric pivot**: implementado
+>   ([29](29-proposal-centric-product-pivot.md)) — **cambia el orden de
+>   este roadmap**: Proposals ahora se construyó directamente después de
+>   CRM & Projects, sin depender de Catalog (Phase 3) ni del Estimating
+>   Engine (Phase 4) descritos abajo. El modelo de Proposal implementado
+>   es más simple que el `estimates`/`estimate_versions`/`estimate_options`
+>   descrito en "Phase 4" — ver [30](30-phase-2a-proposal-data-model.md) y
+>   [docs/adr/0025](adr/0025-proposal-before-project.md) para la decisión
+>   y sus razones. Project **no** es un prerequisito para cotizar — ver
+>   [29](29-proposal-centric-product-pivot.md).
+>
+> Las fases "Phase 3 — Catalog", "Phase 4 — Estimating Engine", y "Phase 6
+> — Proposals & Client Portal" descritas abajo permanecen como registro
+> del diseño original, pero su contenido sobre Proposals está
+> **superseded** por Phase 2A. Un futuro "Client Portal" (envío real,
+> OTP, aceptación externa) seguirá construyéndose sobre el modelo de
+> Phase 2A (`proposals`/`proposal_versions`), no sobre el modelo
+> `estimates`/`proposal_recipients` original.
+
 ## Phase 0 — Foundations
 
 - **Objective:** dejar lista la base técnica antes de construir features.

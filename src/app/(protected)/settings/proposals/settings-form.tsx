@@ -1,0 +1,104 @@
+"use client";
+
+import { useActionState } from "react";
+import { updateProposalSettingsAction } from "../../../../actions/proposal-settings";
+import type { ActionResult } from "../../../../actions/auth";
+import { SubmitButton } from "../../../../components/submit-button";
+import type { Database } from "../../../../../types/database";
+
+type TenantProposalSettings = Database["public"]["Tables"]["tenant_proposal_settings"]["Row"];
+
+const initialState: ActionResult = {};
+
+export function ProposalSettingsForm({ tenantId, settings }: { tenantId: string; settings: TenantProposalSettings }) {
+  const [state, formAction] = useActionState(updateProposalSettingsAction, initialState);
+
+  return (
+    <form action={formAction} className="stack">
+      {state.error ? <p className="error-banner">{state.error}</p> : null}
+      <input type="hidden" name="tenantId" value={tenantId} />
+
+      <div className="field">
+        <label htmlFor="currency">Currency</label>
+        <input id="currency" type="text" value="USD" disabled />
+        <span className="hint">Phase 2A supports USD only.</span>
+      </div>
+
+      <div className="tenant-form" style={{ width: "100%" }}>
+        <div className="field" style={{ flex: 1 }}>
+          <label htmlFor="defaultCustomerHourlyRate">Default hourly rate ($)</label>
+          <input
+            id="defaultCustomerHourlyRate"
+            name="defaultCustomerHourlyRate"
+            type="text"
+            inputMode="decimal"
+            required
+            defaultValue={(settings.default_customer_hourly_rate_cents / 100).toFixed(2)}
+          />
+        </div>
+        <div className="field" style={{ flex: 1 }}>
+          <label htmlFor="defaultHoursPerDay">Default hours per day</label>
+          <input
+            id="defaultHoursPerDay"
+            name="defaultHoursPerDay"
+            type="number"
+            min={0.5}
+            max={24}
+            step={0.5}
+            required
+            defaultValue={settings.default_hours_per_day}
+          />
+        </div>
+      </div>
+
+      <div className="tenant-form" style={{ width: "100%" }}>
+        <div className="field" style={{ flex: 1 }}>
+          <label htmlFor="defaultTaxRatePercent">Default tax rate (%)</label>
+          <input
+            id="defaultTaxRatePercent"
+            name="defaultTaxRatePercent"
+            type="text"
+            inputMode="decimal"
+            defaultValue={(settings.default_tax_rate_bps / 100).toString()}
+          />
+        </div>
+        <div className="field" style={{ flex: 1 }}>
+          <label htmlFor="defaultProposalValidDays">Proposal validity (days)</label>
+          <input
+            id="defaultProposalValidDays"
+            name="defaultProposalValidDays"
+            type="number"
+            min={1}
+            required
+            defaultValue={settings.default_proposal_valid_days}
+          />
+        </div>
+      </div>
+
+      <div className="field">
+        <label htmlFor="proposalNumberPrefix">Proposal number prefix</label>
+        <input
+          id="proposalNumberPrefix"
+          name="proposalNumberPrefix"
+          type="text"
+          maxLength={20}
+          required
+          defaultValue={settings.proposal_number_prefix}
+        />
+        <span className="hint">Next proposal number: #{settings.next_proposal_number} (managed automatically).</span>
+      </div>
+
+      <div className="field">
+        <label htmlFor="defaultTerms">Default terms</label>
+        <textarea id="defaultTerms" name="defaultTerms" rows={4} defaultValue={settings.default_terms} />
+      </div>
+
+      <div className="field">
+        <label htmlFor="defaultExclusions">Default exclusions</label>
+        <textarea id="defaultExclusions" name="defaultExclusions" rows={4} defaultValue={settings.default_exclusions} />
+      </div>
+
+      <SubmitButton pendingText="Saving…">Save settings</SubmitButton>
+    </form>
+  );
+}

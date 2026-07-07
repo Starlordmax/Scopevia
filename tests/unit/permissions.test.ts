@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { PERMISSIONS } from "../../src/lib/auth/permission-keys";
 
 // This list must stay byte-for-byte in sync with the `key` column seeded in
-// supabase/migrations/20260701120900_seed_roles_and_permissions.sql (Phase 0)
-// and supabase/migrations/20260702131100_seed_crm_permissions.sql (Phase 1).
+// supabase/migrations/20260701120900_seed_roles_and_permissions.sql (Phase 0),
+// supabase/migrations/20260702131100_seed_crm_permissions.sql (Phase 1), and
+// supabase/migrations/20260706141600_seed_proposal_permissions.sql (Phase 2A).
 // There is no automated cross-check against the live database in a unit test
 // (that belongs to the RLS/integration suite), so this test exists to catch a
 // TypeScript-side typo or rename that would otherwise silently desync from
@@ -47,6 +48,27 @@ const EXPECTED_PERMISSION_KEYS = [
   "notes.update",
   "notes.archive",
   "activities.view",
+  // Phase 2A
+  "proposals.view",
+  "proposals.create",
+  "proposals.update",
+  "proposals.archive",
+  "proposals.restore",
+  "proposals.mark_ready",
+  "proposals.manage_pricing",
+  "proposal_versions.create",
+  "proposal_versions.view",
+  "portfolio.view",
+  "portfolio.create",
+  "portfolio.update",
+  "portfolio.archive",
+  "portfolio.restore",
+  "media.view",
+  "media.upload",
+  "media.update",
+  "media.archive",
+  "proposal_settings.view",
+  "proposal_settings.update",
 ].sort();
 
 describe("PERMISSIONS", () => {
@@ -56,7 +78,7 @@ describe("PERMISSIONS", () => {
 
   it("every key follows the '<noun>.<verb>' convention", () => {
     for (const key of Object.values(PERMISSIONS)) {
-      expect(key).toMatch(/^[a-z]+\.[a-z_]+$/);
+      expect(key).toMatch(/^[a-z_]+\.[a-z_]+$/);
     }
   });
 });

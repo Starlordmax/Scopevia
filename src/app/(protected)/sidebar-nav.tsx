@@ -11,8 +11,19 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function SidebarNav({ items }: { items: NavItem[] }) {
+export function SidebarNav({ items, adminItems }: { items: NavItem[]; adminItems: NavItem[] }) {
   const pathname = usePathname();
+
+  function renderLink(item: NavItem) {
+    const Icon = iconForHref(item.href);
+    const active = isActive(pathname, item.href);
+    return (
+      <Link key={item.href} href={item.href} className="sidebar-link" data-active={active}>
+        <Icon className="icon" size={18} aria-hidden="true" />
+        {item.label}
+      </Link>
+    );
+  }
 
   return (
     <aside className="sidebar" aria-label="Primary">
@@ -20,18 +31,13 @@ export function SidebarNav({ items }: { items: NavItem[] }) {
         <Building2 className="icon" size={22} aria-hidden="true" />
         Scopevia
       </div>
-      <nav className="sidebar-nav">
-        {items.map((item) => {
-          const Icon = iconForHref(item.href);
-          const active = isActive(pathname, item.href);
-          return (
-            <Link key={item.href} href={item.href} className="sidebar-link" data-active={active}>
-              <Icon className="icon" size={18} aria-hidden="true" />
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
+      <nav className="sidebar-nav">{items.map(renderLink)}</nav>
+      {adminItems.length > 0 ? (
+        <>
+          <div className="sidebar-section-label">Administration</div>
+          <nav className="sidebar-nav">{adminItems.map(renderLink)}</nav>
+        </>
+      ) : null}
     </aside>
   );
 }

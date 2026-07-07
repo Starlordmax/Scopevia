@@ -4,6 +4,97 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Phase 2A — Proposal-centric pivot
+
+Pivots the primary product flow from Client → Opportunity → Project →
+*(future Estimate)* to Client → Opportunity → **Proposal** →
+*(future Sent/Viewed/Accepted)* → Project. A contractor can now build a
+professional proposal — scope, a labor calculator, materials & costs,
+current-job and reusable previous-work (Portfolio) photos, discount/tax,
+and a live preview — without ever creating a Project first. See
+[docs/29-proposal-centric-product-pivot.md](docs/29-proposal-centric-product-pivot.md)
+for the full pivot and
+[docs/35](docs/35-phase-2a-rls-verification.md)/[docs/36](docs/36-phase-2a-e2e-verification.md)
+for test evidence.
+
+**Added**
+
+- `proposals`, `proposal_versions`, `proposal_sections`,
+  `proposal_labor_items`, `proposal_line_items`, `media_assets`,
+  `portfolio_projects`, `portfolio_project_media`, `proposal_media`,
+  `tenant_proposal_settings` tables — full composite-FK cross-tenant
+  integrity (ADR 0007 pattern), verified with real `service_role` raw
+  inserts. See [docs/30](docs/30-phase-2a-proposal-data-model.md).
+- One new opportunity status, `proposal_in_progress`, added alongside
+  (not replacing) Phase 1's 8 states — see ADR 0025.
+- A deterministic, server-only calculation engine: labor
+  (`workers × days × hours/day × rate`), materials/costs
+  (`quantity × unit price`), discount (fixed/percentage, capped at
+  subtotal), tax (labor always taxable, discount prorated between taxable
+  and non-taxable amounts) — see
+  [docs/32](docs/32-proposal-calculation-engine.md) and ADRs 0030/0031.
+  Verified impossible to manipulate: no `UPDATE` grant exists on any
+  pricing table.
+- A private `scopevia-media` Storage bucket (10 MB limit,
+  JPEG/PNG/WebP only, RLS-equivalent tenant-scoped policies on
+  `storage.objects`, signed URLs only, no public URLs) — see
+  [docs/33](docs/33-media-and-storage-security.md) and ADR 0033.
+- 20 new permission keys and a Phase 2A role matrix — Sales can create/
+  edit proposal scope but not pricing by default; Field Worker can upload
+  current-job photos but not manage pricing/terms/ready/archive.
+- A 7-step, mobile-first Proposal Builder (`/proposals/new`,
+  `/proposals/[id]/edit?step=…`) — Client & Job, Scope of Work, Labor,
+  Materials & Costs, Photos, Terms & Pricing, Review — with a
+  non-authoritative live-preview calculation mirror
+  (`src/lib/proposals/calculations.ts`) and a shared, professional
+  document component used by both the Review step and the standalone
+  `/proposals/[id]/preview` route. See
+  [docs/34](docs/34-proposal-builder-ux.md).
+- A reusable Portfolio module (`/portfolio`) for previous-work photos,
+  selectable from the Proposal Builder's Photos step without duplicating
+  files.
+- `/settings/proposals` — tenant-wide proposal defaults (hourly rate,
+  hours/day, tax rate, validity, number prefix, terms, exclusions).
+- Dashboard rebuilt around Proposals: draft/ready/sent/accepted counts,
+  total quoted value, a real (not invented) "needs follow-up" signal, and
+  a recent-proposals table — replacing the Phase 1 opportunity/project
+  metric tiles.
+- Navigation restructured: Proposals added to the primary nav and mobile
+  bottom bar (capped at 5 items per design constraint); Members/Proposal
+  Settings/Profile grouped under a new "Administration" sidebar section.
+- The Opportunity detail page now shows a Proposal section (Create/Open
+  proposal) as the primary action; "Convert to project" demoted to a
+  labeled legacy/secondary flow, kept fully functional.
+- `create_project_from_accepted_proposal()` — architecture prep for the
+  future Client Portal phase, not exposed in the UI, tested via a
+  controlled service-role preparation rather than a faked acceptance flow
+  (ADR 0034).
+- `tests/rls/phase2a-proposals.test.ts` (34 cases) and
+  `tests/rls/phase2a-storage.test.ts` (14 cases) against the real
+  `scopevia-test` project and its real Storage bucket.
+- `tests/unit/proposal-calculations.test.ts` (23 cases) for the
+  calculation engine mirror.
+- `tests/e2e/proposals.spec.ts` and `tests/e2e/proposals.mobile.spec.ts`.
+- ADRs 0025–0034.
+
+**Fixed** (found via real testing, not code review)
+
+- `formatCents()` rendered money inconsistently between Server and Client
+  Components (`"USD 2,400.00"` server-side vs `"$30.00"` client-side) —
+  `toLocaleString(undefined, …)` resolves to whatever locale the current
+  runtime defaults to, which differs between Node and the browser. Pinned
+  to `"en-US"` explicitly.
+- A newly-regenerated `types/database.ts` surfaced a pre-existing
+  generator limitation in `src/lib/audit/log.ts`: `log_audit_event`'s
+  `p_tenant_id`/`p_actor_user_id` are typed non-nullable even though
+  Postgres accepts `NULL` for either — documented, narrow cast, same
+  pattern as the existing `p_metadata` cast.
+- A test-authoring bug (not an app bug) where `page.waitForURL()`'s
+  default `waitUntil: "load"` never resolves for a Server-Action-driven
+  cross-route redirect — the same class of race already documented for
+  the Phase 1.6 tenant-switching fix, now generalized: assert on the
+  resulting page's real content, not a navigation lifecycle event.
+
 ### Phase 1.5 — Real browser E2E verification and restore coverage
 
 Closed the two gaps flagged in

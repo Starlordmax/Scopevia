@@ -1,5 +1,18 @@
 # 05 — Data Model
 
+> **Nota de estado (2026-07-06):** este documento describe el diseño
+> pre-implementación completo. El esquema realmente construido
+> diverge en varios puntos, documentado fase por fase:
+> [21-phase-1-data-model.md](21-phase-1-data-model.md) (Phase 1: Clients,
+> Opportunities, Projects — más simple que "Proposals & Client Portal" de
+> abajo) y [30-phase-2a-proposal-data-model.md](30-phase-2a-proposal-data-model.md)
+> (Phase 2A: `proposals`/`proposal_versions`/`proposal_line_items`/
+> `proposal_labor_items`/`media_assets`/`portfolio_projects` — un modelo
+> más simple y ya implementado, que **reemplaza** la sección "Estimating"
+> y "Proposals & Client Portal" de abajo para todo lo que ya existe).
+> Project **no** es un prerequisito para crear una Proposal — ver
+> [docs/adr/0025](adr/0025-proposal-before-project.md).
+
 ## Estrategias transversales
 
 ### Multi-tenancy strategy
