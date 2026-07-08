@@ -20,6 +20,16 @@ return to draft → archive → restore) and by the E2E suite in
 > [40-proposal-total-refresh-fix.md](40-proposal-total-refresh-fix.md), y
 > [41-photo-gallery-ui-fix.md](41-photo-gallery-ui-fix.md).
 
+> **Nota de estado (2026-07-08, ronda 2):** Los pasos Labor y Materials &
+> Costs se reestructuraron para que la diferencia entre "preview sin
+> guardar" y "item guardado" sea imposible de confundir — el preview
+> ahora dice explícitamente "Not saved yet", tiene un estilo visual
+> distinto (borde punteado ámbar), y la lista de items guardados vive
+> bajo un encabezado explícito "Saved labor"/"Saved costs" después del
+> formulario. Ningún cálculo ni la fuente de datos del Pricing Summary
+> cambiaron — ver la sección "Round 2" de
+> [40-proposal-total-refresh-fix.md](40-proposal-total-refresh-fix.md#round-2-definitive-db-proof-and-the-actual-ux-fix).
+
 ## Routes
 
 | Route | Purpose |

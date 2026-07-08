@@ -4,6 +4,29 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Phase 2A.3 — Pricing Summary "$0.00" root cause found: unsaved-preview vs. saved-total clarity
+
+Found the actual cause of the reported "Pricing Summary shows $0.00"
+issue: not a data persistence or recalculation defect (proven via 3 new
+tests reading raw database rows directly — labor/line-item totals and
+`proposal_versions` totals all update correctly on every save, verified
+against real Postgres), but a real UX ambiguity. Before a labor/cost
+item is saved, the Add form's live preview (e.g. "$280.00") and the
+already-persisted total (correctly "$0.00", since nothing has been
+saved yet) were both visible at once with similar labels — easy to read
+as contradictory rather than as "unsaved draft" vs. "what's actually in
+the proposal."
+
+Fixed by making the distinction impossible to miss: the preview tile now
+reads "Not saved yet. Click '+ Add labor item' below to save it." with a
+distinct dashed warning-colored style; the saved-items table moved under
+an explicit "Saved labor" / "Saved costs" heading positioned after the
+add form; the persisted-total hint text is now "Saved labor total:" /
+"Saved materials & costs subtotal:"; the Add button is now
+primary-styled. No calculation, persistence, or Pricing Summary data
+source changed — this is a legibility fix for an already-correct system.
+See [docs/40-proposal-total-refresh-fix.md](docs/40-proposal-total-refresh-fix.md#round-2-definitive-db-proof-and-the-actual-ux-fix).
+
 ### Phase 2A.2 — Fixed labor pricing, Pricing Summary investigation, photo gallery UI
 
 Adds a second labor pricing mode to the Proposal Builder: alongside the

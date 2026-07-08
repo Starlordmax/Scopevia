@@ -47,57 +47,6 @@ export function StepMaterials({
       <div className="section-card stack">
         <h2>Materials &amp; Costs</h2>
 
-        {lineItems.length === 0 ? (
-          <p className="hint">No materials or additional costs yet.</p>
-        ) : (
-          <div className="table-card">
-            <table>
-              <thead>
-                <tr>
-                  <th>Description</th>
-                  <th>Category</th>
-                  <th>Qty</th>
-                  <th>Unit price</th>
-                  <th>Taxable</th>
-                  <th>Total</th>
-                  {canEdit ? <th /> : null}
-                </tr>
-              </thead>
-              <tbody>
-                {lineItems.map((item) => (
-                  <tr key={item.id}>
-                    <td data-label="Description">{item.description}</td>
-                    <td data-label="Category">{item.category.replace(/_/g, " ")}</td>
-                    <td data-label="Qty">
-                      {item.quantity} {item.unit.replace(/_/g, " ")}
-                    </td>
-                    <td data-label="Unit price">{formatCents(item.unit_price_cents)}</td>
-                    <td data-label="Taxable">{item.taxable ? "Yes" : "No"}</td>
-                    <td data-label="Total">
-                      <strong>{formatCents(item.line_total_cents)}</strong>
-                    </td>
-                    {canEdit ? (
-                      <td data-label="">
-                        <form action={archiveProposalLineItemAction}>
-                          <input type="hidden" name="lineItemId" value={item.id} />
-                          <input type="hidden" name="proposalId" value={proposalId} />
-                          <button type="submit" className="button-secondary">
-                            Remove
-                          </button>
-                        </form>
-                      </td>
-                    ) : null}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        <p className="hint">
-          Materials &amp; costs subtotal: <strong>{formatCents(lineItemsSubtotalCents)}</strong>
-        </p>
-
         {canEdit ? (
           <>
             {state.error ? <p className="error-banner">{state.error}</p> : null}
@@ -182,17 +131,72 @@ export function StepMaterials({
                 </label>
               </div>
 
-              <div className="metric-tile" style={{ maxWidth: 320 }}>
+              <div className="metric-tile unsaved-preview-tile" style={{ maxWidth: 360 }}>
                 <div className="metric-tile-value">{formatCents(previewTotal)}</div>
-                <div className="metric-tile-label">Line total (preview — server confirms on save)</div>
+                <div className="metric-tile-label">
+                  <strong>Not saved yet.</strong> Click &quot;+ Add cost item&quot; below to save it.
+                </div>
               </div>
 
-              <SubmitButton pendingText="Adding…" className="button-secondary">
-                + Add item
+              <SubmitButton pendingText="Saving…" className="button-primary">
+                + Add cost item
               </SubmitButton>
             </form>
           </>
         ) : null}
+
+        <h3>Saved costs</h3>
+
+        {lineItems.length === 0 ? (
+          <p className="hint">No materials or additional costs saved yet. Fill in the form above and click &quot;+ Add cost item&quot;.</p>
+        ) : (
+          <div className="table-card">
+            <table>
+              <thead>
+                <tr>
+                  <th>Description</th>
+                  <th>Category</th>
+                  <th>Qty</th>
+                  <th>Unit price</th>
+                  <th>Taxable</th>
+                  <th>Total</th>
+                  {canEdit ? <th /> : null}
+                </tr>
+              </thead>
+              <tbody>
+                {lineItems.map((item) => (
+                  <tr key={item.id}>
+                    <td data-label="Description">{item.description}</td>
+                    <td data-label="Category">{item.category.replace(/_/g, " ")}</td>
+                    <td data-label="Qty">
+                      {item.quantity} {item.unit.replace(/_/g, " ")}
+                    </td>
+                    <td data-label="Unit price">{formatCents(item.unit_price_cents)}</td>
+                    <td data-label="Taxable">{item.taxable ? "Yes" : "No"}</td>
+                    <td data-label="Total">
+                      <strong>{formatCents(item.line_total_cents)}</strong>
+                    </td>
+                    {canEdit ? (
+                      <td data-label="">
+                        <form action={archiveProposalLineItemAction}>
+                          <input type="hidden" name="lineItemId" value={item.id} />
+                          <input type="hidden" name="proposalId" value={proposalId} />
+                          <button type="submit" className="button-secondary">
+                            Remove
+                          </button>
+                        </form>
+                      </td>
+                    ) : null}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <p className="hint">
+          Saved materials &amp; costs subtotal: <strong>{formatCents(lineItemsSubtotalCents)}</strong>
+        </p>
       </div>
 
       <div className="tenant-form" style={{ justifyContent: "space-between" }}>

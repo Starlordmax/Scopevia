@@ -42,7 +42,10 @@ export function StepLabor({
   const [fixedPrice, setFixedPrice] = useState("");
 
   // Orientative only — the value that actually saves comes back from the
-  // server's recalculate_proposal_version(). See docs/34-proposal-builder-ux.md.
+  // server's recalculate_proposal_version(). See docs/34-proposal-builder-ux.md
+  // and docs/40-proposal-total-refresh-fix.md for why this must never be
+  // mistaken for a saved value: nothing below is persisted until "+ Add
+  // labor item" is clicked.
   const previewHours =
     pricingMethod === "hourly"
       ? computeLaborHours({
@@ -68,51 +71,6 @@ export function StepLabor({
     <div className="stack">
       <div className="section-card stack">
         <h2>Labor</h2>
-
-        {laborItems.length === 0 ? (
-          <p className="hint">No labor items yet. Add your crew below.</p>
-        ) : (
-          <div className="table-card">
-            <table>
-              <thead>
-                <tr>
-                  <th>Label</th>
-                  <th>Details</th>
-                  <th>Total hours</th>
-                  <th>Total</th>
-                  {canEdit ? <th /> : null}
-                </tr>
-              </thead>
-              <tbody>
-                {laborItems.map((item) => (
-                  <tr key={item.id}>
-                    <td data-label="Label">{item.label}</td>
-                    <td data-label="Details">{laborItemDetails(item)}</td>
-                    <td data-label="Total hours">{item.pricing_method === "fixed" ? "—" : item.total_hours}</td>
-                    <td data-label="Total">
-                      <strong>{formatCents(item.total_cents)}</strong>
-                    </td>
-                    {canEdit ? (
-                      <td data-label="">
-                        <form action={archiveProposalLaborItemAction}>
-                          <input type="hidden" name="laborItemId" value={item.id} />
-                          <input type="hidden" name="proposalId" value={proposalId} />
-                          <button type="submit" className="button-secondary">
-                            Remove
-                          </button>
-                        </form>
-                      </td>
-                    ) : null}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        <p className="hint">
-          Labor total: <strong>{formatCents(laborTotalCents)}</strong>
-        </p>
 
         {canEdit ? (
           <>
@@ -230,19 +188,67 @@ export function StepLabor({
                 </div>
               )}
 
-              <div className="metric-tile" style={{ maxWidth: 320 }}>
+              <div className="metric-tile unsaved-preview-tile" style={{ maxWidth: 360 }}>
                 <div className="metric-tile-value">{formatCents(previewCents)}</div>
                 <div className="metric-tile-label">
-                  {pricingMethod === "hourly" ? `${previewHours} labor hours (preview — server confirms on save)` : "Labor total (preview — server confirms on save)"}
+                  {pricingMethod === "hourly" ? `${previewHours} labor hours — ` : ""}
+                  <strong>Not saved yet.</strong> Click &quot;+ Add labor item&quot; below to save it.
                 </div>
               </div>
 
-              <SubmitButton pendingText="Adding…" className="button-secondary">
+              <SubmitButton pendingText="Saving…" className="button-primary">
                 + Add labor item
               </SubmitButton>
             </form>
           </>
         ) : null}
+
+        <h3>Saved labor</h3>
+
+        {laborItems.length === 0 ? (
+          <p className="hint">No labor items saved yet. Fill in the form above and click &quot;+ Add labor item&quot;.</p>
+        ) : (
+          <div className="table-card">
+            <table>
+              <thead>
+                <tr>
+                  <th>Label</th>
+                  <th>Details</th>
+                  <th>Total hours</th>
+                  <th>Total</th>
+                  {canEdit ? <th /> : null}
+                </tr>
+              </thead>
+              <tbody>
+                {laborItems.map((item) => (
+                  <tr key={item.id}>
+                    <td data-label="Label">{item.label}</td>
+                    <td data-label="Details">{laborItemDetails(item)}</td>
+                    <td data-label="Total hours">{item.pricing_method === "fixed" ? "—" : item.total_hours}</td>
+                    <td data-label="Total">
+                      <strong>{formatCents(item.total_cents)}</strong>
+                    </td>
+                    {canEdit ? (
+                      <td data-label="">
+                        <form action={archiveProposalLaborItemAction}>
+                          <input type="hidden" name="laborItemId" value={item.id} />
+                          <input type="hidden" name="proposalId" value={proposalId} />
+                          <button type="submit" className="button-secondary">
+                            Remove
+                          </button>
+                        </form>
+                      </td>
+                    ) : null}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <p className="hint">
+          Saved labor total: <strong>{formatCents(laborTotalCents)}</strong>
+        </p>
       </div>
 
       <div className="tenant-form" style={{ justifyContent: "space-between" }}>

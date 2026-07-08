@@ -57,7 +57,7 @@ test.describe("Proposal Builder (mobile, 390x844)", () => {
     await page.getByLabel("Description").fill("Exterior paint");
     await page.getByLabel("Quantity").fill("5");
     await page.getByLabel("Unit price ($)").fill("40");
-    await page.getByRole("button", { name: "+ Add item" }).click();
+    await page.getByRole("button", { name: "+ Add cost item" }).click();
     await expect(page.getByRole("cell", { name: "Exterior paint" })).toBeVisible();
 
     await page.getByRole("link", { name: "Continue to Photos" }).click();

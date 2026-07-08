@@ -1,9 +1,12 @@
 # 40 — Pricing Summary "$0.00" Investigation
 
-Status: **Investigated rigorously; not reproduced as a code defect.** This
-document records the investigation honestly, including its limits — per
-the brief's own instruction not to assume the problem is visual and not
-to declare something fixed without it actually having been verified.
+Status: **Root cause found and fixed** — a real UX ambiguity (an unsaved
+form preview and the actual saved total displayed too similarly),
+**not** a data persistence or recalculation defect. See "Round 2" below
+for the definitive database proof and the actual fix; the sections above
+record the first round's investigation honestly, including its limits,
+per the brief's own instruction not to declare something fixed without
+it actually having been verified.
 
 ## The report
 
@@ -153,3 +156,100 @@ that single fact would immediately distinguish "it was never saved" (a
 UX/training issue) from "it was saved but not displayed" (which would be
 a genuine, still-undiscovered defect in the display layer, not the one
 theorized above).
+
+## Round 2: definitive DB proof, and the actual UX fix
+
+The report recurred, described as critical, with the user insisting the
+bug is real. Rather than repeat the same investigation, this round
+produced **direct, decisive database evidence** — not inference — using
+three new permanent tests in `tests/rls/phase2a-proposals.test.ts`
+("Direct DB verification: labor + material persistence and
+recalculation"), each reading raw table rows (not RPC return values,
+not rendered text) via the tenant's own signed-in client against real
+Postgres:
+
+1. Add hourly labor (1 worker, 1 day, 8h, $35/hr) → `SELECT * FROM
+   proposal_labor_items` confirms `total_cents = 28000`,
+   `archived_at IS NULL`, correct `proposal_version_id`. `SELECT * FROM
+   proposal_versions` confirms `labor_total_cents = 28000`,
+   `total_cents = 28000`.
+2. Add a $50.00 material to the same version → `proposal_line_items`
+   confirms `line_total_cents = 5000`; `proposal_versions` confirms
+   `line_items_subtotal_cents = 5000`, `total_cents = 33000`.
+3. Re-fetch via `proposals.current_version_id → proposal_versions.id`
+   (never a hardcoded id, never "order by created_at limit 1") — same
+   values.
+4. Fixed labor $700 → `labor_total_cents = 70000`, `total_cents = 70000`.
+5. Fixed labor $700 + material 2×$40 → `total_cents = 78000`.
+
+**All five passed on the first run against `scopevia-test`.** This is
+the strongest possible evidence that the database layer — save,
+recalculate, persist — has never been the problem.
+
+A live E2E reproduction was also repeated, using the exact numbers from
+this round's report ($280 hourly, then a **$50** material — a slightly
+different combination than round 1's $80 material), capturing the
+builder's actual rendered text at each step, not just final values. This
+captured the mechanism precisely:
+
+```
+--- BEFORE clicking Add labor item ---
+Preview tile text: $280.00 8 labor hours (preview — server confirms on save)
+Labor total hint text: Labor total: $0.00
+--- AFTER clicking Add labor item ---
+Labor total hint text: Labor total: $280.00
+```
+
+**This is the entire bug**, and it is a real one — just not a data bug.
+Before the item is saved, the page correctly shows *two different,
+correct numbers at once*: the unsaved preview ($280.00) and the actual
+persisted total ($0.00, correctly, since nothing has been saved yet).
+Both were labeled similarly enough, and positioned closely enough, that
+they read as contradictory rather than as "form preview" vs. "what's
+actually in the proposal" — exactly the ambiguity the brief's own
+section 6 anticipated. A user who filled in the form, saw $280.00, and
+did not separately register that they still needed to click "+ Add
+labor item" would reasonably describe this as "the summary shows $0.00
+even though I entered $280."
+
+### The fix
+
+`step-labor.tsx` and `step-materials.tsx` were restructured so the
+distinction cannot be missed:
+
+- The unsaved preview tile now reads **"Not saved yet. Click '+ Add
+  labor item' below to save it."** (materials: "+ Add cost item") — an
+  explicit instruction, not just a parenthetical.
+- The preview tile gained a distinct visual treatment
+  (`.unsaved-preview-tile`: dashed warning-colored border, warning-tint
+  background) so it doesn't look like a normal, settled value even
+  before reading any text.
+- The already-saved items table is now under an explicit **"Saved
+  labor"** / **"Saved costs"** heading, positioned *after* the add form
+  (matching the brief's own example layout: form → preview → button →
+  saved list), rather than an unlabeled table sitting above a generic
+  "Labor"/"Materials & Costs" heading.
+- The persisted-total hint text was renamed **"Saved labor total:"** /
+  **"Saved materials & costs subtotal:"** (was: "Labor total:" /
+  "Materials & costs subtotal:") — the word "Saved" is now in the label
+  itself, not left implicit.
+- The Add button's primary-color styling was strengthened
+  (`button-secondary` → `button-primary`) so it reads as the necessary
+  next action, not an optional secondary control.
+
+None of this changes what gets computed or persisted — `recalculate_proposal_version()`,
+the SQL functions, and the Pricing Summary's data source are byte-for-byte
+unchanged from before this round. The fix is entirely about making an
+already-correct system legible.
+
+### New permanent test coverage
+
+- `tests/rls/phase2a-proposals.test.ts` — the 3 direct-DB-verification
+  tests above, now part of the permanent suite (not a throwaway
+  diagnostic).
+- `tests/e2e/proposals.spec.ts` — a new test, "the exact reported
+  scenario," that fills the hourly form, asserts the preview shows
+  $280.00 **and** the saved total still correctly shows $0.00 **before**
+  saving (proving the distinction is real and intentional, not
+  accidental), saves it, repeats for a $50 material, asserts the
+  combined $330.00 total, and confirms it survives a hard reload.

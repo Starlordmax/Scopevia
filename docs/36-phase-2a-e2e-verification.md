@@ -34,6 +34,12 @@ this document's numbers were not stale.
 > assertions) and re-ran the full suite — see "Phase 2A.2 E2E
 > re-verification" below for final numbers.
 
+> **Nota de estado (2026-07-08, ronda 2):** Phase 2A.3 found the actual
+> root cause of the "$0.00" report (a UX ambiguity, not a data defect —
+> see [docs/40](40-proposal-total-refresh-fix.md#round-2-definitive-db-proof-and-the-actual-ux-fix))
+> and fixed it. **61/61 PASS.** See "Phase 2A.3 E2E re-verification"
+> below.
+
 ## Environment
 
 Identical to Phase 1: production build (`next build && next start`), the
@@ -362,3 +368,21 @@ Net change from the Phase 2A.1 baseline (58): +2 ("Labor pricing method"
 — fixed-price and hourly worked-example cases), taking 58 → **60**. The
 Portfolio and mobile test extensions added assertions to existing tests
 rather than new test cases.
+
+## Phase 2A.3 E2E re-verification
+
+Found and fixed the actual root cause of the reported "$0.00" issue (a
+UX ambiguity, not a data defect — see
+[docs/40](40-proposal-total-refresh-fix.md#round-2-definitive-db-proof-and-the-actual-ux-fix))
+and restructured the Labor/Materials steps' preview-vs-saved UI. Added 1
+new E2E case ("the exact reported scenario") that fills the hourly form,
+asserts the unsaved preview ($280.00) and the still-correctly-$0.00
+saved total are both visible and distinguishable *before* saving, saves
+it, repeats for a $50 material, asserts the combined $330.00 total, and
+confirms it survives a hard reload. Updated existing assertions for the
+renamed button text (`+ Add item` → `+ Add cost item`) and hint text
+(`Labor total:` → `Saved labor total:`).
+
+**Final result: 61/61 PASS**, 9.7 minutes, single-worker (unchanged
+environment constraint, unrelated to this pass). Net change from the
+Phase 2A.2 baseline (60): +1, taking 60 → **61**.

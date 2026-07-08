@@ -44,7 +44,7 @@ test.describe("Proposals — full builder flow", () => {
     await page.getByLabel("Rate per hour ($)").fill("30");
     await page.getByRole("button", { name: "+ Add labor item" }).click();
     await expect(page.getByRole("cell", { name: "Lead painter" })).toBeVisible();
-    await expect(page.getByText("Labor total:").locator("..")).toContainText("2,400.00");
+    await expect(page.getByText("Saved labor total:").locator("..")).toContainText("2,400.00");
 
     await page.getByRole("link", { name: "Continue to Materials & Costs" }).click();
     await page.waitForURL(/step=materials/);
@@ -53,7 +53,7 @@ test.describe("Proposals — full builder flow", () => {
     await page.getByLabel("Description").fill("Exterior paint (5 gal)");
     await page.getByLabel("Quantity").fill("5");
     await page.getByLabel("Unit price ($)").fill("40");
-    await page.getByRole("button", { name: "+ Add item" }).click();
+    await page.getByRole("button", { name: "+ Add cost item" }).click();
     await expect(page.getByRole("cell", { name: "Exterior paint (5 gal)" })).toBeVisible();
 
     await page.getByRole("link", { name: "Continue to Photos" }).click();
@@ -305,14 +305,14 @@ test.describe("Labor pricing method", () => {
     await page.getByLabel("Fixed labor price ($)").fill("700.00");
     await page.getByRole("button", { name: "+ Add labor item" }).click();
     await expect(page.getByRole("cell", { name: "Bathroom remodeling labor" })).toBeVisible();
-    await expect(page.getByText(/Labor total:/)).toContainText("$700.00");
+    await expect(page.getByText(/Saved labor total:/)).toContainText("$700.00");
 
     await page.getByRole("link", { name: /3.*Materials/i }).click();
     await page.waitForURL(/step=materials/);
     await page.getByLabel("Description").fill("Paint");
     await page.getByLabel("Quantity").fill("2");
     await page.getByLabel("Unit price ($)").fill("40.00");
-    await page.getByRole("button", { name: "+ Add item" }).click();
+    await page.getByRole("button", { name: "+ Add cost item" }).click();
     await expect(page.getByRole("cell", { name: "Paint" })).toBeVisible();
 
     await page.getByRole("link", { name: /5.*Terms.*Pricing/i }).click();
@@ -362,13 +362,83 @@ test.describe("Labor pricing method", () => {
     await page.getByLabel("Rate per hour ($)").fill("35.00");
     await page.getByRole("button", { name: "+ Add labor item" }).click();
     await expect(page.getByRole("cell", { name: "Solo painter" })).toBeVisible();
-    await expect(page.getByText(/Labor total:/)).toContainText("$280.00");
+    await expect(page.getByText(/Saved labor total:/)).toContainText("$280.00");
 
     await page.getByRole("link", { name: /5.*Terms.*Pricing/i }).click();
     await page.waitForURL(/step=pricing/);
     await page.waitForLoadState("networkidle");
     await expect(page.locator(".pricing-summary-row").filter({ hasText: "Labor" })).toContainText("$280.00");
     await expect(page.locator(".pricing-summary-row").filter({ hasText: "Total" })).toContainText("$280.00");
+  });
+
+  test("the exact reported scenario: hourly $280 preview then saved, material $50 preview then saved, summary shows Labor $280 + Materials $50 = Total $330, and survives a reload", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const clientName = `E2E Preview Vs Saved Client ${suffix}`;
+
+    await page.goto("/clients/new");
+    await page.getByLabel("Display name").fill(clientName);
+    await page.getByRole("button", { name: "Create client" }).click();
+    await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
+
+    await page.goto("/proposals/new");
+    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.waitForURL(/clientId=/);
+    await page.getByLabel("Proposal title").fill(`E2E Preview Vs Saved ${suffix}`);
+    await page.getByLabel("Service type").selectOption("custom");
+    await page.getByRole("button", { name: "Save and continue" }).click();
+    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=scope/);
+
+    await page.getByRole("link", { name: /2.*Labor/i }).click();
+    await page.waitForURL(/step=labor/);
+    await page.getByLabel("Label").fill("Painting labor");
+    await page.getByLabel("Workers").fill("1");
+    await page.getByLabel("Days").fill("1");
+    await page.getByLabel("Hours/day").fill("8");
+    await page.getByLabel("Rate per hour ($)").fill("35.00");
+
+    // Before saving: the preview must show $280.00, clearly marked as
+    // NOT saved, and the already-persisted total (correctly $0.00, since
+    // nothing has been saved yet) must remain visible and distinct — this
+    // is the exact distinction the reported "$0.00" issue turned out to
+    // hinge on (see docs/40-proposal-total-refresh-fix.md).
+    await expect(page.getByText("Not saved yet.")).toBeVisible();
+    await expect(page.locator(".unsaved-preview-tile")).toContainText("$280.00");
+    await expect(page.getByText(/Saved labor total:/)).toContainText("$0.00");
+
+    await page.getByRole("button", { name: "+ Add labor item" }).click();
+    await expect(page.getByRole("cell", { name: "Painting labor" })).toBeVisible();
+    await expect(page.getByText(/Saved labor total:/)).toContainText("$280.00");
+
+    await page.getByRole("link", { name: /3.*Materials/i }).click();
+    await page.waitForURL(/step=materials/);
+    await page.getByLabel("Description").fill("Paint");
+    await page.getByLabel("Quantity").fill("1");
+    await page.getByLabel("Unit price ($)").fill("50.00");
+    await expect(page.getByText("Not saved yet.")).toBeVisible();
+    await expect(page.locator(".unsaved-preview-tile")).toContainText("$50.00");
+
+    await page.getByRole("button", { name: "+ Add cost item" }).click();
+    await expect(page.getByRole("cell", { name: "Paint" })).toBeVisible();
+    await expect(page.getByText(/Saved materials & costs subtotal:/)).toContainText("$50.00");
+
+    await page.getByRole("link", { name: /5.*Terms.*Pricing/i }).click();
+    await page.waitForURL(/step=pricing/);
+    await page.waitForLoadState("networkidle");
+    const laborRow = page.locator(".pricing-summary-row").filter({ hasText: "Labor" });
+    const materialsRow = page.locator(".pricing-summary-row").filter({ hasText: "Materials" });
+    const totalRow = page.locator(".pricing-summary-row").filter({ hasText: "Total" });
+    await expect(laborRow).toContainText("$280.00");
+    await expect(materialsRow).toContainText("$50.00");
+    await expect(totalRow).toContainText("$330.00");
+
+    // Reload must show the same, server-persisted values.
+    await page.reload();
+    await page.waitForLoadState("networkidle");
+    await expect(laborRow).toContainText("$280.00");
+    await expect(materialsRow).toContainText("$50.00");
+    await expect(totalRow).toContainText("$330.00");
   });
 });
 

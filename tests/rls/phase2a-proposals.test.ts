@@ -425,6 +425,155 @@ describe.skipIf(!canRun)("Phase 2A Proposal-centric pivot (requires real Postgre
   });
 
   // ===========================================================================
+  // Direct DB verification of the Pricing Summary "$0.00" report
+  // (docs/40-proposal-total-refresh-fix.md). This mirrors the brief's exact
+  // reported scenario and its exact expected numbers, reading raw table
+  // rows via the tenant's own signed-in client (never assuming what the
+  // Pricing Summary's rendered text says — checking what is actually
+  // persisted, per the brief's explicit instruction).
+  // ===========================================================================
+  describe("Direct DB verification: labor + material persistence and recalculation", () => {
+    it("Case 1: hourly labor (1 worker, 1 day, 8h, $35/hr) persists as total_cents=28000 and updates proposal_versions.labor_total_cents/total_cents to 28000", async () => {
+      const { proposalId, versionId } = await createDraftProposal("DB verify: Case 1 hourly");
+
+      const { data: laborItem, error: laborErr } = await aClient
+        .rpc("add_proposal_labor_item", {
+          p_proposal_version_id: versionId,
+          p_label: "Painting labor",
+          p_worker_count: 1,
+          p_estimated_days: 1,
+          p_hours_per_day: 8,
+          p_hourly_rate_cents: 3500,
+        })
+        .single();
+      expect(laborErr).toBeNull();
+
+      // Read the raw row back, not just the RPC's return value — proves the
+      // row actually landed in the table, tenant-scoped, unarchived.
+      const { data: rawLaborRows } = await aClient
+        .from("proposal_labor_items")
+        .select("id, proposal_version_id, pricing_method, total_cents, archived_at")
+        .eq("proposal_version_id", versionId);
+      expect(rawLaborRows).toHaveLength(1);
+      const rawLabor = (rawLaborRows as { proposal_version_id: string; total_cents: number; archived_at: string | null }[])[0]!;
+      expect(rawLabor.proposal_version_id).toBe(versionId);
+      expect(rawLabor.total_cents).toBe(28000);
+      expect(rawLabor.archived_at).toBeNull();
+      expect((laborItem as { total_cents: number }).total_cents).toBe(28000);
+
+      const { data: version1 } = await aClient
+        .from("proposal_versions")
+        .select("labor_total_cents, line_items_subtotal_cents, subtotal_cents, total_cents")
+        .eq("id", versionId)
+        .single();
+      const v1 = version1 as { labor_total_cents: number; line_items_subtotal_cents: number; subtotal_cents: number; total_cents: number };
+      expect(v1.labor_total_cents).toBe(28000);
+      expect(v1.line_items_subtotal_cents).toBe(0);
+      expect(v1.subtotal_cents).toBe(28000);
+      expect(v1.total_cents).toBe(28000);
+
+      // Case 2: add a $50.00 material line item to the SAME version.
+      const { error: lineErr } = await aClient.rpc("add_proposal_line_item", {
+        p_proposal_version_id: versionId,
+        p_category: "material",
+        p_description: "Paint",
+        p_quantity: 1,
+        p_unit: "each",
+        p_unit_price_cents: 5000,
+        p_taxable: true,
+      });
+      expect(lineErr).toBeNull();
+
+      const { data: rawLineRows } = await aClient
+        .from("proposal_line_items")
+        .select("id, proposal_version_id, line_total_cents, archived_at")
+        .eq("proposal_version_id", versionId);
+      expect(rawLineRows).toHaveLength(1);
+      const rawLine = (rawLineRows as { proposal_version_id: string; line_total_cents: number; archived_at: string | null }[])[0]!;
+      expect(rawLine.proposal_version_id).toBe(versionId);
+      expect(rawLine.line_total_cents).toBe(5000);
+      expect(rawLine.archived_at).toBeNull();
+
+      const { data: version2 } = await aClient
+        .from("proposal_versions")
+        .select("labor_total_cents, line_items_subtotal_cents, subtotal_cents, total_cents")
+        .eq("id", versionId)
+        .single();
+      const v2 = version2 as { labor_total_cents: number; line_items_subtotal_cents: number; subtotal_cents: number; total_cents: number };
+      expect(v2.labor_total_cents).toBe(28000);
+      expect(v2.line_items_subtotal_cents).toBe(5000);
+      expect(v2.subtotal_cents).toBe(33000);
+      expect(v2.total_cents).toBe(33000);
+
+      // Case 3: "reload" — re-fetch via the exact same path the builder
+      // page uses (proposals.current_version_id -> proposal_versions.id),
+      // never a hardcoded id or an "order by created_at limit 1" guess.
+      const { data: proposalRow } = await aClient.from("proposals").select("current_version_id").eq("id", proposalId).single();
+      expect((proposalRow as { current_version_id: string }).current_version_id).toBe(versionId);
+
+      const { data: reloaded } = await aClient
+        .from("proposal_versions")
+        .select("labor_total_cents, line_items_subtotal_cents, total_cents")
+        .eq("id", (proposalRow as { current_version_id: string }).current_version_id)
+        .single();
+      const r = reloaded as { labor_total_cents: number; line_items_subtotal_cents: number; total_cents: number };
+      expect(r.labor_total_cents).toBe(28000);
+      expect(r.line_items_subtotal_cents).toBe(5000);
+      expect(r.total_cents).toBe(33000);
+    });
+
+    it("Case 4: fixed labor $700 persists as labor_total_cents=70000 and total_cents=70000", async () => {
+      const { versionId } = await createDraftProposal("DB verify: Case 4 fixed");
+      await aClient.rpc("add_proposal_labor_item", {
+        p_proposal_version_id: versionId,
+        p_label: "Fixed labor",
+        p_worker_count: null as unknown as number,
+        p_estimated_days: null as unknown as number,
+        p_hours_per_day: null as unknown as number,
+        p_hourly_rate_cents: null as unknown as number,
+        p_pricing_method: "fixed",
+        p_fixed_total_cents: 70000,
+      });
+      const { data: version } = await aClient.from("proposal_versions").select("labor_total_cents, total_cents").eq("id", versionId).single();
+      const v = version as { labor_total_cents: number; total_cents: number };
+      expect(v.labor_total_cents).toBe(70000);
+      expect(v.total_cents).toBe(70000);
+    });
+
+    it("Case 5: fixed labor $700 + material 2x$40 persists as total_cents=78000", async () => {
+      const { versionId } = await createDraftProposal("DB verify: Case 5 fixed + material");
+      await aClient.rpc("add_proposal_labor_item", {
+        p_proposal_version_id: versionId,
+        p_label: "Fixed labor",
+        p_worker_count: null as unknown as number,
+        p_estimated_days: null as unknown as number,
+        p_hours_per_day: null as unknown as number,
+        p_hourly_rate_cents: null as unknown as number,
+        p_pricing_method: "fixed",
+        p_fixed_total_cents: 70000,
+      });
+      await aClient.rpc("add_proposal_line_item", {
+        p_proposal_version_id: versionId,
+        p_category: "material",
+        p_description: "Paint",
+        p_quantity: 2,
+        p_unit: "each",
+        p_unit_price_cents: 4000,
+        p_taxable: true,
+      });
+      const { data: version } = await aClient
+        .from("proposal_versions")
+        .select("labor_total_cents, line_items_subtotal_cents, total_cents")
+        .eq("id", versionId)
+        .single();
+      const v = version as { labor_total_cents: number; line_items_subtotal_cents: number; total_cents: number };
+      expect(v.labor_total_cents).toBe(70000);
+      expect(v.line_items_subtotal_cents).toBe(8000);
+      expect(v.total_cents).toBe(78000);
+    });
+  });
+
+  // ===========================================================================
   // Fixed-price labor (docs/39-fixed-labor-pricing.md) — the hourly-only
   // permission-matrix tests above already prove Viewer/Sales/Field Worker
   // are rejected and Estimator is allowed, since the permission gate in

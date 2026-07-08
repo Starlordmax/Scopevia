@@ -620,6 +620,16 @@ button:disabled {
   padding: 18px;
 }
 
+/* An unsaved form preview (labor/line-item add forms) must never look like
+   a saved value — a dashed, warning-tinted border makes the distinction
+   visible even without reading the text. See
+   docs/40-proposal-total-refresh-fix.md. */
+.unsaved-preview-tile {
+  border: 1px dashed var(--color-warning);
+  background: var(--color-warning-soft);
+  box-shadow: none;
+}
+
 .metric-tile-icon {
   display: flex;
   align-items: center;
