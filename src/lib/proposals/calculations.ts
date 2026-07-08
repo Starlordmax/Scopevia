@@ -19,12 +19,20 @@
 
 export type DiscountType = "none" | "fixed" | "percentage";
 
-export type LaborItemInput = {
+export type HourlyLaborItemInput = {
+  pricingMethod: "hourly";
   workerCount: number;
   estimatedDays: number;
   hoursPerDay: number;
   hourlyRateCents: number;
 };
+
+export type FixedLaborItemInput = {
+  pricingMethod: "fixed";
+  fixedTotalCents: number;
+};
+
+export type LaborItemInput = HourlyLaborItemInput | FixedLaborItemInput;
 
 export type LineItemInput = {
   quantity: number;
@@ -51,13 +59,15 @@ export type ProposalTotals = {
   totalCents: number;
 };
 
-/** total_hours = worker_count * estimated_days * hours_per_day, rounded to 2 decimals. */
+/** total_hours = worker_count * estimated_days * hours_per_day, rounded to 2 decimals. Fixed-price labor has no hours (0), matching the server. */
 export function computeLaborHours(item: LaborItemInput): number {
+  if (item.pricingMethod === "fixed") return 0;
   return roundTo(item.workerCount * item.estimatedDays * item.hoursPerDay, 2);
 }
 
-/** total_cents = round(total_hours * hourly_rate_cents). */
+/** hourly: round(total_hours * hourly_rate_cents). fixed: fixedTotalCents verbatim. */
 export function computeLaborTotalCents(item: LaborItemInput): number {
+  if (item.pricingMethod === "fixed") return item.fixedTotalCents;
   return Math.round(computeLaborHours(item) * item.hourlyRateCents);
 }
 

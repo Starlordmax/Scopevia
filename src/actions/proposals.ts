@@ -192,24 +192,51 @@ export async function addProposalLaborItemAction(_prev: ActionResult, formData: 
   const proposalId = uuidSchema.safeParse(formData.get("proposalId"));
   if (!proposalVersionId.success || !proposalId.success) return { error: "Invalid request" };
 
-  const parsed = addProposalLaborItemSchema.safeParse({
-    label: formData.get("label"),
-    workerCount: formData.get("workerCount"),
-    estimatedDays: formData.get("estimatedDays"),
-    hoursPerDay: formData.get("hoursPerDay"),
-    hourlyRateCents: formData.get("hourlyRate"),
-  });
+  const pricingMethod = formData.get("pricingMethod") === "fixed" ? "fixed" : "hourly";
+  const parsed = addProposalLaborItemSchema.safeParse(
+    pricingMethod === "fixed"
+      ? { pricingMethod, label: formData.get("label"), fixedTotalCents: formData.get("fixedPrice") }
+      : {
+          pricingMethod,
+          label: formData.get("label"),
+          workerCount: formData.get("workerCount"),
+          estimatedDays: formData.get("estimatedDays"),
+          hoursPerDay: formData.get("hoursPerDay"),
+          hourlyRateCents: formData.get("hourlyRate"),
+        }
+  );
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("add_proposal_labor_item", {
-    p_proposal_version_id: proposalVersionId.data,
-    p_label: parsed.data.label,
-    p_worker_count: parsed.data.workerCount,
-    p_estimated_days: parsed.data.estimatedDays,
-    p_hours_per_day: parsed.data.hoursPerDay,
-    p_hourly_rate_cents: parsed.data.hourlyRateCents,
-  });
+  // p_worker_count/p_estimated_days/p_hours_per_day/p_hourly_rate_cents
+  // have no SQL DEFAULT (they're the original required parameters), so
+  // PostgREST needs every one of them present in the request body even
+  // when null -- the same "never omit an optional/inapplicable key"
+  // discipline as update_proposal_scope (docs/37). `as number` casts are
+  // needed since the generated types don't reflect that Postgres accepts
+  // null here.
+  const { error } =
+    parsed.data.pricingMethod === "fixed"
+      ? await supabase.rpc("add_proposal_labor_item", {
+          p_proposal_version_id: proposalVersionId.data,
+          p_label: parsed.data.label,
+          p_worker_count: null as unknown as number,
+          p_estimated_days: null as unknown as number,
+          p_hours_per_day: null as unknown as number,
+          p_hourly_rate_cents: null as unknown as number,
+          p_pricing_method: "fixed",
+          p_fixed_total_cents: parsed.data.fixedTotalCents,
+        })
+      : await supabase.rpc("add_proposal_labor_item", {
+          p_proposal_version_id: proposalVersionId.data,
+          p_label: parsed.data.label,
+          p_worker_count: parsed.data.workerCount,
+          p_estimated_days: parsed.data.estimatedDays,
+          p_hours_per_day: parsed.data.hoursPerDay,
+          p_hourly_rate_cents: parsed.data.hourlyRateCents,
+          p_pricing_method: "hourly",
+          p_fixed_total_cents: null as unknown as number,
+        });
   if (error) return { error: friendlyRpcErrorMessage(error.message) };
 
   revalidatePath(`/proposals/${proposalId.data}/edit`);

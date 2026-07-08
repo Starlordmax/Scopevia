@@ -4,6 +4,40 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Phase 2A.2 — Fixed labor pricing, Pricing Summary investigation, photo gallery UI
+
+Adds a second labor pricing mode to the Proposal Builder: alongside the
+existing hourly calculation (workers × days × hours/day × rate), a
+contractor can now enter labor as a single **Fixed price** (e.g. "$700"
+for a bathroom remodel) with no hourly breakdown required. A new
+`pricing_method` column on `proposal_labor_items` (`'hourly'` default,
+`'fixed'` new) drives which fields apply; both modes are validated and
+computed exclusively server-side, and every existing labor item remains
+unaffected (`'hourly'` by default, no data rewritten). See
+[docs/39-fixed-labor-pricing.md](docs/39-fixed-labor-pricing.md).
+
+Investigates a reported "Pricing Summary shows $0.00 after adding labor
+and materials" bug: traced the full save → recalculate → read → display
+path (SQL functions, `getFullProposal`, `revalidatePath`, the client
+Router Cache's actual Next.js 16 defaults) and reproduced the reported
+scenario live, multiple ways, against a running build — found no code
+defect. Documented honestly as investigated-not-reproduced rather than
+claimed fixed, with the most plausible explanation (preview-vs-saved
+confusion in the Add Labor/Add Line Item forms, likely worsened by the
+previous lack of a fixed-price option) and 18 new automated tests (13
+RLS + 5 E2E) closing the coverage gap that let this scenario go
+untested before. See
+[docs/40-proposal-total-refresh-fix.md](docs/40-proposal-total-refresh-fix.md).
+
+Gives the photo "Upload" button a distinct green (`.button-success`)
+style with context-specific text ("Upload job photo" / "Upload portfolio
+photo"), and replaces every full-size photo display (current-job,
+previous-work, Portfolio, the Portfolio picker — which previously showed
+no image at all) with a responsive thumbnail grid (`.photo-grid`/
+`.photo-card`/`.photo-thumb`, capped height, 2 columns on narrow mobile
+viewports) so a photo can no longer fill the entire builder screen. See
+[docs/41-photo-gallery-ui-fix.md](docs/41-photo-gallery-ui-fix.md).
+
 ### Phase 2A.1 — Job Summary RPC fix and navigation simplification
 
 Fixes a real bug where saving the Proposal Builder's Job Summary step

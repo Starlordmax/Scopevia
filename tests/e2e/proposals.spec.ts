@@ -152,9 +152,34 @@ test.describe("Proposals — full builder flow", () => {
     await page.waitForURL(/\/portfolio\/[0-9a-f-]+$/);
 
     const filePath = require.resolve("./fixtures/one-pixel.png");
+
+    // The upload button must be visually distinct (green, "positive
+    // action" styling) — see docs/41-photo-gallery-ui-fix.md.
+    const uploadButton = page.getByRole("button", { name: "Upload portfolio photo" });
+    await expect(uploadButton).toHaveClass(/button-success/);
+
     await page.getByLabel("Upload a photo").setInputFiles(filePath);
-    await page.getByRole("button", { name: "Upload photo" }).click();
-    await expect(page.locator("figure img")).toBeVisible({ timeout: 15_000 });
+    await uploadButton.click();
+    await expect(page.locator(".photo-thumb")).toBeVisible({ timeout: 15_000 });
+
+    // Upload two more photos — all three must render as small, grid-laid-out
+    // thumbnails, never a single image filling the page.
+    for (let i = 0; i < 2; i++) {
+      await page.getByLabel("Upload a photo").setInputFiles(filePath);
+      await page.getByRole("button", { name: "Upload portfolio photo" }).click();
+      await expect(page.locator(".photo-thumb")).toHaveCount(2 + i, { timeout: 15_000 });
+    }
+    await expect(page.locator(".photo-grid .photo-card")).toHaveCount(3);
+    const firstThumbBox = await page.locator(".photo-thumb").first().boundingBox();
+    const viewport = page.viewportSize();
+    expect(firstThumbBox).not.toBeNull();
+    // A thumbnail must be visibly small, not a giant image filling the
+    // builder/portfolio page — assert it's well under half the viewport
+    // width and has the capped thumbnail height, not an unconstrained one.
+    if (firstThumbBox && viewport) {
+      expect(firstThumbBox.width).toBeLessThan(viewport.width / 2);
+      expect(firstThumbBox.height).toBeLessThanOrEqual(160);
+    }
 
     // Now select it from a fresh proposal's Photos step.
     const clientName = `E2E Portfolio Client ${suffix}`;
@@ -244,6 +269,106 @@ test.describe("Job summary (update_proposal_scope)", () => {
     await page.getByRole("button", { name: "Save and continue" }).click();
     await page.waitForURL(/step=labor/);
     await expect(page.getByText(/could not find the function/i)).toHaveCount(0);
+  });
+});
+
+test.describe("Labor pricing method", () => {
+  test.use({ storageState: authFile("owner-a") });
+
+  test("fixed-price labor combines correctly with materials in the Pricing Summary, and both persist on reload", async ({ page }) => {
+    const suffix = uniqueSuffix();
+    const clientName = `E2E Fixed Labor Client ${suffix}`;
+
+    await page.goto("/clients/new");
+    await page.getByLabel("Display name").fill(clientName);
+    await page.getByRole("button", { name: "Create client" }).click();
+    await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
+
+    await page.goto("/proposals/new");
+    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.waitForURL(/clientId=/);
+    await page.getByLabel("Proposal title").fill(`E2E Fixed Labor ${suffix}`);
+    await page.getByLabel("Service type").selectOption("bathroom_remodeling");
+    await page.getByRole("button", { name: "Save and continue" }).click();
+    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=scope/);
+
+    // Jump straight to Labor via the stepper (not the sequential "Continue"
+    // link) — the reported bug's steps weren't specific about navigation,
+    // so this exercises the same interaction pattern used to diagnose it.
+    await page.getByRole("link", { name: /2.*Labor/i }).click();
+    await page.waitForURL(/step=labor/);
+
+    // Switch to Fixed price mode — the hourly fields must disappear.
+    await page.getByRole("button", { name: "Fixed price" }).click();
+    await expect(page.getByLabel("Workers")).toHaveCount(0);
+    await page.getByLabel("Label").fill("Bathroom remodeling labor");
+    await page.getByLabel("Fixed labor price ($)").fill("700.00");
+    await page.getByRole("button", { name: "+ Add labor item" }).click();
+    await expect(page.getByRole("cell", { name: "Bathroom remodeling labor" })).toBeVisible();
+    await expect(page.getByText(/Labor total:/)).toContainText("$700.00");
+
+    await page.getByRole("link", { name: /3.*Materials/i }).click();
+    await page.waitForURL(/step=materials/);
+    await page.getByLabel("Description").fill("Paint");
+    await page.getByLabel("Quantity").fill("2");
+    await page.getByLabel("Unit price ($)").fill("40.00");
+    await page.getByRole("button", { name: "+ Add item" }).click();
+    await expect(page.getByRole("cell", { name: "Paint" })).toBeVisible();
+
+    await page.getByRole("link", { name: /5.*Terms.*Pricing/i }).click();
+    await page.waitForURL(/step=pricing/);
+    await page.waitForLoadState("networkidle");
+
+    const laborRow = page.locator(".pricing-summary-row").filter({ hasText: "Labor" });
+    const materialsRow = page.locator(".pricing-summary-row").filter({ hasText: "Materials" });
+    const totalRow = page.locator(".pricing-summary-row").filter({ hasText: "Total" });
+    // The exact manual-verification case from the brief.
+    await expect(laborRow).toContainText("$700.00");
+    await expect(materialsRow).toContainText("$80.00");
+    await expect(totalRow).toContainText("$780.00");
+
+    // Persistence: a hard reload must show the same, server-persisted
+    // values — never a stale $0.00.
+    await page.reload();
+    await page.waitForLoadState("networkidle");
+    await expect(laborRow).toContainText("$700.00");
+    await expect(totalRow).toContainText("$780.00");
+  });
+
+  test("hourly labor: the brief's worked example (1 worker, 1 day, 8h, $35/hr -> $280) shows correctly in the Pricing Summary", async ({ page }) => {
+    const suffix = uniqueSuffix();
+    const clientName = `E2E Hourly Labor Client ${suffix}`;
+
+    await page.goto("/clients/new");
+    await page.getByLabel("Display name").fill(clientName);
+    await page.getByRole("button", { name: "Create client" }).click();
+    await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
+
+    await page.goto("/proposals/new");
+    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.waitForURL(/clientId=/);
+    await page.getByLabel("Proposal title").fill(`E2E Hourly Labor ${suffix}`);
+    await page.getByLabel("Service type").selectOption("custom");
+    await page.getByRole("button", { name: "Save and continue" }).click();
+    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=scope/);
+
+    await page.getByRole("link", { name: /2.*Labor/i }).click();
+    await page.waitForURL(/step=labor/);
+    // Hourly is the default mode — no extra click needed.
+    await page.getByLabel("Label").fill("Solo painter");
+    await page.getByLabel("Workers").fill("1");
+    await page.getByLabel("Days").fill("1");
+    await page.getByLabel("Hours/day").fill("8");
+    await page.getByLabel("Rate per hour ($)").fill("35.00");
+    await page.getByRole("button", { name: "+ Add labor item" }).click();
+    await expect(page.getByRole("cell", { name: "Solo painter" })).toBeVisible();
+    await expect(page.getByText(/Labor total:/)).toContainText("$280.00");
+
+    await page.getByRole("link", { name: /5.*Terms.*Pricing/i }).click();
+    await page.waitForURL(/step=pricing/);
+    await page.waitForLoadState("networkidle");
+    await expect(page.locator(".pricing-summary-row").filter({ hasText: "Labor" })).toContainText("$280.00");
+    await expect(page.locator(".pricing-summary-row").filter({ hasText: "Total" })).toContainText("$280.00");
   });
 });
 

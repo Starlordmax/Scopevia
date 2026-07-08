@@ -425,6 +425,313 @@ describe.skipIf(!canRun)("Phase 2A Proposal-centric pivot (requires real Postgre
   });
 
   // ===========================================================================
+  // Fixed-price labor (docs/39-fixed-labor-pricing.md) — the hourly-only
+  // permission-matrix tests above already prove Viewer/Sales/Field Worker
+  // are rejected and Estimator is allowed, since the permission gate in
+  // add/update_proposal_labor_item runs before any pricing_method branch;
+  // this block covers the new fixed-mode code path itself.
+  // ===========================================================================
+  describe("Fixed-price labor", () => {
+    it("creates a fixed-price labor item: total_hours is 0, total_cents is the fixed price verbatim", async () => {
+      const { versionId } = await createDraftProposal("Fixed labor: create");
+      const { data: item, error } = await aClient
+        .rpc("add_proposal_labor_item", {
+          p_proposal_version_id: versionId,
+          p_label: "Bathroom remodeling labor",
+          p_worker_count: null as unknown as number,
+          p_estimated_days: null as unknown as number,
+          p_hours_per_day: null as unknown as number,
+          p_hourly_rate_cents: null as unknown as number,
+          p_pricing_method: "fixed",
+          p_fixed_total_cents: 70000,
+        })
+        .single();
+      expect(error).toBeNull();
+      const i = item as { total_hours: number; total_cents: number; pricing_method: string; worker_count: number | null };
+      expect(i.pricing_method).toBe("fixed");
+      expect(i.total_hours).toBe(0);
+      expect(i.total_cents).toBe(70000);
+      expect(i.worker_count).toBeNull();
+    });
+
+    it("a fixed-price labor item updates the version's labor_total_cents and total_cents", async () => {
+      const { versionId } = await createDraftProposal("Fixed labor: recalculation");
+      await aClient.rpc("add_proposal_labor_item", {
+        p_proposal_version_id: versionId,
+        p_label: "Fixed labor",
+        p_worker_count: null as unknown as number,
+        p_estimated_days: null as unknown as number,
+        p_hours_per_day: null as unknown as number,
+        p_hourly_rate_cents: null as unknown as number,
+        p_pricing_method: "fixed",
+        p_fixed_total_cents: 70000,
+      });
+      const { data: version } = await aClient.from("proposal_versions").select("labor_total_cents, total_cents").eq("id", versionId).single();
+      const v = version as { labor_total_cents: number; total_cents: number };
+      expect(v.labor_total_cents).toBe(70000);
+      expect(v.total_cents).toBe(70000);
+    });
+
+    it("the exact manual-verification case: fixed labor $700 + material 2x$40 = $780 total", async () => {
+      const { versionId } = await createDraftProposal("Fixed labor: manual verification");
+      await aClient.rpc("add_proposal_labor_item", {
+        p_proposal_version_id: versionId,
+        p_label: "Fixed labor",
+        p_worker_count: null as unknown as number,
+        p_estimated_days: null as unknown as number,
+        p_hours_per_day: null as unknown as number,
+        p_hourly_rate_cents: null as unknown as number,
+        p_pricing_method: "fixed",
+        p_fixed_total_cents: 70000,
+      });
+      await aClient.rpc("add_proposal_line_item", {
+        p_proposal_version_id: versionId,
+        p_category: "material",
+        p_description: "Paint",
+        p_quantity: 2,
+        p_unit: "each",
+        p_unit_price_cents: 4000,
+        p_taxable: true,
+      });
+      const { data: version } = await aClient
+        .from("proposal_versions")
+        .select("labor_total_cents, line_items_subtotal_cents, total_cents")
+        .eq("id", versionId)
+        .single();
+      const v = version as { labor_total_cents: number; line_items_subtotal_cents: number; total_cents: number };
+      expect(v.labor_total_cents).toBe(70000); // $700.00
+      expect(v.line_items_subtotal_cents).toBe(8000); // $80.00
+      expect(v.total_cents).toBe(78000); // $780.00
+    });
+
+    it("a negative fixed price is rejected", async () => {
+      const { versionId } = await createDraftProposal("Fixed labor: negative rejected");
+      const { error } = await aClient.rpc("add_proposal_labor_item", {
+        p_proposal_version_id: versionId,
+        p_label: "Invalid",
+        p_worker_count: null as unknown as number,
+        p_estimated_days: null as unknown as number,
+        p_hours_per_day: null as unknown as number,
+        p_hourly_rate_cents: null as unknown as number,
+        p_pricing_method: "fixed",
+        p_fixed_total_cents: -100,
+      });
+      expect(error).not.toBeNull();
+    });
+
+    it("a null fixed price for pricing_method=fixed is rejected, not silently treated as zero", async () => {
+      const { versionId } = await createDraftProposal("Fixed labor: null rejected");
+      const { error } = await aClient.rpc("add_proposal_labor_item", {
+        p_proposal_version_id: versionId,
+        p_label: "Invalid",
+        p_worker_count: null as unknown as number,
+        p_estimated_days: null as unknown as number,
+        p_hours_per_day: null as unknown as number,
+        p_hourly_rate_cents: null as unknown as number,
+        p_pricing_method: "fixed",
+        p_fixed_total_cents: null as unknown as number,
+      });
+      expect(error).not.toBeNull();
+    });
+
+    it("an invalid pricing_method string is rejected", async () => {
+      const { versionId } = await createDraftProposal("Fixed labor: invalid method");
+      const { error } = await aClient.rpc("add_proposal_labor_item", {
+        p_proposal_version_id: versionId,
+        p_label: "Invalid",
+        p_worker_count: 1,
+        p_estimated_days: 1,
+        p_hours_per_day: 8,
+        p_hourly_rate_cents: 3000,
+        p_pricing_method: "hourly_and_fixed",
+        p_fixed_total_cents: null as unknown as number,
+      });
+      expect(error).not.toBeNull();
+    });
+
+    it("switching an existing item from hourly to fixed clears the hourly fields", async () => {
+      const { versionId } = await createDraftProposal("Fixed labor: hourly to fixed");
+      const { data: item } = await aClient
+        .rpc("add_proposal_labor_item", {
+          p_proposal_version_id: versionId,
+          p_label: "Switch me",
+          p_worker_count: 2,
+          p_estimated_days: 5,
+          p_hours_per_day: 8,
+          p_hourly_rate_cents: 3000,
+        })
+        .single();
+      const itemId = (item as { id: string }).id;
+
+      const { data: updated, error } = await aClient
+        .rpc("update_proposal_labor_item", {
+          p_labor_item_id: itemId,
+          p_label: "Switch me",
+          p_worker_count: null as unknown as number,
+          p_estimated_days: null as unknown as number,
+          p_hours_per_day: null as unknown as number,
+          p_hourly_rate_cents: null as unknown as number,
+          p_pricing_method: "fixed",
+          p_fixed_total_cents: 55000,
+        })
+        .single();
+      expect(error).toBeNull();
+      const u = updated as { pricing_method: string; total_cents: number; worker_count: number | null; hourly_rate_cents: number | null };
+      expect(u.pricing_method).toBe("fixed");
+      expect(u.total_cents).toBe(55000);
+      expect(u.worker_count).toBeNull();
+      expect(u.hourly_rate_cents).toBeNull();
+    });
+
+    it("switching an existing item from fixed to hourly clears the fixed field", async () => {
+      const { versionId } = await createDraftProposal("Fixed labor: fixed to hourly");
+      const { data: item } = await aClient
+        .rpc("add_proposal_labor_item", {
+          p_proposal_version_id: versionId,
+          p_label: "Switch me back",
+          p_worker_count: null as unknown as number,
+          p_estimated_days: null as unknown as number,
+          p_hours_per_day: null as unknown as number,
+          p_hourly_rate_cents: null as unknown as number,
+          p_pricing_method: "fixed",
+          p_fixed_total_cents: 55000,
+        })
+        .single();
+      const itemId = (item as { id: string }).id;
+
+      const { data: updated, error } = await aClient
+        .rpc("update_proposal_labor_item", {
+          p_labor_item_id: itemId,
+          p_label: "Switch me back",
+          p_worker_count: 1,
+          p_estimated_days: 1,
+          p_hours_per_day: 8,
+          p_hourly_rate_cents: 3000,
+          p_pricing_method: "hourly",
+          p_fixed_total_cents: null as unknown as number,
+        })
+        .single();
+      expect(error).toBeNull();
+      const u = updated as { pricing_method: string; total_cents: number; fixed_total_cents: number | null };
+      expect(u.pricing_method).toBe("hourly");
+      expect(u.total_cents).toBe(24000);
+      expect(u.fixed_total_cents).toBeNull();
+    });
+
+    it("a manipulated total_cents on a fixed labor item via raw .update() is never accepted — no UPDATE grant exists", async () => {
+      const { versionId } = await createDraftProposal("Fixed labor: manipulation rejected");
+      const { data: item } = await aClient
+        .rpc("add_proposal_labor_item", {
+          p_proposal_version_id: versionId,
+          p_label: "Fixed labor",
+          p_worker_count: null as unknown as number,
+          p_estimated_days: null as unknown as number,
+          p_hours_per_day: null as unknown as number,
+          p_hourly_rate_cents: null as unknown as number,
+          p_pricing_method: "fixed",
+          p_fixed_total_cents: 70000,
+        })
+        .single();
+      const itemId = (item as { id: string }).id;
+
+      await aClient.from("proposal_labor_items").update({ total_cents: 1, fixed_total_cents: 1 }).eq("id", itemId);
+
+      const { data: unchanged } = await aClient.from("proposal_labor_items").select("total_cents, fixed_total_cents").eq("id", itemId).single();
+      const u = unchanged as { total_cents: number; fixed_total_cents: number };
+      expect(u.total_cents).toBe(70000);
+      expect(u.fixed_total_cents).toBe(70000);
+    });
+
+    it("a locked version rejects both adding and updating fixed-price labor", async () => {
+      const { versionId } = await createDraftProposal("Fixed labor: locked version");
+      const { data: item } = await aClient
+        .rpc("add_proposal_labor_item", {
+          p_proposal_version_id: versionId,
+          p_label: "Pre-lock item",
+          p_worker_count: 1,
+          p_estimated_days: 1,
+          p_hours_per_day: 8,
+          p_hourly_rate_cents: 3000,
+        })
+        .single();
+      const itemId = (item as { id: string }).id;
+
+      await admin.from("proposal_versions").update({ version_status: "locked", locked_at: new Date().toISOString() }).eq("id", versionId);
+
+      const { error: addErr } = await aClient.rpc("add_proposal_labor_item", {
+        p_proposal_version_id: versionId,
+        p_label: "Should not be added",
+        p_worker_count: null as unknown as number,
+        p_estimated_days: null as unknown as number,
+        p_hours_per_day: null as unknown as number,
+        p_hourly_rate_cents: null as unknown as number,
+        p_pricing_method: "fixed",
+        p_fixed_total_cents: 50000,
+      });
+      expect(addErr).not.toBeNull();
+
+      const { error: updateErr } = await aClient.rpc("update_proposal_labor_item", {
+        p_labor_item_id: itemId,
+        p_label: "Should not switch to fixed",
+        p_worker_count: null as unknown as number,
+        p_estimated_days: null as unknown as number,
+        p_hours_per_day: null as unknown as number,
+        p_hourly_rate_cents: null as unknown as number,
+        p_pricing_method: "fixed",
+        p_fixed_total_cents: 50000,
+      });
+      expect(updateErr).not.toBeNull();
+
+      await admin.from("proposal_versions").update({ version_status: "superseded" }).eq("id", versionId);
+    });
+
+    it("cross-tenant: Tenant B cannot add a fixed-price labor item to Tenant A's version", async () => {
+      const { versionId } = await createDraftProposal("Fixed labor: cross-tenant");
+      const { error } = await bClient.rpc("add_proposal_labor_item", {
+        p_proposal_version_id: versionId,
+        p_label: "Tenant B should not add this",
+        p_worker_count: null as unknown as number,
+        p_estimated_days: null as unknown as number,
+        p_hours_per_day: null as unknown as number,
+        p_hourly_rate_cents: null as unknown as number,
+        p_pricing_method: "fixed",
+        p_fixed_total_cents: 50000,
+      });
+      expect(error).not.toBeNull();
+    });
+
+    it("Estimator (has proposals.manage_pricing) can add a fixed-price labor item", async () => {
+      const { versionId } = await createDraftProposal("Fixed labor: estimator permission");
+      const { error } = await estimatorClient.rpc("add_proposal_labor_item", {
+        p_proposal_version_id: versionId,
+        p_label: "Estimator fixed labor",
+        p_worker_count: null as unknown as number,
+        p_estimated_days: null as unknown as number,
+        p_hours_per_day: null as unknown as number,
+        p_hourly_rate_cents: null as unknown as number,
+        p_pricing_method: "fixed",
+        p_fixed_total_cents: 50000,
+      });
+      expect(error).toBeNull();
+    });
+
+    it("Viewer cannot add a fixed-price labor item", async () => {
+      const { versionId } = await createDraftProposal("Fixed labor: viewer rejected");
+      const { error } = await viewerClient.rpc("add_proposal_labor_item", {
+        p_proposal_version_id: versionId,
+        p_label: "Viewer should not add this",
+        p_worker_count: null as unknown as number,
+        p_estimated_days: null as unknown as number,
+        p_hours_per_day: null as unknown as number,
+        p_hourly_rate_cents: null as unknown as number,
+        p_pricing_method: "fixed",
+        p_fixed_total_cents: 50000,
+      });
+      expect(error).not.toBeNull();
+    });
+  });
+
+  // ===========================================================================
   // Job summary (update_proposal_scope) — regression coverage for the bug
   // where PostgREST failed to resolve the RPC overload when a client
   // omitted an empty optional argument instead of sending it as null.

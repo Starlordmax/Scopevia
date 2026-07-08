@@ -40,18 +40,18 @@ export function StepPhotos({
         {currentJobMedia.length === 0 ? (
           <p className="hint">No photos of the current job yet.</p>
         ) : (
-          <div className="metrics-grid">
+          <div className="photo-grid">
             {currentJobMedia.map((m) => (
-              <figure key={m.id} className="card" style={{ maxWidth: "none" }}>
+              <figure key={m.id} className="photo-card">
                 {m.signedUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element -- signed URLs are short-lived and per-request; next/image's remote-pattern allowlist isn't a good fit here.
-                  <img src={m.signedUrl} alt={m.caption || "Current job photo"} style={{ width: "100%", borderRadius: 8 }} />
+                  <img src={m.signedUrl} alt={m.caption || "Current job photo"} className="photo-thumb" />
                 ) : (
                   <div className="hint">Photo unavailable</div>
                 )}
-                {m.caption ? <figcaption className="hint">{m.caption}</figcaption> : null}
+                {m.caption ? <figcaption className="photo-card-caption">{m.caption}</figcaption> : null}
                 {canUploadCurrentJob ? (
-                  <form action={detachProposalMediaAction}>
+                  <form action={detachProposalMediaAction} className="photo-card-actions">
                     <input type="hidden" name="proposalMediaId" value={m.id} />
                     <input type="hidden" name="proposalId" value={proposalId} />
                     <button type="submit" className="button-secondary">
@@ -79,8 +79,8 @@ export function StepPhotos({
                 <label htmlFor="caption">Caption (optional)</label>
                 <input id="caption" name="caption" type="text" maxLength={200} />
               </div>
-              <SubmitButton pendingText="Uploading…" className="button-secondary">
-                Upload photo
+              <SubmitButton pendingText="Uploading…" className="button-success">
+                Upload job photo
               </SubmitButton>
             </form>
           </>
@@ -92,18 +92,18 @@ export function StepPhotos({
         {previousWorkMedia.length === 0 ? (
           <p className="hint">No previous-work photos selected yet.</p>
         ) : (
-          <div className="metrics-grid">
+          <div className="photo-grid">
             {previousWorkMedia.map((m) => (
-              <figure key={m.id} className="card" style={{ maxWidth: "none" }}>
+              <figure key={m.id} className="photo-card">
                 {m.signedUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element -- see note above
-                  <img src={m.signedUrl} alt={m.caption || "Previous work"} style={{ width: "100%", borderRadius: 8 }} />
+                  <img src={m.signedUrl} alt={m.caption || "Previous work"} className="photo-thumb" />
                 ) : (
                   <div className="hint">Photo unavailable</div>
                 )}
-                {m.caption ? <figcaption className="hint">{m.caption}</figcaption> : null}
+                {m.caption ? <figcaption className="photo-card-caption">{m.caption}</figcaption> : null}
                 {canUsePortfolio ? (
-                  <form action={detachProposalMediaAction}>
+                  <form action={detachProposalMediaAction} className="photo-card-actions">
                     <input type="hidden" name="proposalMediaId" value={m.id} />
                     <input type="hidden" name="proposalId" value={proposalId} />
                     <button type="submit" className="button-secondary">
@@ -124,26 +124,34 @@ export function StepPhotos({
           ) : (
             <details>
               <summary>Select from Portfolio</summary>
-              <div className="stack" style={{ gap: 8, marginTop: 8 }}>
+              <div className="photo-grid" style={{ marginTop: 8 }}>
                 {portfolioOptions.map((p) => (
-                  <div key={p.mediaAssetId} className="page-header-heading">
-                    <span>
-                      {p.projectTitle} — {p.caption || "Untitled photo"}
-                    </span>
-                    {attachedAssetIds.has(p.mediaAssetId) ? (
-                      <span className="badge">Added</span>
+                  <figure key={p.mediaAssetId} className="photo-card">
+                    {p.thumbnailUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- signed URL, short-lived, per-request
+                      <img src={p.thumbnailUrl} alt={p.caption || p.projectTitle} className="photo-thumb" />
                     ) : (
-                      <form action={attachPortfolioMediaToProposalAction}>
-                        <input type="hidden" name="proposalVersionId" value={proposalVersionId} />
-                        <input type="hidden" name="proposalId" value={proposalId} />
-                        <input type="hidden" name="mediaAssetId" value={p.mediaAssetId} />
-                        <input type="hidden" name="portfolioProjectId" value={p.portfolioProjectId} />
-                        <button type="submit" className="button-secondary">
-                          + Add
-                        </button>
-                      </form>
+                      <div className="hint">Photo unavailable</div>
                     )}
-                  </div>
+                    <figcaption className="photo-card-caption">
+                      {p.projectTitle} — {p.caption || "Untitled photo"}
+                    </figcaption>
+                    <div className="photo-card-actions">
+                      {attachedAssetIds.has(p.mediaAssetId) ? (
+                        <span className="badge">Added</span>
+                      ) : (
+                        <form action={attachPortfolioMediaToProposalAction}>
+                          <input type="hidden" name="proposalVersionId" value={proposalVersionId} />
+                          <input type="hidden" name="proposalId" value={proposalId} />
+                          <input type="hidden" name="mediaAssetId" value={p.mediaAssetId} />
+                          <input type="hidden" name="portfolioProjectId" value={p.portfolioProjectId} />
+                          <button type="submit" className="button-secondary">
+                            + Add
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  </figure>
                 ))}
               </div>
             </details>

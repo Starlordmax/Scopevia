@@ -65,16 +65,52 @@ test.describe("Proposal Builder (mobile, 390x844)", () => {
     scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(viewportWidth + 1);
 
+    // The upload button must be reachable and clearly a positive action on
+    // a small viewport too — see docs/41-photo-gallery-ui-fix.md.
+    const uploadButton = page.getByRole("button", { name: "Upload job photo" });
+    await expect(uploadButton).toHaveClass(/button-success/);
+    const uploadBox = await uploadButton.boundingBox();
+    expect(uploadBox).not.toBeNull();
+    if (uploadBox) {
+      expect(uploadBox.x + uploadBox.width).toBeLessThanOrEqual(viewportWidth + 1);
+      expect(uploadBox.height).toBeGreaterThanOrEqual(36); // adequate touch target
+    }
+
+    // Scoped to the "Current job photos" section specifically: .photo-thumb
+    // is also used by the (collapsed) "Select from Portfolio" picker further
+    // down this same page, which can independently contain tenant-wide
+    // portfolio photos left over from other tests sharing this tenant —
+    // an unscoped page-wide locator would be ambiguous (Playwright strict
+    // mode) or match the wrong section's thumbnail entirely.
+    const currentJobSection = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Current job photos" }) });
+
+    const filePath = require.resolve("./fixtures/one-pixel.png");
+    await page.getByLabel("Upload a photo").setInputFiles(filePath);
+    await uploadButton.click();
+    await expect(currentJobSection.locator(".photo-thumb")).toBeVisible({ timeout: 15_000 });
+    scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(scrollWidth).toBeLessThanOrEqual(viewportWidth + 1);
+    const thumbBox = await currentJobSection.locator(".photo-thumb").first().boundingBox();
+    expect(thumbBox).not.toBeNull();
+    if (thumbBox) {
+      // Two columns fit at this viewport width — a thumbnail must not
+      // stretch to fill the whole screen.
+      expect(thumbBox.width).toBeLessThan(viewportWidth * 0.7);
+    }
+
     await page.getByRole("link", { name: "Continue to Terms & Pricing" }).click();
     await page.waitForURL(/step=pricing/);
     await page.getByLabel("Tax rate (%)").fill("7");
     await page.getByRole("button", { name: "Save and continue" }).click();
     await page.waitForURL(/step=review/);
 
-    // The document/pricing summary must be readable without horizontal scroll.
+    // The document/pricing summary must be readable without horizontal scroll,
+    // and must show the real computed total — never a stale $0.00.
     scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(viewportWidth + 1);
     await expect(page.locator(".pricing-summary-total")).toBeVisible();
+    await expect(page.locator(".pricing-summary-row").filter({ hasText: "Labor" })).toContainText("$2,400.00");
+    await expect(page.locator(".pricing-summary-total")).not.toContainText("$0.00");
 
     // Bottom nav includes Proposals and is fully within the viewport.
     const bottomNavProposals = page.locator(".bottom-nav-link", { hasText: "Proposals" });

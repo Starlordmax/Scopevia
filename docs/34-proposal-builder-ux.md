@@ -11,6 +11,15 @@ return to draft → archive → restore) and by the E2E suite in
 > cubierto por el E2E original, que no llegaba a ejercitar ese formulario.
 > Corregido; ver [37-proposal-scope-rpc-fix.md](37-proposal-scope-rpc-fix.md).
 
+> **Nota de estado (2026-07-08):** El paso Labor ahora ofrece dos modos
+> de precio (Hourly estimate / Fixed price); el botón de subir foto usa
+> un estilo verde distintivo; y las fotos (current job, previous work,
+> Portfolio, selector de Portfolio) se muestran como una galería de
+> thumbnails en lugar de imágenes a tamaño completo. Ver
+> [39-fixed-labor-pricing.md](39-fixed-labor-pricing.md),
+> [40-proposal-total-refresh-fix.md](40-proposal-total-refresh-fix.md), y
+> [41-photo-gallery-ui-fix.md](41-photo-gallery-ui-fix.md).
+
 ## Routes
 
 | Route | Purpose |

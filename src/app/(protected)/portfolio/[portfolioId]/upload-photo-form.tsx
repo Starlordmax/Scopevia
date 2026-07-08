@@ -23,8 +23,8 @@ export function UploadPhotoForm({ tenantId, portfolioProjectId }: { tenantId: st
         <label htmlFor="caption">Caption (optional)</label>
         <input id="caption" name="caption" type="text" maxLength={200} />
       </div>
-      <SubmitButton pendingText="Uploading…" className="button-secondary">
-        Upload photo
+      <SubmitButton pendingText="Uploading…" className="button-success">
+        Upload portfolio photo
       </SubmitButton>
     </form>
   );

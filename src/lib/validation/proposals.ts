@@ -125,13 +125,31 @@ export const addProposalSectionSchema = z.object({
   sectionType: sectionTypeSchema.default("custom"),
 });
 
-export const addProposalLaborItemSchema = z.object({
-  label: z.string().trim().min(1, "Label is required").max(160),
-  workerCount: z.coerce.number().int().min(1, "Must be at least 1").max(500),
-  estimatedDays: z.coerce.number().min(0.01, "Must be greater than zero").max(3650),
-  hoursPerDay: z.coerce.number().min(0.01, "Must be greater than zero").max(24),
-  hourlyRateCents: requiredDollarsToCentsSchema,
-});
+export const laborPricingMethodSchema = z.enum(["hourly", "fixed"]);
+
+/**
+ * A discriminated union rather than one object with optional fields: which
+ * fields are required is entirely determined by pricingMethod, and a
+ * discriminated union makes that an exhaustive, compiler-checked fact
+ * instead of something enforced ad hoc with .refine(). requiredDollarsToCentsSchema
+ * rejects an empty string outright (via regex) rather than coercing it to
+ * 0 — see its definition above.
+ */
+export const addProposalLaborItemSchema = z.discriminatedUnion("pricingMethod", [
+  z.object({
+    pricingMethod: z.literal("hourly"),
+    label: z.string().trim().min(1, "Label is required").max(160),
+    workerCount: z.coerce.number().int().min(1, "Must be at least 1").max(500),
+    estimatedDays: z.coerce.number().min(0.01, "Must be greater than zero").max(3650),
+    hoursPerDay: z.coerce.number().min(0.01, "Must be greater than zero").max(24),
+    hourlyRateCents: requiredDollarsToCentsSchema,
+  }),
+  z.object({
+    pricingMethod: z.literal("fixed"),
+    label: z.string().trim().min(1, "Label is required").max(160),
+    fixedTotalCents: requiredDollarsToCentsSchema,
+  }),
+]);
 
 export const addProposalLineItemSchema = z.object({
   category: lineItemCategorySchema,

@@ -218,7 +218,8 @@ button,
 .button,
 .button-primary,
 .button-secondary,
-.button-danger {
+.button-danger,
+.button-success {
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
@@ -268,6 +269,20 @@ button:disabled {
 
 .button-danger:hover {
   background: var(--color-danger-soft);
+}
+
+/* A distinct, positive-action color (green) reserved for photo upload
+   actions specifically — never reused for destructive actions — so the
+   button doesn't blend into the same gray as every other secondary
+   control on the page. See docs/41-photo-gallery-ui-fix.md. */
+.button-success {
+  background: #16a34a;
+  color: white;
+  border-color: #16a34a;
+}
+
+.button-success:hover {
+  background: #15803d;
 }
 
 .icon {
@@ -623,6 +638,67 @@ button:disabled {
   line-height: 1.1;
 }
 
+/* Photo thumbnail gallery — used everywhere a proposal/portfolio photo is
+   shown outside the standalone document view (current-job photos,
+   previous-work, Portfolio, the photo-selection picker). Previously these
+   reused .metrics-grid (built for a handful of wide dashboard tiles), so a
+   photo could stretch to fill almost the entire viewport with no height
+   cap. See docs/41-photo-gallery-ui-fix.md. */
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.photo-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  overflow: hidden;
+  margin: 0;
+}
+
+.photo-thumb {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  display: block;
+}
+
+/* Used only in the full proposal document (Review step / standalone
+   Preview) — larger than the builder's thumbnails, per the brief's "puede
+   mostrar imágenes más grandes, pero igualmente con tamaño controlado",
+   but still capped, never full-bleed. */
+.photo-thumb-lg {
+  height: 220px;
+}
+
+.photo-card-caption {
+  padding: 6px 10px;
+  font-size: var(--text-small);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.photo-card-actions {
+  padding: 0 10px 10px;
+  margin-top: auto;
+}
+
+@media (max-width: 480px) {
+  .photo-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 340px) {
+  .photo-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .metric-tile-label {
   font-size: var(--text-small);
   color: var(--color-text-muted);
@@ -860,6 +936,12 @@ tbody tr:hover {
 }
 
 /* ---- Phase 2A: Proposal Builder ------------------------------------------ */
+
+.pricing-method-toggle {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 
 .proposal-stepper {
   display: flex;

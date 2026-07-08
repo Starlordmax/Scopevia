@@ -60,19 +60,19 @@ export default async function PortfolioProjectDetailPage({ params }: { params: P
         {!media || media.length === 0 ? (
           <p className="hint">No photos yet.</p>
         ) : (
-          <div className="metrics-grid">
+          <div className="photo-grid">
             {media.map((m) => {
               const path = m.media_assets?.storage_path;
               const url = path ? signedUrls[path] : undefined;
               return (
-                <figure key={m.id} className="card" style={{ maxWidth: "none" }}>
+                <figure key={m.id} className="photo-card">
                   {url ? (
                     // eslint-disable-next-line @next/next/no-img-element -- signed URL, short-lived, per-request
-                    <img src={url} alt={m.caption || project.title} style={{ width: "100%", borderRadius: 8 }} />
+                    <img src={url} alt={m.caption || project.title} className="photo-thumb" />
                   ) : (
                     <div className="hint">Photo unavailable</div>
                   )}
-                  {m.caption ? <figcaption className="hint">{m.caption}</figcaption> : null}
+                  {m.caption ? <figcaption className="photo-card-caption">{m.caption}</figcaption> : null}
                 </figure>
               );
             })}

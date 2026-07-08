@@ -131,11 +131,13 @@ export function ProposalDocument({ businessName, data }: { businessName: string;
         {currentJobMedia.length === 0 ? (
           <p className="hint">No photos added yet.</p>
         ) : (
-          <div className="metrics-grid">
+          <div className="photo-grid">
             {currentJobMedia.map((m) =>
               m.signedUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element -- signed URL, short-lived, per-request
-                <img key={m.id} src={m.signedUrl} alt={m.caption || "Current job photo"} style={{ width: "100%", borderRadius: 8 }} />
+                <figure key={m.id} className="photo-card">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- signed URL, short-lived, per-request */}
+                  <img src={m.signedUrl} alt={m.caption || "Current job photo"} className="photo-thumb photo-thumb-lg" />
+                </figure>
               ) : null
             )}
           </div>
@@ -147,11 +149,13 @@ export function ProposalDocument({ businessName, data }: { businessName: string;
         {previousWorkMedia.length === 0 ? (
           <p className="hint">No previous work selected.</p>
         ) : (
-          <div className="metrics-grid">
+          <div className="photo-grid">
             {previousWorkMedia.map((m) =>
               m.signedUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element -- signed URL, short-lived, per-request
-                <img key={m.id} src={m.signedUrl} alt={m.caption || "Previous work"} style={{ width: "100%", borderRadius: 8 }} />
+                <figure key={m.id} className="photo-card">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- signed URL, short-lived, per-request */}
+                  <img src={m.signedUrl} alt={m.caption || "Previous work"} className="photo-thumb photo-thumb-lg" />
+                </figure>
               ) : null
             )}
           </div>

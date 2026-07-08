@@ -44,6 +44,9 @@ Full walkthrough (installing, running migrations, creating a test user, verifyin
 | [docs/36-phase-2a-e2e-verification.md](docs/36-phase-2a-e2e-verification.md) | Real Playwright browser test results for the proposal flow |
 | [docs/37-proposal-scope-rpc-fix.md](docs/37-proposal-scope-rpc-fix.md) | Root cause and fix for the `update_proposal_scope` "schema cache" bug |
 | [docs/38-navigation-simplification.md](docs/38-navigation-simplification.md) | Pipeline and Projects removed as visible UI modules; what changed, what didn't, known limitations |
+| [docs/39-fixed-labor-pricing.md](docs/39-fixed-labor-pricing.md) | The Labor step's second pricing mode (fixed price alongside hourly) |
+| [docs/40-proposal-total-refresh-fix.md](docs/40-proposal-total-refresh-fix.md) | A reported "Pricing Summary shows $0.00" bug: full investigation, not reproduced, documented honestly |
+| [docs/41-photo-gallery-ui-fix.md](docs/41-photo-gallery-ui-fix.md) | Green upload button, thumbnail photo grid (replacing full-size images) |
 | [docs/14-phase-0-foundations.md](docs/14-phase-0-foundations.md) | What Phase 0 implements and why, including deviations from the original design |
 | [docs/15-local-development.md](docs/15-local-development.md) | Local setup, commands, troubleshooting |
 | [docs/16-environments-and-deployment.md](docs/16-environments-and-deployment.md) | Dev/staging/production separation, migrations, secrets |

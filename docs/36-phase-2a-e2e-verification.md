@@ -26,6 +26,14 @@ this document's numbers were not stale.
 > memory contention in this specific sandbox, unrelated to the code) and
 > two real bugs this pass found and fixed.
 
+> **Nota de estado (2026-07-08):** Phase 2A.2 (fixed labor pricing +
+> Pricing Summary investigation + photo upload/gallery UI, see
+> [docs/39](39-fixed-labor-pricing.md)/[docs/40](40-proposal-total-refresh-fix.md)/
+> [docs/41](41-photo-gallery-ui-fix.md)) added 5 new E2E cases (2 desktop
+> "Labor pricing method" tests, extended Portfolio-photo and mobile
+> assertions) and re-ran the full suite — see "Phase 2A.2 E2E
+> re-verification" below for final numbers.
+
 ## Environment
 
 Identical to Phase 1: production build (`next build && next start`), the
@@ -307,3 +315,50 @@ Both were verified fixed by re-running the affected files in isolation
 Net change from the Phase 2A baseline (55): -1 (old projects.spec.ts had
 6 cases, new has 7, net +1) +2 (pipeline.spec.ts) +1 (pipeline.mobile) -1
 (permissions.spec.ts) +2 (Job Summary) = **58**.
+
+## Phase 2A.2 E2E re-verification
+
+Added fixed labor pricing (docs/39), investigated the reported "$0.00
+Pricing Summary" bug (docs/40, not reproduced), and reworked photo
+upload/gallery UI (docs/41). **Final result: 60/60 PASS**, 8.6 minutes,
+single-worker (this sandbox's available memory still cannot reliably
+sustain 2 concurrent Chromium instances — see docs/36's "Phase 2A.1"
+section above; unrelated to this pass's changes).
+
+### A real bug — in this pass's own new test, not the product
+
+The first run of the extended `proposals.mobile.spec.ts` test failed
+with a Playwright strict-mode violation: `locator(".photo-thumb")`
+resolved to 3 elements instead of 1. Root cause: `.photo-thumb` is
+used in three places on the Proposal Builder's Photos step —
+current-job photos, previous-work photos, and (new in this pass) the
+"Select from Portfolio" picker — and Portfolio projects/media are
+genuinely tenant-wide, persisting across every test that shares Tenant A
+within the same suite run. An earlier-run test's Portfolio photos were
+present (inside the picker's collapsed `<details>`) at the same time the
+new mobile test uploaded its own current-job photo, so an unscoped
+`page.locator(".photo-thumb")` was ambiguous — not a bug in the app
+(the picker correctly showed real, distinct portfolio photos; the
+current-job section correctly showed its own upload), but a real gap in
+the new test's locator scoping. Fixed by scoping the locator to the
+"Current job photos" section's own container (`page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Current job photos" }) })`)
+rather than the whole page. Confirmed fixed by re-running the file in
+isolation (7/7 passed) before the final full-suite confirmation.
+
+### New/extended spec files in this pass
+
+- `tests/e2e/proposals.spec.ts` — new "Labor pricing method" describe
+  block (2 cases: fixed-price + materials combined total, persisted on
+  reload; the hourly worked example); the existing "Portfolio" test
+  extended with green-button, thumbnail-count, and thumbnail-size
+  assertions (no new test count, same test).
+- `tests/e2e/proposals.mobile.spec.ts` — the existing "stepper, forms,
+  and pricing summary" test extended with photo-upload-button and
+  thumbnail-sizing assertions on a 390px viewport, plus an explicit
+  check that the Pricing Summary never shows a stale `$0.00` after
+  adding hourly labor (no new test count, same test).
+
+Net change from the Phase 2A.1 baseline (58): +2 ("Labor pricing method"
+— fixed-price and hourly worked-example cases), taking 58 → **60**. The
+Portfolio and mobile test extensions added assertions to existing tests
+rather than new test cases.

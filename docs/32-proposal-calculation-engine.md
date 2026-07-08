@@ -6,6 +6,13 @@ real-browser manual walkthrough. See
 [docs/adr/0030](adr/0030-labor-calculation-model.md) and
 [docs/adr/0031](adr/0031-tax-and-discount-model.md) for the decisions.
 
+> **Nota de estado (2026-07-08):** Labor now supports a second pricing
+> mode — a single fixed price, alongside the original hourly calculation
+> — see "Labor" below and
+> [docs/39-fixed-labor-pricing.md](39-fixed-labor-pricing.md) for the full
+> design and [docs/40-proposal-total-refresh-fix.md](40-proposal-total-refresh-fix.md)
+> for the investigation into a reported "Pricing Summary shows $0.00" bug.
+
 ## Authority
 
 The **only** authoritative implementation is
@@ -20,18 +27,41 @@ TypeScript mirror used only for the Proposal Builder's live preview
 
 ## Labor
 
+Two pricing methods, chosen per labor item (`proposal_labor_items.pricing_method`):
+
+**Hourly** (the original, default mode):
+
 ```
 total_hours = worker_count × estimated_days × hours_per_day   (rounded to 2 decimals)
 total_cents = round(total_hours × hourly_rate_cents)
 ```
 
 Worked example from the brief: 2 workers, 5 days, 8 hours/day, $30/hour →
-80 hours, $2,400.00. Verified in `tests/unit/proposal-calculations.test.ts`,
-`tests/rls/phase2a-proposals.test.ts`, and a real browser session (see
-[docs/36](36-phase-2a-e2e-verification.md)).
+80 hours, $2,400.00. A second worked example: 1 worker, 1 day, 8
+hours/day, $35/hour → 8 hours, $280.00.
 
-Multiple labor items sum independently and are added together for the
-version's `labor_total_cents`.
+**Fixed** (new — for a contractor who prices labor as a single flat
+amount rather than deriving it from a rate):
+
+```
+total_hours = 0   (not tracked for a fixed-price item)
+total_cents = fixed_total_cents   (entered directly, validated >= 0, never computed)
+```
+
+Worked example: a $700.00 fixed labor price → `total_cents = 70000`,
+`total_hours = 0`.
+
+Both are verified in `tests/unit/proposal-calculations.test.ts`,
+`tests/rls/phase2a-proposals.test.ts` (see its "Fixed-price labor"
+describe block), and real browser sessions (see [docs/36](36-phase-2a-e2e-verification.md)).
+
+Multiple labor items — hourly, fixed, or a mix of both on the same
+proposal — sum independently and are added together for the version's
+`labor_total_cents`. Which fields apply is enforced at the database level
+by `proposal_labor_items_pricing_fields_check`: an hourly row always has
+all four hourly fields and a null `fixed_total_cents`; a fixed row always
+has `fixed_total_cents` and null hourly fields — never a mix of both on
+the same row, and never silently defaulted.
 
 ## Materials & other costs (line items)
 

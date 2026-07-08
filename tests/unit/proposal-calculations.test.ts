@@ -10,36 +10,36 @@ import {
 
 describe("computeLaborHours / computeLaborTotalCents", () => {
   it("one worker, one day", () => {
-    const item: LaborItemInput = { workerCount: 1, estimatedDays: 1, hoursPerDay: 8, hourlyRateCents: 3000 };
+    const item: LaborItemInput = { pricingMethod: "hourly", workerCount: 1, estimatedDays: 1, hoursPerDay: 8, hourlyRateCents: 3000 };
     expect(computeLaborHours(item)).toBe(8);
     expect(computeLaborTotalCents(item)).toBe(24000); // $240.00
   });
 
   it("the brief's worked example: 2 workers, 5 days, 8 hours/day, $30/hr -> 80 hours, $2,400", () => {
-    const item: LaborItemInput = { workerCount: 2, estimatedDays: 5, hoursPerDay: 8, hourlyRateCents: 3000 };
+    const item: LaborItemInput = { pricingMethod: "hourly", workerCount: 2, estimatedDays: 5, hoursPerDay: 8, hourlyRateCents: 3000 };
     expect(computeLaborHours(item)).toBe(80);
     expect(computeLaborTotalCents(item)).toBe(240000); // $2,400.00
   });
 
   it("multiple workers and multiple days compound correctly", () => {
-    const item: LaborItemInput = { workerCount: 4, estimatedDays: 3, hoursPerDay: 6, hourlyRateCents: 2500 };
+    const item: LaborItemInput = { pricingMethod: "hourly", workerCount: 4, estimatedDays: 3, hoursPerDay: 6, hourlyRateCents: 2500 };
     expect(computeLaborHours(item)).toBe(72); // 4*3*6
     expect(computeLaborTotalCents(item)).toBe(180000); // 72 * 2500
   });
 
   it("decimal estimated days", () => {
-    const item: LaborItemInput = { workerCount: 1, estimatedDays: 2.5, hoursPerDay: 8, hourlyRateCents: 4000 };
+    const item: LaborItemInput = { pricingMethod: "hourly", workerCount: 1, estimatedDays: 2.5, hoursPerDay: 8, hourlyRateCents: 4000 };
     expect(computeLaborHours(item)).toBe(20);
     expect(computeLaborTotalCents(item)).toBe(80000);
   });
 
   it("rounds total_hours to 2 decimal places", () => {
-    const item: LaborItemInput = { workerCount: 1, estimatedDays: 1, hoursPerDay: 7.333, hourlyRateCents: 100 };
+    const item: LaborItemInput = { pricingMethod: "hourly", workerCount: 1, estimatedDays: 1, hoursPerDay: 7.333, hourlyRateCents: 100 };
     expect(computeLaborHours(item)).toBe(7.33);
   });
 
   it("rounds total_cents to the nearest whole cent when hours * rate is fractional", () => {
-    const item: LaborItemInput = { workerCount: 1, estimatedDays: 1, hoursPerDay: 1.01, hourlyRateCents: 333 };
+    const item: LaborItemInput = { pricingMethod: "hourly", workerCount: 1, estimatedDays: 1, hoursPerDay: 1.01, hourlyRateCents: 333 };
     expect(computeLaborHours(item)).toBe(1.01);
     expect(computeLaborTotalCents(item)).toBe(336); // 1.01 * 333 = 336.33 -> 336
   });
@@ -50,14 +50,34 @@ describe("computeLaborHours / computeLaborTotalCents", () => {
     // worker_count<=0 before ever calling this. This test just pins down
     // that the mirror itself has no built-in guard, so nobody mistakes it
     // for the validation layer.
-    const item: LaborItemInput = { workerCount: 0, estimatedDays: 5, hoursPerDay: 8, hourlyRateCents: 3000 };
+    const item: LaborItemInput = { pricingMethod: "hourly", workerCount: 0, estimatedDays: 5, hoursPerDay: 8, hourlyRateCents: 3000 };
     expect(computeLaborHours(item)).toBe(0);
   });
 
   it("high but realistic values do not overflow or misbehave", () => {
-    const item: LaborItemInput = { workerCount: 50, estimatedDays: 90, hoursPerDay: 12, hourlyRateCents: 15000 };
+    const item: LaborItemInput = { pricingMethod: "hourly", workerCount: 50, estimatedDays: 90, hoursPerDay: 12, hourlyRateCents: 15000 };
     expect(computeLaborHours(item)).toBe(54000);
     expect(computeLaborTotalCents(item)).toBe(810000000); // $8,100,000.00
+  });
+});
+
+describe("computeLaborHours / computeLaborTotalCents — fixed pricing method", () => {
+  it("fixed price: total_cents is the fixed price verbatim, total_hours is 0", () => {
+    const item: LaborItemInput = { pricingMethod: "fixed", fixedTotalCents: 70000 };
+    expect(computeLaborHours(item)).toBe(0);
+    expect(computeLaborTotalCents(item)).toBe(70000); // $700.00
+  });
+
+  it("fixed price of exactly zero is a valid, distinct value from 'not set'", () => {
+    const item: LaborItemInput = { pricingMethod: "fixed", fixedTotalCents: 0 };
+    expect(computeLaborTotalCents(item)).toBe(0);
+  });
+
+  it("switching pricing method changes which fields are read — an hourly item's rate never leaks into a fixed total", () => {
+    const hourly: LaborItemInput = { pricingMethod: "hourly", workerCount: 2, estimatedDays: 5, hoursPerDay: 8, hourlyRateCents: 3000 };
+    const fixed: LaborItemInput = { pricingMethod: "fixed", fixedTotalCents: 70000 };
+    expect(computeLaborTotalCents(hourly)).toBe(240000);
+    expect(computeLaborTotalCents(fixed)).toBe(70000);
   });
 });
 
@@ -81,7 +101,7 @@ describe("computeLineItemTotalCents", () => {
 });
 
 describe("computeProposalTotals", () => {
-  const oneLaborItem: LaborItemInput = { workerCount: 2, estimatedDays: 5, hoursPerDay: 8, hourlyRateCents: 3000 };
+  const oneLaborItem: LaborItemInput = { pricingMethod: "hourly", workerCount: 2, estimatedDays: 5, hoursPerDay: 8, hourlyRateCents: 3000 };
 
   it("no discount, no tax", () => {
     const result = computeProposalTotals({
@@ -101,8 +121,8 @@ describe("computeProposalTotals", () => {
   it("multiple labor items sum correctly", () => {
     const result = computeProposalTotals({
       laborItems: [
-        { workerCount: 1, estimatedDays: 5, hoursPerDay: 8, hourlyRateCents: 3000 }, // $1,200
-        { workerCount: 2, estimatedDays: 3, hoursPerDay: 8, hourlyRateCents: 2500 }, // 48h * 2500 = $1,200
+        { pricingMethod: "hourly", workerCount: 1, estimatedDays: 5, hoursPerDay: 8, hourlyRateCents: 3000 }, // $1,200
+        { pricingMethod: "hourly", workerCount: 2, estimatedDays: 3, hoursPerDay: 8, hourlyRateCents: 2500 }, // 48h * 2500 = $1,200
       ],
       lineItems: [],
       discountType: "none",
@@ -110,6 +130,45 @@ describe("computeProposalTotals", () => {
       taxRateBps: 0,
     });
     expect(result.laborTotalCents).toBe(240000);
+  });
+
+  it("a mix of hourly and fixed labor items sums correctly", () => {
+    const result = computeProposalTotals({
+      laborItems: [
+        { pricingMethod: "hourly", workerCount: 1, estimatedDays: 1, hoursPerDay: 8, hourlyRateCents: 3500 }, // $280
+        { pricingMethod: "fixed", fixedTotalCents: 70000 }, // $700
+      ],
+      lineItems: [],
+      discountType: "none",
+      discountValue: 0,
+      taxRateBps: 0,
+    });
+    expect(result.laborTotalCents).toBe(98000); // $280 + $700
+  });
+
+  it("manual verification case from the brief: fixed labor $700 + material 2x$40 = $780 total", () => {
+    const result = computeProposalTotals({
+      laborItems: [{ pricingMethod: "fixed", fixedTotalCents: 70000 }],
+      lineItems: [{ quantity: 2, unitPriceCents: 4000, taxable: true }],
+      discountType: "none",
+      discountValue: 0,
+      taxRateBps: 0,
+    });
+    expect(result.laborTotalCents).toBe(70000); // $700.00
+    expect(result.lineItemsSubtotalCents).toBe(8000); // $80.00
+    expect(result.totalCents).toBe(78000); // $780.00
+  });
+
+  it("manual verification case from the brief: hourly labor 1 worker x 1 day x 8h x $35/hr = $280 total", () => {
+    const result = computeProposalTotals({
+      laborItems: [{ pricingMethod: "hourly", workerCount: 1, estimatedDays: 1, hoursPerDay: 8, hourlyRateCents: 3500 }],
+      lineItems: [],
+      discountType: "none",
+      discountValue: 0,
+      taxRateBps: 0,
+    });
+    expect(result.laborTotalCents).toBe(28000); // $280.00
+    expect(result.totalCents).toBe(28000);
   });
 
   it("multiple line items across categories sum correctly", () => {
@@ -154,7 +213,7 @@ describe("computeProposalTotals", () => {
 
   it("a discount greater than the subtotal is capped at the subtotal, never producing a negative total", () => {
     const result = computeProposalTotals({
-      laborItems: [{ workerCount: 1, estimatedDays: 1, hoursPerDay: 1, hourlyRateCents: 10000 }], // $100
+      laborItems: [{ pricingMethod: "hourly", workerCount: 1, estimatedDays: 1, hoursPerDay: 1, hourlyRateCents: 10000 }], // $100
       lineItems: [],
       discountType: "fixed",
       discountValue: 100000, // $1,000 — way more than the $100 subtotal
@@ -251,7 +310,7 @@ describe("computeProposalTotals", () => {
 
   it("high but realistic combined values", () => {
     const result = computeProposalTotals({
-      laborItems: [{ workerCount: 10, estimatedDays: 30, hoursPerDay: 10, hourlyRateCents: 5000 }], // 3000h * $50 = $150,000
+      laborItems: [{ pricingMethod: "hourly", workerCount: 10, estimatedDays: 30, hoursPerDay: 10, hourlyRateCents: 5000 }], // 3000h * $50 = $150,000
       lineItems: [{ quantity: 500, unitPriceCents: 10000, taxable: true }], // $50,000
       discountType: "percentage",
       discountValue: 500, // 5%

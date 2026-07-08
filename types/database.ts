@@ -887,50 +887,56 @@ export type Database = {
         Row: {
           archived_at: string | null
           created_at: string
-          estimated_days: number
-          hourly_rate_cents: number
-          hours_per_day: number
+          estimated_days: number | null
+          fixed_total_cents: number | null
+          hourly_rate_cents: number | null
+          hours_per_day: number | null
           id: string
           label: string
+          pricing_method: string
           proposal_version_id: string
           sort_order: number
           tenant_id: string
           total_cents: number
           total_hours: number
           updated_at: string
-          worker_count: number
+          worker_count: number | null
         }
         Insert: {
           archived_at?: string | null
           created_at?: string
-          estimated_days: number
-          hourly_rate_cents: number
-          hours_per_day: number
+          estimated_days?: number | null
+          fixed_total_cents?: number | null
+          hourly_rate_cents?: number | null
+          hours_per_day?: number | null
           id?: string
           label: string
+          pricing_method?: string
           proposal_version_id: string
           sort_order?: number
           tenant_id: string
           total_cents?: number
           total_hours?: number
           updated_at?: string
-          worker_count: number
+          worker_count?: number | null
         }
         Update: {
           archived_at?: string | null
           created_at?: string
-          estimated_days?: number
-          hourly_rate_cents?: number
-          hours_per_day?: number
+          estimated_days?: number | null
+          fixed_total_cents?: number | null
+          hourly_rate_cents?: number | null
+          hours_per_day?: number | null
           id?: string
           label?: string
+          pricing_method?: string
           proposal_version_id?: string
           sort_order?: number
           tenant_id?: string
           total_cents?: number
           total_hours?: number
           updated_at?: string
-          worker_count?: number
+          worker_count?: number | null
         }
         Relationships: [
           {
@@ -1613,9 +1619,11 @@ export type Database = {
       add_proposal_labor_item: {
         Args: {
           p_estimated_days: number
+          p_fixed_total_cents?: number
           p_hourly_rate_cents: number
           p_hours_per_day: number
           p_label: string
+          p_pricing_method?: string
           p_proposal_version_id: string
           p_sort_order?: number
           p_worker_count: number
@@ -1623,18 +1631,20 @@ export type Database = {
         Returns: {
           archived_at: string | null
           created_at: string
-          estimated_days: number
-          hourly_rate_cents: number
-          hours_per_day: number
+          estimated_days: number | null
+          fixed_total_cents: number | null
+          hourly_rate_cents: number | null
+          hours_per_day: number | null
           id: string
           label: string
+          pricing_method: string
           proposal_version_id: string
           sort_order: number
           tenant_id: string
           total_cents: number
           total_hours: number
           updated_at: string
-          worker_count: number
+          worker_count: number | null
         }
         SetofOptions: {
           from: "*"
@@ -1932,18 +1942,20 @@ export type Database = {
         Returns: {
           archived_at: string | null
           created_at: string
-          estimated_days: number
-          hourly_rate_cents: number
-          hours_per_day: number
+          estimated_days: number | null
+          fixed_total_cents: number | null
+          hourly_rate_cents: number | null
+          hours_per_day: number | null
           id: string
           label: string
+          pricing_method: string
           proposal_version_id: string
           sort_order: number
           tenant_id: string
           total_cents: number
           total_hours: number
           updated_at: string
-          worker_count: number
+          worker_count: number | null
         }
         SetofOptions: {
           from: "*"
@@ -2455,6 +2467,35 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "project_addresses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_project_from_accepted_proposal: {
+        Args: { p_proposal_id: string }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          assigned_to: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          inspection_scheduled_at: string | null
+          name: string
+          opportunity_id: string | null
+          pre_archive_status: string | null
+          primary_contact_id: string | null
+          service_type: string | null
+          status: string
+          tenant_id: string
+          tentative_start_date: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "projects"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -3333,27 +3374,31 @@ export type Database = {
       update_proposal_labor_item: {
         Args: {
           p_estimated_days: number
+          p_fixed_total_cents?: number
           p_hourly_rate_cents: number
           p_hours_per_day: number
           p_label: string
           p_labor_item_id: string
+          p_pricing_method?: string
           p_worker_count: number
         }
         Returns: {
           archived_at: string | null
           created_at: string
-          estimated_days: number
-          hourly_rate_cents: number
-          hours_per_day: number
+          estimated_days: number | null
+          fixed_total_cents: number | null
+          hourly_rate_cents: number | null
+          hours_per_day: number | null
           id: string
           label: string
+          pricing_method: string
           proposal_version_id: string
           sort_order: number
           tenant_id: string
           total_cents: number
           total_hours: number
           updated_at: string
-          worker_count: number
+          worker_count: number | null
         }
         SetofOptions: {
           from: "*"
@@ -3445,11 +3490,11 @@ export type Database = {
       }
       update_proposal_scope: {
         Args: {
-          p_estimated_duration_days: number
-          p_estimated_start_date: string
+          p_estimated_duration_days?: number
+          p_estimated_start_date?: string
           p_proposal_version_id: string
-          p_scope_intro: string
-          p_summary: string
+          p_scope_intro?: string
+          p_summary?: string
         }
         Returns: {
           calculation_version: number
