@@ -54,11 +54,20 @@ test.describe("Proposal Builder (mobile, 390x844)", () => {
 
     await page.getByRole("link", { name: "Continue to Materials & Costs" }).click();
     await page.waitForURL(/step=materials/);
-    await page.getByLabel("Description").fill("Exterior paint");
-    await page.getByLabel("Quantity").fill("5");
-    await page.getByLabel("Unit price ($)").fill("40");
-    await page.getByRole("button", { name: "+ Add cost item" }).click();
-    await expect(page.getByRole("cell", { name: "Exterior paint" })).toBeVisible();
+    // Scoped to "Add a custom cost" — the material catalog's per-row Add
+    // forms above it also have a "Quantity — <material name>" field whose
+    // accessible name contains "Quantity" as a substring (Playwright's
+    // getByLabel default match).
+    const customCostSection = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Add a custom cost" }) });
+    await customCostSection.getByLabel("Description").fill("Exterior paint");
+    await customCostSection.getByLabel("Quantity").fill("5");
+    await customCostSection.getByLabel("Unit price ($)").fill("40");
+    await customCostSection.getByRole("button", { name: "+ Add cost item" }).click();
+    // Scoped to "Saved costs" — the material catalog's own results table
+    // above it has a real "Exterior Paint" row too (case-insensitive
+    // substring match would otherwise make this ambiguous).
+    const savedCosts = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Saved costs" }) });
+    await expect(savedCosts.getByRole("cell", { name: "Exterior paint" })).toBeVisible();
 
     await page.getByRole("link", { name: "Continue to Photos" }).click();
     await page.waitForURL(/step=photos/);

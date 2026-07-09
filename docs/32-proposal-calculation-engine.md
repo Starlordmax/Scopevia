@@ -13,6 +13,16 @@ real-browser manual walkthrough. See
 > design and [docs/40-proposal-total-refresh-fix.md](40-proposal-total-refresh-fix.md)
 > for the investigation into a reported "Pricing Summary shows $0.00" bug.
 
+> **Nota de estado (2026-07-09):** `add_proposal_line_item_from_catalog()`
+> (Phase 2B) is a second way to create a `proposal_line_items` row,
+> alongside the original `add_proposal_line_item()` — it resolves a ZIP
+> price via `find_material_zip_price()`, snapshots it, and calls the
+> exact same `recalculate_proposal_version()` as every other mutation
+> here. No new calculation logic, no new authority — the total is still
+> always `round(quantity × unit_price_cents)` regardless of whether the
+> price came from a manual entry or a catalog lookup. See
+> [docs/42-material-catalog-by-zip.md](42-material-catalog-by-zip.md).
+
 ## Authority
 
 The **only** authoritative implementation is

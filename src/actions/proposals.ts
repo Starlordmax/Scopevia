@@ -13,6 +13,8 @@ import {
   addProposalLaborItemSchema,
   addProposalLineItemSchema,
   updateProposalPricingSchema,
+  updateProposalPricingZipSchema,
+  addProposalLineItemFromCatalogSchema,
 } from "../lib/validation/proposals";
 import { friendlyRpcErrorMessage } from "../lib/errors/friendly-message";
 import type { ActionResult } from "./auth";
@@ -298,6 +300,68 @@ export async function archiveProposalLineItemAction(formData: FormData): Promise
   const supabase = await createClient();
   await supabase.rpc("archive_proposal_line_item", { p_line_item_id: lineItemId.data });
   revalidatePath(`/proposals/${proposalId.data}/edit`);
+}
+
+export async function updateProposalPricingZipAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  await requireUser();
+
+  const proposalVersionId = uuidSchema.safeParse(formData.get("proposalVersionId"));
+  const proposalId = uuidSchema.safeParse(formData.get("proposalId"));
+  if (!proposalVersionId.success || !proposalId.success) return { error: "Invalid request" };
+
+  const parsed = updateProposalPricingZipSchema.safeParse({
+    zipCode: formData.get("zipCode") || undefined,
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+
+  // `as string` cast for the same reason as update_proposal_scope
+  // (docs/37): p_zip_code has a SQL DEFAULT NULL, but the generated RPC
+  // arg type comes out non-nullable — Postgres itself accepts null here.
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("update_proposal_pricing_zip", {
+    p_proposal_version_id: proposalVersionId.data,
+    p_zip_code: (parsed.data.zipCode ?? null) as string,
+  });
+  if (error) return { error: friendlyRpcErrorMessage(error.message) };
+
+  revalidatePath(`/proposals/${proposalId.data}/edit`);
+  return {};
+}
+
+export async function addProposalLineItemFromCatalogAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  await requireUser();
+
+  const proposalVersionId = uuidSchema.safeParse(formData.get("proposalVersionId"));
+  const proposalId = uuidSchema.safeParse(formData.get("proposalId"));
+  if (!proposalVersionId.success || !proposalId.success) return { error: "Invalid request" };
+
+  const parsed = addProposalLineItemFromCatalogSchema.safeParse({
+    materialCatalogItemId: formData.get("materialCatalogItemId"),
+    quantity: formData.get("quantity"),
+    zipCode: formData.get("zipCode") || undefined,
+    taxable: formData.get("taxable") === "on" || formData.get("taxable") === "true",
+    sectionId: formData.get("sectionId") || undefined,
+    unitPriceCentsOverride: formData.get("unitPriceOverride") || undefined,
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+
+  // Same cast discipline as update_proposal_pricing_zip above: these
+  // params have SQL DEFAULT NULL, Postgres accepts null, but the
+  // generated arg types come out non-nullable.
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("add_proposal_line_item_from_catalog", {
+    p_proposal_version_id: proposalVersionId.data,
+    p_material_catalog_item_id: parsed.data.materialCatalogItemId,
+    p_quantity: parsed.data.quantity,
+    p_zip_code: (parsed.data.zipCode ?? null) as string,
+    p_unit_price_cents_override: (parsed.data.unitPriceCentsOverride ?? null) as number,
+    p_taxable: parsed.data.taxable,
+    p_section_id: (parsed.data.sectionId ?? null) as string,
+  });
+  if (error) return { error: friendlyRpcErrorMessage(error.message) };
+
+  revalidatePath(`/proposals/${proposalId.data}/edit`);
+  return {};
 }
 
 export async function updateProposalPricingAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {

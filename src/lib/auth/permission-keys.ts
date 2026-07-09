@@ -9,8 +9,9 @@
  * Mirrors the `permissions.key` values seeded in the database — keep in
  * sync with supabase/migrations/20260701120900_seed_roles_and_permissions.sql
  * (Phase 0), supabase/migrations/20260702131100_seed_crm_permissions.sql
- * (Phase 1), and supabase/migrations/20260706141600_seed_proposal_permissions.sql
- * (Phase 2A).
+ * (Phase 1), supabase/migrations/20260706141600_seed_proposal_permissions.sql
+ * (Phase 2A), and supabase/migrations/20260708120200_seed_material_catalog_permissions.sql
+ * (Phase 2B).
  */
 export const PERMISSIONS = {
   TENANT_VIEW: "tenant.view",
@@ -82,6 +83,17 @@ export const PERMISSIONS = {
 
   PROPOSAL_SETTINGS_VIEW: "proposal_settings.view",
   PROPOSAL_SETTINGS_UPDATE: "proposal_settings.update",
+
+  // Phase 2B: Material catalog & ZIP pricing
+  MATERIALS_VIEW: "materials.view",
+  MATERIALS_CREATE: "materials.create",
+  MATERIALS_UPDATE: "materials.update",
+  MATERIALS_ARCHIVE: "materials.archive",
+
+  MATERIAL_PRICES_VIEW: "material_prices.view",
+  MATERIAL_PRICES_CREATE: "material_prices.create",
+  MATERIAL_PRICES_UPDATE: "material_prices.update",
+  MATERIAL_PRICES_ARCHIVE: "material_prices.archive",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 export default async function ProposalsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string; archived?: string; status?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; view?: string; status?: string }>;
 }) {
   const { tenant } = await requireActiveTenant();
   const canView = await hasPermission(tenant.tenant_id, PERMISSIONS.PROPOSALS_VIEW);
@@ -31,9 +31,13 @@ export default async function ProposalsPage({
 
   const canCreate = await hasPermission(tenant.tenant_id, PERMISSIONS.PROPOSALS_CREATE);
 
-  const { q, page: pageRaw, archived, status } = await searchParams;
+  const { q, page: pageRaw, view: rawView, status } = await searchParams;
   const page = Math.max(1, parseInt(pageRaw ?? "1", 10) || 1);
-  const showArchived = archived === "1";
+  // "active"/"archived"/"all" — an explicit status= (e.g. the dashboard's
+  // "Needs follow-up" link to ?status=ready) always wins over the view
+  // toggle, so the two filters never contradict each other by both
+  // constraining the same status column.
+  const view = rawView === "archived" ? "archived" : rawView === "all" ? "all" : "active";
   const [from, to] = rangeFor(page, DEFAULT_PAGE_SIZE);
 
   const supabase = await createClient();
@@ -44,8 +48,13 @@ export default async function ProposalsPage({
     })
     .eq("tenant_id", tenant.tenant_id);
 
-  query = showArchived ? query.eq("status", "archived") : query.neq("status", "archived");
-  if (status) query = query.eq("status", status);
+  if (status) {
+    query = query.eq("status", status);
+  } else if (view === "active") {
+    query = query.neq("status", "archived");
+  } else if (view === "archived") {
+    query = query.eq("status", "archived");
+  }
   if (q) query = query.ilike("title", containsPattern(q));
 
   const { data: proposals, count, error } = await query.order("updated_at", { ascending: false }).range(from, to);
@@ -66,11 +75,17 @@ export default async function ProposalsPage({
 
       <SearchForm placeholder="Search by title…" defaultValue={q ?? ""} />
 
-      <div className="hint">
-        <Link href={showArchived ? "/proposals" : "/proposals?archived=1"}>
-          {showArchived ? "← Back to active proposals" : "View archived proposals"}
+      <nav className="tenant-form" aria-label="Filter by status">
+        <Link href="/proposals" className={view === "active" ? "button-primary" : "button-secondary"}>
+          Active
         </Link>
-      </div>
+        <Link href="/proposals?view=archived" className={view === "archived" ? "button-primary" : "button-secondary"}>
+          Archived
+        </Link>
+        <Link href="/proposals?view=all" className={view === "all" ? "button-primary" : "button-secondary"}>
+          All
+        </Link>
+      </nav>
 
       {error ? <p className="error-banner">{error.message}</p> : null}
 
@@ -78,8 +93,8 @@ export default async function ProposalsPage({
         <div className="section-card">
           {q ? (
             <EmptyState icon={FileText} title="No matches" description="No proposals match your search. Try a different title." />
-          ) : showArchived ? (
-            <EmptyState icon={Archive} title="No archived proposals" description="Proposals you archive will show up here." />
+          ) : view === "archived" ? (
+            <EmptyState icon={Archive} title="No archived proposals" description="Proposals you delete show up here — you can restore them any time." />
           ) : (
             <EmptyState
               icon={FileText}
@@ -131,7 +146,7 @@ export default async function ProposalsPage({
         </div>
       )}
 
-      <Pagination page={page} pageSize={DEFAULT_PAGE_SIZE} totalCount={count ?? 0} searchParams={{ q, archived, status }} />
+      <Pagination page={page} pageSize={DEFAULT_PAGE_SIZE} totalCount={count ?? 0} searchParams={{ q, view: rawView, status }} />
     </div>
   );
 }

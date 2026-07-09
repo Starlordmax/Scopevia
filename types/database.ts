@@ -368,6 +368,137 @@ export type Database = {
           },
         ]
       }
+      material_catalog_items: {
+        Row: {
+          archived_at: string | null
+          brand: string | null
+          category: string
+          created_at: string
+          default_unit: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          scope: string
+          service_type: string | null
+          sku: string | null
+          supplier_name: string | null
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          brand?: string | null
+          category: string
+          created_at?: string
+          default_unit: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          scope: string
+          service_type?: string | null
+          sku?: string | null
+          supplier_name?: string | null
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          brand?: string | null
+          category?: string
+          created_at?: string
+          default_unit?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          scope?: string
+          service_type?: string | null
+          sku?: string | null
+          supplier_name?: string | null
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_catalog_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_zip_prices: {
+        Row: {
+          archived_at: string | null
+          city: string | null
+          created_at: string
+          currency_code: string
+          effective_date: string
+          expires_at: string | null
+          id: string
+          material_catalog_item_id: string
+          price_source: string
+          state_code: string | null
+          supplier_name: string | null
+          tenant_id: string | null
+          unit_price_cents: number
+          updated_at: string
+          zip_code: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          city?: string | null
+          created_at?: string
+          currency_code?: string
+          effective_date?: string
+          expires_at?: string | null
+          id?: string
+          material_catalog_item_id: string
+          price_source: string
+          state_code?: string | null
+          supplier_name?: string | null
+          tenant_id?: string | null
+          unit_price_cents: number
+          updated_at?: string
+          zip_code?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          city?: string | null
+          created_at?: string
+          currency_code?: string
+          effective_date?: string
+          expires_at?: string | null
+          id?: string
+          material_catalog_item_id?: string
+          price_source?: string
+          state_code?: string | null
+          supplier_name?: string | null
+          tenant_id?: string | null
+          unit_price_cents?: number
+          updated_at?: string
+          zip_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_zip_prices_material_catalog_item_id_fkey"
+            columns: ["material_catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "material_catalog_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_zip_prices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       media_assets: {
         Row: {
           archived_at: string | null
@@ -963,10 +1094,16 @@ export type Database = {
           description: string
           id: string
           line_total_cents: number
+          material_catalog_item_id: string | null
+          material_zip_price_id: string | null
           proposal_version_id: string
           quantity: number
           section_id: string | null
           sort_order: number
+          source_price_effective_date: string | null
+          source_supplier_name: string | null
+          source_type: string
+          source_zip_code: string | null
           taxable: boolean
           tenant_id: string
           unit: string
@@ -980,10 +1117,16 @@ export type Database = {
           description: string
           id?: string
           line_total_cents?: number
+          material_catalog_item_id?: string | null
+          material_zip_price_id?: string | null
           proposal_version_id: string
           quantity: number
           section_id?: string | null
           sort_order?: number
+          source_price_effective_date?: string | null
+          source_supplier_name?: string | null
+          source_type?: string
+          source_zip_code?: string | null
           taxable?: boolean
           tenant_id: string
           unit: string
@@ -997,10 +1140,16 @@ export type Database = {
           description?: string
           id?: string
           line_total_cents?: number
+          material_catalog_item_id?: string | null
+          material_zip_price_id?: string | null
           proposal_version_id?: string
           quantity?: number
           section_id?: string | null
           sort_order?: number
+          source_price_effective_date?: string | null
+          source_supplier_name?: string | null
+          source_type?: string
+          source_zip_code?: string | null
           taxable?: boolean
           tenant_id?: string
           unit?: string
@@ -1008,6 +1157,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "proposal_line_items_material_catalog_item_id_fkey"
+            columns: ["material_catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "material_catalog_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposal_line_items_material_zip_price_id_fkey"
+            columns: ["material_zip_price_id"]
+            isOneToOne: false
+            referencedRelation: "material_zip_prices"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "proposal_line_items_proposal_version_id_tenant_id_fkey"
             columns: ["proposal_version_id", "tenant_id"]
@@ -1170,6 +1333,9 @@ export type Database = {
           line_items_subtotal_cents: number
           locked_at: string | null
           notes_for_client: string
+          pricing_city: string | null
+          pricing_state_code: string | null
+          pricing_zip_code: string | null
           proposal_id: string
           scope_intro: string | null
           subtotal_cents: number
@@ -1200,6 +1366,9 @@ export type Database = {
           line_items_subtotal_cents?: number
           locked_at?: string | null
           notes_for_client?: string
+          pricing_city?: string | null
+          pricing_state_code?: string | null
+          pricing_zip_code?: string | null
           proposal_id: string
           scope_intro?: string | null
           subtotal_cents?: number
@@ -1230,6 +1399,9 @@ export type Database = {
           line_items_subtotal_cents?: number
           locked_at?: string | null
           notes_for_client?: string
+          pricing_city?: string | null
+          pricing_state_code?: string | null
+          pricing_zip_code?: string | null
           proposal_id?: string
           scope_intro?: string | null
           subtotal_cents?: number
@@ -1672,10 +1844,57 @@ export type Database = {
           description: string
           id: string
           line_total_cents: number
+          material_catalog_item_id: string | null
+          material_zip_price_id: string | null
           proposal_version_id: string
           quantity: number
           section_id: string | null
           sort_order: number
+          source_price_effective_date: string | null
+          source_supplier_name: string | null
+          source_type: string
+          source_zip_code: string | null
+          taxable: boolean
+          tenant_id: string
+          unit: string
+          unit_price_cents: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_line_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      add_proposal_line_item_from_catalog: {
+        Args: {
+          p_material_catalog_item_id: string
+          p_proposal_version_id: string
+          p_quantity: number
+          p_section_id?: string
+          p_sort_order?: number
+          p_taxable?: boolean
+          p_unit_price_cents_override?: number
+          p_zip_code?: string
+        }
+        Returns: {
+          archived_at: string | null
+          category: string
+          created_at: string
+          description: string
+          id: string
+          line_total_cents: number
+          material_catalog_item_id: string | null
+          material_zip_price_id: string | null
+          proposal_version_id: string
+          quantity: number
+          section_id: string | null
+          sort_order: number
+          source_price_effective_date: string | null
+          source_supplier_name: string | null
+          source_type: string
+          source_zip_code: string | null
           taxable: boolean
           tenant_id: string
           unit: string
@@ -1973,10 +2192,16 @@ export type Database = {
           description: string
           id: string
           line_total_cents: number
+          material_catalog_item_id: string | null
+          material_zip_price_id: string | null
           proposal_version_id: string
           quantity: number
           section_id: string | null
           sort_order: number
+          source_price_effective_date: string | null
+          source_supplier_name: string | null
+          source_type: string
+          source_zip_code: string | null
           taxable: boolean
           tenant_id: string
           unit: string
@@ -2007,6 +2232,58 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "proposal_sections"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      archive_tenant_material: {
+        Args: { p_material_id: string }
+        Returns: {
+          archived_at: string | null
+          brand: string | null
+          category: string
+          created_at: string
+          default_unit: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          scope: string
+          service_type: string | null
+          sku: string | null
+          supplier_name: string | null
+          tenant_id: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "material_catalog_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      archive_tenant_material_price: {
+        Args: { p_price_id: string }
+        Returns: {
+          archived_at: string | null
+          city: string | null
+          created_at: string
+          currency_code: string
+          effective_date: string
+          expires_at: string | null
+          id: string
+          material_catalog_item_id: string
+          price_source: string
+          state_code: string | null
+          supplier_name: string | null
+          tenant_id: string | null
+          unit_price_cents: number
+          updated_at: string
+          zip_code: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "material_zip_prices"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -2239,6 +2516,9 @@ export type Database = {
           line_items_subtotal_cents: number
           locked_at: string | null
           notes_for_client: string
+          pricing_city: string | null
+          pricing_state_code: string | null
+          pricing_zip_code: string | null
           proposal_id: string
           scope_intro: string | null
           subtotal_cents: number
@@ -2278,6 +2558,9 @@ export type Database = {
           line_items_subtotal_cents: number
           locked_at: string | null
           notes_for_client: string
+          pricing_city: string | null
+          pricing_state_code: string | null
+          pricing_zip_code: string | null
           proposal_id: string
           scope_intro: string | null
           subtotal_cents: number
@@ -2571,6 +2854,78 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_tenant_material: {
+        Args: {
+          p_brand?: string
+          p_category: string
+          p_default_unit: string
+          p_description?: string
+          p_name: string
+          p_service_type?: string
+          p_sku?: string
+          p_supplier_name?: string
+          p_tenant_id: string
+        }
+        Returns: {
+          archived_at: string | null
+          brand: string | null
+          category: string
+          created_at: string
+          default_unit: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          scope: string
+          service_type: string | null
+          sku: string | null
+          supplier_name: string | null
+          tenant_id: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "material_catalog_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_tenant_material_price: {
+        Args: {
+          p_city?: string
+          p_effective_date?: string
+          p_expires_at?: string
+          p_material_catalog_item_id: string
+          p_state_code?: string
+          p_supplier_name?: string
+          p_tenant_id: string
+          p_unit_price_cents: number
+          p_zip_code?: string
+        }
+        Returns: {
+          archived_at: string | null
+          city: string | null
+          created_at: string
+          currency_code: string
+          effective_date: string
+          expires_at: string | null
+          id: string
+          material_catalog_item_id: string
+          price_source: string
+          state_code: string | null
+          supplier_name: string | null
+          tenant_id: string | null
+          unit_price_cents: number
+          updated_at: string
+          zip_code: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "material_zip_prices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_tenant_with_owner: {
         Args: { p_name: string; p_slug: string }
         Returns: {
@@ -2613,6 +2968,36 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "tenant_proposal_settings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      find_material_zip_price: {
+        Args: {
+          p_material_catalog_item_id: string
+          p_tenant_id: string
+          p_zip_code: string
+        }
+        Returns: {
+          archived_at: string | null
+          city: string | null
+          created_at: string
+          currency_code: string
+          effective_date: string
+          expires_at: string | null
+          id: string
+          material_catalog_item_id: string
+          price_source: string
+          state_code: string | null
+          supplier_name: string | null
+          tenant_id: string | null
+          unit_price_cents: number
+          updated_at: string
+          zip_code: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "material_zip_prices"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -2757,6 +3142,9 @@ export type Database = {
           line_items_subtotal_cents: number
           locked_at: string | null
           notes_for_client: string
+          pricing_city: string | null
+          pricing_state_code: string | null
+          pricing_zip_code: string | null
           proposal_id: string
           scope_intro: string | null
           subtotal_cents: number
@@ -3041,6 +3429,34 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      search_material_catalog: {
+        Args: {
+          p_category?: string
+          p_search_text?: string
+          p_service_type?: string
+          p_tenant_id: string
+          p_zip_code?: string
+        }
+        Returns: {
+          brand: string
+          category: string
+          default_unit: string
+          description: string
+          id: string
+          name: string
+          price_effective_date: string
+          price_id: string
+          price_state_code: string
+          price_supplier_name: string
+          price_zip_code: string
+          scope: string
+          service_type: string
+          sku: string
+          supplier_name: string
+          tenant_id: string
+          unit_price_cents: number
+        }[]
       }
       set_primary_contact: {
         Args: { p_contact_id: string }
@@ -3424,10 +3840,16 @@ export type Database = {
           description: string
           id: string
           line_total_cents: number
+          material_catalog_item_id: string | null
+          material_zip_price_id: string | null
           proposal_version_id: string
           quantity: number
           section_id: string | null
           sort_order: number
+          source_price_effective_date: string | null
+          source_supplier_name: string | null
+          source_type: string
+          source_zip_code: string | null
           taxable: boolean
           tenant_id: string
           unit: string
@@ -3467,6 +3889,56 @@ export type Database = {
           line_items_subtotal_cents: number
           locked_at: string | null
           notes_for_client: string
+          pricing_city: string | null
+          pricing_state_code: string | null
+          pricing_zip_code: string | null
+          proposal_id: string
+          scope_intro: string | null
+          subtotal_cents: number
+          summary: string | null
+          tax_cents: number
+          tax_rate_bps: number
+          taxable_subtotal_cents: number
+          tenant_id: string
+          terms: string
+          total_cents: number
+          updated_at: string
+          version_number: number
+          version_status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_versions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_proposal_pricing_zip: {
+        Args: {
+          p_city?: string
+          p_proposal_version_id: string
+          p_state_code?: string
+          p_zip_code: string
+        }
+        Returns: {
+          calculation_version: number
+          created_at: string
+          created_by: string
+          default_hours_per_day: number | null
+          discount_cents: number
+          discount_type: string
+          discount_value: number
+          estimated_duration_days: number | null
+          estimated_start_date: string | null
+          exclusions: string
+          id: string
+          labor_total_cents: number
+          line_items_subtotal_cents: number
+          locked_at: string | null
+          notes_for_client: string
+          pricing_city: string | null
+          pricing_state_code: string | null
+          pricing_zip_code: string | null
           proposal_id: string
           scope_intro: string | null
           subtotal_cents: number
@@ -3512,6 +3984,9 @@ export type Database = {
           line_items_subtotal_cents: number
           locked_at: string | null
           notes_for_client: string
+          pricing_city: string | null
+          pricing_state_code: string | null
+          pricing_zip_code: string | null
           proposal_id: string
           scope_intro: string | null
           subtotal_cents: number
@@ -3555,6 +4030,77 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "proposal_sections"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_tenant_material: {
+        Args: {
+          p_brand: string
+          p_category: string
+          p_default_unit: string
+          p_description: string
+          p_material_id: string
+          p_name: string
+          p_service_type: string
+          p_sku: string
+          p_supplier_name: string
+        }
+        Returns: {
+          archived_at: string | null
+          brand: string | null
+          category: string
+          created_at: string
+          default_unit: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          scope: string
+          service_type: string | null
+          sku: string | null
+          supplier_name: string | null
+          tenant_id: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "material_catalog_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_tenant_material_price: {
+        Args: {
+          p_city: string
+          p_effective_date: string
+          p_expires_at: string
+          p_price_id: string
+          p_state_code: string
+          p_supplier_name: string
+          p_unit_price_cents: number
+          p_zip_code: string
+        }
+        Returns: {
+          archived_at: string | null
+          city: string | null
+          created_at: string
+          currency_code: string
+          effective_date: string
+          expires_at: string | null
+          id: string
+          material_catalog_item_id: string
+          price_source: string
+          state_code: string | null
+          supplier_name: string | null
+          tenant_id: string | null
+          unit_price_cents: number
+          updated_at: string
+          zip_code: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "material_zip_prices"
           isOneToOne: true
           isSetofReturn: false
         }

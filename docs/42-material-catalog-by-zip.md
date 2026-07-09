@@ -1,0 +1,261 @@
+# 42 — Material Catalog by ZIP Code
+
+Status: **Implemented**, verified against real Postgres
+(`tests/rls/phase2b-materials.test.ts`, 27 tests) and end-to-end via
+Playwright (`tests/e2e/material-catalog.spec.ts` +
+`material-catalog.mobile.spec.ts`).
+
+> **This phase is internal/demo data.** Every price seeded in
+> `20260708120500_seed_material_catalog_demo_data.sql` is fictional
+> (though reasonable) and every supplier name is the generic "Demo
+> Supplier" — never a real brand. No scraping, no real Home Depot/
+> Lowe's/Sherwin-Williams data, no external API of any kind. The
+> architecture (variable pricing by ZIP, point-in-time price
+> snapshotting) is real and production-shaped; the *data* is not. A
+> later phase can add CSV import or real supplier integrations without
+> touching this schema — see "Known limitations" below.
+
+## The problem
+
+Before this phase, the Materials & Costs step only accepted manually
+typed description/unit/price. This phase adds a browsable catalog with
+location-aware pricing, while guaranteeing that a proposal's price is
+locked in the moment a material is added — a later catalog price change
+must never retroactively change an existing proposal.
+
+## Data model
+
+```text
+material_catalog_items (scope: 'global' | 'tenant')
+  └─ material_zip_prices (material_catalog_item_id; tenant_id nullable)
+
+proposal_line_items
+  ├─ material_catalog_item_id? / material_zip_price_id?  (provenance only)
+  └─ source_type: 'catalog' | 'custom', source_zip_code, source_supplier_name,
+     source_price_effective_date
+
+proposal_versions
+  └─ pricing_zip_code / pricing_state_code / pricing_city
+```
+
+### `material_catalog_items`
+
+`scope='global'` (Scopevia's shared catalog, `tenant_id` null) or
+`scope='tenant'` (a contractor's own custom material, `tenant_id`
+required) — enforced by `material_catalog_items_scope_tenant_check`.
+**No exposed function creates or edits a global row in this phase** —
+the global catalog is seed/migration-only (see
+`20260708120500_seed_material_catalog_demo_data.sql`); every exposed
+create/update function (`create_tenant_material`,
+`update_tenant_material`) only ever touches `scope='tenant'` rows, and
+`update_tenant_material` explicitly rejects an attempt to edit a global
+row even for an Owner.
+
+`category` and `service_type` are fixed CHECK enums (paint, primer,
+tape, brushes, rollers, drop_cloths, drywall, tile, flooring, wood,
+plumbing, electrical, hardware, disposal, other /
+interior_painting, exterior_painting, bathroom_remodeling,
+general_remodeling, flooring, custom) — no JSONB, no free-text taxonomy.
+
+### `material_zip_prices`
+
+A price for one `material_catalog_item_id`, optionally scoped to a
+`zip_code`/`state_code`/`city` and/or a specific `tenant_id`.
+`tenant_id` null = usable by any tenant (a shared/default price);
+non-null = a tenant-owned override, visible and usable only by that
+tenant. `unit_price_cents` is a bounded `bigint` (money is always
+cents, never floats — the standing project convention). `price_source`
+is a CHECK enum: `manual_seed` and `tenant_custom` are the only values
+actually written to in this phase; `manual_admin`, `csv_import`, and
+`future_external` are reserved column values for later phases, not
+implemented paths.
+
+### Cross-tenant integrity: a trigger, not a composite FK
+
+Every other table in this codebase enforces cross-tenant integrity with
+the established `unique (id, tenant_id)` + composite FK pattern (ADR
+0007). That pattern assumes a child's `tenant_id` always matches its
+parent's — but a **global** material has `tenant_id = null`, which a
+composite FK can't express ("this child may reference this global
+parent regardless of the child's own tenant_id"). Per the brief's
+explicit authorization to deviate here, this phase uses two
+`SECURITY DEFINER` trigger functions instead:
+
+- `prevent_cross_tenant_material_price()` (on `material_zip_prices`):
+  a price for a `scope='tenant'` material must have the *exact same*
+  `tenant_id` as that material. A price for a `scope='global'` material
+  has no such restriction.
+- `prevent_cross_tenant_material_reference()` (on `proposal_line_items`):
+  a line item referencing a tenant-scoped material/price must belong to
+  that same tenant.
+
+Both raise `23514` on violation and are verified directly with
+`service_role` raw inserts in `tests/rls/phase2b-materials.test.ts`,
+"Cross-tenant integrity" — bypassing every application-level check, the
+same discipline as every other cross-tenant test in this codebase.
+
+## ZIP pricing fallback
+
+`find_material_zip_price(material_id, tenant_id, zip_code)` resolves
+the best available price in three tiers, and **never invents a price**
+— it returns null rather than guessing:
+
+1. **Exact ZIP match.**
+2. **Same state** — the state is inferred from any *other* price row
+   that happens to share the exact target ZIP (there is no canonical
+   ZIP→state table in this phase; see "Known limitations").
+3. **ZIP/state-agnostic default** (`zip_code` and `state_code` both
+   null on the price row).
+
+A tenant-owned override always wins over a global price at the same
+tier. `search_material_catalog()` (the browse/search RPC) calls this
+per result; `add_proposal_line_item_from_catalog()` (the write path)
+calls it again at the moment of adding — a display-time price and an
+add-time price are always computed from the exact same function, so
+they can never disagree.
+
+If no tier resolves a price, the UI shows "No price available for this
+ZIP" and the Add button either stays disabled (no override capability)
+or requires an explicit manual override (see "Permissions" below) — a
+catalog item is never silently added at $0.
+
+## Proposal item snapshot
+
+`proposal_line_items` already had (since Phase 2A) the columns that
+drive every calculation and every display: `description`, `unit`,
+`unit_price_cents`, `quantity`, `line_total_cents`, `taxable`. This
+phase adds provenance-only columns —
+`material_catalog_item_id`/`material_zip_price_id` (which catalog
+row/price this came from) and `source_type`/`source_zip_code`/
+`source_supplier_name`/`source_price_effective_date` (what was true at
+the moment of adding). **The provenance columns are metadata only.**
+Every calculation and every render reads exclusively the pre-existing
+snapshot columns, exactly as before — a later catalog or price change
+can never retroactively change an existing line item, because nothing
+ever re-reads `material_catalog_items`/`material_zip_prices` for an
+already-added row.
+
+Verified directly in `tests/rls/phase2b-materials.test.ts`, "Snapshot
+pricing": add a catalog item, then update the underlying seed price
+directly via `service_role`, then confirm the already-added line item's
+`unit_price_cents`/`line_total_cents` are unchanged.
+
+### Changing the ZIP
+
+`update_proposal_pricing_zip()` sets `proposal_versions.pricing_zip_code`
+(+ state/city). This **only** affects materials added *after* the
+change — every already-added line item keeps its own
+`source_zip_code`/price snapshot. The UI shows this warning verbatim
+next to the ZIP field:
+
+> Changing ZIP code only affects new materials you add. Existing
+> proposal items keep their saved prices.
+
+Verified end-to-end: add at ZIP 33101, change to 78701, add a second
+material, confirm the first item's price/ZIP are untouched
+(`tests/rls/phase2b-materials.test.ts` and
+`tests/e2e/material-catalog.spec.ts`).
+
+## Permissions
+
+| Permission | Purpose |
+|---|---|
+| `materials.view` / `.create` / `.update` / `.archive` | The catalog itself (global read + a tenant's own custom materials) |
+| `material_prices.view` / `.create` / `.update` / `.archive` | ZIP prices (global read + a tenant's own price overrides) |
+
+A deliberate two-tier design for *adding a catalog item to a proposal*,
+reconciling the brief's "Sales should be able to add catalog items"
+with the existing (Phase 2A) decision that Sales does not manage
+pricing by default:
+
+- Adding a catalog item **at its resolved catalog price** only requires
+  `proposals.update` (which Sales already has) — picking from an
+  already-priced list is not itself a pricing decision.
+- **Overriding** that price with a manual value requires the stricter
+  `proposals.manage_pricing` (which Sales deliberately lacks — see
+  `20260706141600_seed_proposal_permissions.sql`'s module comment).
+
+| Role | materials.view/prices.view | materials create/update | prices create/update | add catalog item to proposal | override price |
+|---|---|---|---|---|---|
+| Owner / Admin | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Estimator | ✅ | ✅ (tenant only) | ✅ (tenant only) | ✅ | ✅ |
+| Sales | ✅ | ❌ | ❌ | ✅ | ❌ |
+| Field Worker | ✅ | ❌ | ❌ | ❌ (no `proposals.update`) | ❌ |
+| Viewer | ✅ | ❌ | ❌ | ❌ | ❌ |
+
+RLS visibility (`material_catalog_items`/`material_zip_prices`): a
+global row (`scope='global'` / `tenant_id is null`) is visible to any
+authenticated user with no permission gate — the same precedent as the
+existing `roles` table's `is_system=true` rows (reference data, not a
+tenant's private information). A tenant-scoped row requires
+`user_has_permission(tenant_id, '…')` exactly like every other table in
+this codebase.
+
+`find_material_zip_price()` is **not** directly callable by
+`authenticated` (see `20260708120600_material_catalog_security_fix.sql`)
+— it performs no permission check of its own and is only meant to be
+called internally by `search_material_catalog()`/
+`add_proposal_line_item_from_catalog()`, both of which gate on a
+tenant_id the caller has already proven access to. Granting it directly
+would let any authenticated user pass an arbitrary `p_tenant_id` and
+read that tenant's private price overrides — found and fixed before
+this phase shipped (see "Known limitations" is not the place for this;
+it was a bug, not a limitation, closed same-day).
+
+## UI
+
+Materials & Costs step (`step-materials.tsx`):
+
+1. **ZIP code for pricing** — a small form, editable any time the
+   version is a draft, with the "only affects new materials" warning
+   always visible beneath it.
+2. **Material catalog** — search box + category filter (a plain GET
+   form, `?catalogSearch=&catalogCategory=`, matching this codebase's
+   existing simplicity discipline — no client-side fetch/autosave).
+   Results render as a table; each row has its own compact Add form
+   (quantity, optional section, and — only for users with
+   `manage_pricing` — an optional price override).
+3. **Add a custom cost** — the pre-existing (Phase 2A) manual entry
+   form, relabeled to make the distinction from catalog items explicit;
+   unchanged behavior, still gated by `proposals.manage_pricing`.
+4. **Saved costs** — unchanged table, with a small "via catalog — ZIP
+   NNNNN" hint under any catalog-sourced row's description.
+
+No preview-vs-saved-total regression: adding a catalog item calls
+`recalculate_proposal_version()` exactly like every other mutation in
+this module, and the Pricing Summary reads the same server-computed
+totals it always has — see
+[docs/40](40-proposal-total-refresh-fix.md#round-2-definitive-db-proof-and-the-actual-ux-fix).
+
+## Seed data
+
+26 global materials across three categories (paint, bathroom
+remodeling, flooring), priced at 4 demo ZIPs — 33101 (Miami, FL), 78701
+(Austin, TX), 90001 (Los Angeles, CA), 10001 (New York, NY) — plus
+deliberately uneven coverage to exercise every fallback tier:
+
+- **Interior Paint**: all 4 ZIPs + a ZIP/state-agnostic default.
+- **Waterproof Membrane, Roll**: only a state-level FL price (tier 2).
+- **Sandpaper Pack** / **Floor Transition Strip**: only a
+  ZIP/state-agnostic default (tier 3).
+- **Construction Debris Disposal**: no price at all (tests "No price
+  available for this ZIP").
+
+## Known limitations
+
+- **No real external pricing of any kind.** All prices are fictional
+  demo data (`price_source = 'manual_seed'`); `manual_admin`,
+  `csv_import`, and `future_external` are reserved enum values for a
+  future phase, not implemented.
+- **No canonical ZIP→state table.** The "same state" fallback tier
+  infers state from any other price row that happens to share the exact
+  target ZIP — reliable within this phase's 4 seeded demo ZIPs, not a
+  general-purpose ZIP database.
+- **No global-catalog admin UI.** The shared catalog is
+  seed/migration-only; a future phase could add an admin panel, CSV
+  import, or scraping without changing this schema.
+- **No tenant-material-management UI in this phase.** The backend
+  (`create_tenant_material`/`create_tenant_material_price` and their
+  update/archive counterparts) is fully implemented and tested, but
+  this phase's UI only exposes browsing the catalog and adding to a
+  proposal — not a "manage my own materials" screen.

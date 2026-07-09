@@ -7,6 +7,7 @@ import { getFullProposal } from "../../../../lib/proposals/data";
 import { formatCents } from "../../../../lib/proposals/format";
 import { proposalBadgeClass } from "../../../../lib/crm/status-badge";
 import { PageHeader } from "../../../../components/page-header";
+import { ConfirmSubmitButton } from "../../../../components/confirm-submit-button";
 import { markProposalReadyAction, returnProposalToDraftAction, archiveProposalAction, restoreProposalAction } from "../../../../actions/proposals";
 
 export const dynamic = "force-dynamic";
@@ -86,22 +87,6 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
               </button>
             </form>
           ) : null}
-          {(proposal.status === "draft" || proposal.status === "ready") && canArchive ? (
-            <form action={archiveProposalAction}>
-              <input type="hidden" name="proposalId" value={proposalId} />
-              <button type="submit" className="button-danger">
-                Archive
-              </button>
-            </form>
-          ) : null}
-          {proposal.status === "archived" && canRestore ? (
-            <form action={restoreProposalAction}>
-              <input type="hidden" name="proposalId" value={proposalId} />
-              <button type="submit" className="button-secondary">
-                Restore
-              </button>
-            </form>
-          ) : null}
         </div>
       </div>
 
@@ -109,6 +94,53 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
         <p className="hint">
           Linked to <Link href={`/opportunities/${proposal.opportunity_id}`}>this opportunity</Link>.
         </p>
+      ) : null}
+
+      {(((proposal.status === "draft" || proposal.status === "ready") && canArchive) || (proposal.status === "archived" && canRestore)) ? (
+        <details className="section-card">
+          <summary style={{ cursor: "pointer", fontWeight: 600 }}>Danger zone</summary>
+          <div className="stack" style={{ marginTop: 12 }}>
+            {(proposal.status === "draft" || proposal.status === "ready") && canArchive ? (
+              <div className="tenant-form" style={{ justifyContent: "space-between" }}>
+                <div>
+                  <strong>Delete this proposal</strong>
+                  <p className="hint">
+                    This removes it from your active proposals. You can restore it later from archived proposals — nothing is permanently
+                    deleted.
+                  </p>
+                </div>
+                <form action={archiveProposalAction}>
+                  <input type="hidden" name="proposalId" value={proposalId} />
+                  <ConfirmSubmitButton
+                    className="button-danger"
+                    confirmMessage="Delete this proposal? This will remove it from your active proposals. You can restore it later from archived proposals."
+                    pendingText="Deleting…"
+                  >
+                    Delete proposal
+                  </ConfirmSubmitButton>
+                </form>
+              </div>
+            ) : null}
+            {proposal.status === "archived" && canRestore ? (
+              <div className="tenant-form" style={{ justifyContent: "space-between" }}>
+                <div>
+                  <strong>Restore this proposal</strong>
+                  <p className="hint">Moves it back to your active proposals.</p>
+                </div>
+                <form action={restoreProposalAction}>
+                  <input type="hidden" name="proposalId" value={proposalId} />
+                  <ConfirmSubmitButton
+                    className="button-secondary"
+                    confirmMessage="Restore this proposal? This will move it back to your active proposals."
+                    pendingText="Restoring…"
+                  >
+                    Restore proposal
+                  </ConfirmSubmitButton>
+                </form>
+              </div>
+            ) : null}
+          </div>
+        </details>
       ) : null}
     </div>
   );

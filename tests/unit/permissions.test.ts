@@ -3,8 +3,9 @@ import { PERMISSIONS } from "../../src/lib/auth/permission-keys";
 
 // This list must stay byte-for-byte in sync with the `key` column seeded in
 // supabase/migrations/20260701120900_seed_roles_and_permissions.sql (Phase 0),
-// supabase/migrations/20260702131100_seed_crm_permissions.sql (Phase 1), and
-// supabase/migrations/20260706141600_seed_proposal_permissions.sql (Phase 2A).
+// supabase/migrations/20260702131100_seed_crm_permissions.sql (Phase 1),
+// supabase/migrations/20260706141600_seed_proposal_permissions.sql (Phase 2A), and
+// supabase/migrations/20260708120200_seed_material_catalog_permissions.sql (Phase 2B).
 // There is no automated cross-check against the live database in a unit test
 // (that belongs to the RLS/integration suite), so this test exists to catch a
 // TypeScript-side typo or rename that would otherwise silently desync from
@@ -69,6 +70,15 @@ const EXPECTED_PERMISSION_KEYS = [
   "media.archive",
   "proposal_settings.view",
   "proposal_settings.update",
+  // Phase 2B
+  "materials.view",
+  "materials.create",
+  "materials.update",
+  "materials.archive",
+  "material_prices.view",
+  "material_prices.create",
+  "material_prices.update",
+  "material_prices.archive",
 ].sort();
 
 describe("PERMISSIONS", () => {

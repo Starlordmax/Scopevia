@@ -170,6 +170,67 @@ export const updateProposalPricingSchema = z.object({
   taxRatePercent: z.string().trim().optional().default("0"),
 });
 
+const optionalZipCodeSchema = z
+  .string()
+  .trim()
+  .optional()
+  .transform((v) => (v === "" || v === undefined ? undefined : v))
+  .refine((v) => v === undefined || /^\d{5}$/.test(v), "ZIP code must be 5 digits");
+
+export const materialCatalogCategorySchema = z.enum([
+  "paint",
+  "primer",
+  "tape",
+  "brushes",
+  "rollers",
+  "drop_cloths",
+  "drywall",
+  "tile",
+  "flooring",
+  "wood",
+  "plumbing",
+  "electrical",
+  "hardware",
+  "disposal",
+  "other",
+]);
+
+export const searchMaterialCatalogSchema = z.object({
+  zipCode: optionalZipCodeSchema,
+  searchText: optionalText(160),
+  category: z
+    .string()
+    .trim()
+    .optional()
+    .transform((v) => (v === "" ? undefined : v)),
+});
+
+export const updateProposalPricingZipSchema = z.object({
+  zipCode: optionalZipCodeSchema,
+});
+
+export const addProposalLineItemFromCatalogSchema = z.object({
+  materialCatalogItemId: z.string().uuid(),
+  quantity: z.coerce.number().min(0.001, "Must be greater than zero").max(1000000),
+  zipCode: optionalZipCodeSchema,
+  taxable: z.coerce.boolean().default(true),
+  sectionId: z.string().uuid().optional(),
+  // Only present when the user explicitly overrides the catalog price —
+  // gated server-side by proposals.manage_pricing, not by this schema.
+  unitPriceCentsOverride: requiredDollarsToCentsSchema.optional(),
+});
+
+export const createTenantMaterialSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(160),
+  category: materialCatalogCategorySchema,
+  defaultUnit: lineItemUnitSchema,
+  description: optionalText(2000),
+  serviceType: serviceTypeSchema.optional(),
+  brand: optionalText(160),
+  sku: optionalText(80),
+  supplierName: optionalText(160),
+});
+
 export const createPortfolioProjectSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(160),
   serviceType: serviceTypeSchema,

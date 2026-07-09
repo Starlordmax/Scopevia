@@ -30,6 +30,22 @@ return to draft → archive → restore) and by the E2E suite in
 > cambiaron — ver la sección "Round 2" de
 > [40-proposal-total-refresh-fix.md](40-proposal-total-refresh-fix.md#round-2-definitive-db-proof-and-the-actual-ux-fix).
 
+> **Nota de estado (2026-07-09, Phase 2B):** Materials & Costs ahora
+> incluye un catálogo de materiales con precio por ZIP: un campo de ZIP
+> (con la advertencia explícita de que cambiarlo solo afecta a
+> materiales agregados después), búsqueda/filtro por categoría, una
+> tabla de resultados con precio resuelto para ese ZIP (o "No price
+> available for this ZIP" si no hay ninguno), y un formulario compacto
+> por fila para agregar (cantidad, sección opcional, y — solo para
+> quien tiene `proposals.manage_pricing` — un override de precio
+> opcional). El formulario "Add custom cost" existente se mantiene sin
+> cambios de comportamiento, solo relabeled a "Add a custom cost" para
+> distinguirlo del catálogo. Ver
+> [42-material-catalog-by-zip.md](42-material-catalog-by-zip.md). El
+> detalle de la propuesta también ganó una sección "Danger zone"
+> colapsada (Delete/Restore, con confirmación) — ver
+> [43-proposal-delete-archive.md](43-proposal-delete-archive.md).
+
 ## Routes
 
 | Route | Purpose |
@@ -72,9 +88,12 @@ proposal id doesn't exist yet at that point.
    (`src/lib/proposals/calculations.ts`, explicitly labeled orientative)
    that's replaced by the real server value the instant the item is
    saved.
-4. **Materials & Costs** — category, unit, quantity, unit price, taxable
-   toggle, optional section assignment, live preview identical in spirit
-   to Labor's.
+4. **Materials & Costs** — a ZIP-priced material catalog (search,
+   category filter, resolved price, add flow) plus the original manual
+   "Add a custom cost" form (category, unit, quantity, unit price,
+   taxable toggle, optional section assignment, live preview identical
+   in spirit to Labor's) for anything not in the catalog. See
+   [docs/42](42-material-catalog-by-zip.md).
 5. **Photos** — two clearly separate areas: **Current job photos**
    (direct upload) and **Previous work** (select from the Portfolio,
    attaches the same underlying file rather than duplicating it).

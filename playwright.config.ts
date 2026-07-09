@@ -39,18 +39,18 @@ export default defineConfig({
       name: "desktop",
       use: { ...devices["Desktop Chrome"] },
       dependencies: ["setup"],
-      // pipeline.mobile.spec.ts / proposals.mobile.spec.ts assert real
-      // mobile-viewport layout (stacked columns, no horizontal scroll) —
-      // those assertions are only true under the "mobile" project's
-      // 390x844 viewport, so they must not also run here under desktop.
-      testIgnore: [/.*\.setup\.ts/, /pipeline\.mobile\.spec\.ts/, /proposals\.mobile\.spec\.ts/],
+      // Any *.mobile.spec.ts asserts real mobile-viewport layout (stacked
+      // columns, no horizontal scroll) — those assertions are only true
+      // under the "mobile" project's 390x844 viewport, so they must not
+      // also run here under desktop.
+      testIgnore: [/.*\.setup\.ts/, /.*\.mobile\.spec\.ts/],
     },
     {
       name: "mobile",
       // ~390x844 — matches an iPhone 12/13/14-class viewport, per the brief.
       use: { ...devices["Pixel 7"], viewport: { width: 390, height: 844 } },
       dependencies: ["setup"],
-      testMatch: [/pipeline\.mobile\.spec\.ts/, /proposals\.mobile\.spec\.ts/],
+      testMatch: [/.*\.mobile\.spec\.ts/],
     },
   ],
   webServer: {

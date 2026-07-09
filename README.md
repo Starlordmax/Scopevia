@@ -4,7 +4,7 @@
 
 Scopevia is a mobile-first SaaS platform that helps contractors manage leads, calculate costs, produce Good/Better/Best proposals, and get paid — starting with painting contractors.
 
-This repository is currently at **Phase 2A: Proposal-centric pivot**, built on top of **Phase 1: CRM & Projects** and **Phase 0: Foundations**. The primary workflow is now Client → Opportunity → **Proposal** → *(future Sent/Viewed/Accepted)* → Project — a Project is no longer required before pricing a job. A contractor can build a professional proposal with a labor calculator, materials & costs, current-job and previous-work (Portfolio) photos, discounts/tax, and a live preview, all server-computed and tenant-isolated. Email delivery, the Client Portal, PDF generation, and payments do not exist yet. See [docs/](docs/) for the full product and architecture design, [docs/29-proposal-centric-product-pivot.md](docs/29-proposal-centric-product-pivot.md) for the pivot itself, [docs/14-phase-0-foundations.md](docs/14-phase-0-foundations.md) / [docs/20-phase-1-crm-and-projects.md](docs/20-phase-1-crm-and-projects.md) for the earlier phases, and [docs/35-phase-2a-rls-verification.md](docs/35-phase-2a-rls-verification.md) / [docs/36-phase-2a-e2e-verification.md](docs/36-phase-2a-e2e-verification.md) for real test-run evidence.
+This repository is currently at **Phase 2B: Material catalog by ZIP code + proposal delete/archive**, built on top of **Phase 2A: Proposal-centric pivot**, **Phase 1: CRM & Projects**, and **Phase 0: Foundations**. The primary workflow is Client → Opportunity → **Proposal** → *(future Sent/Viewed/Accepted)* → Project — a Project is no longer required before pricing a job. A contractor can build a professional proposal with a labor calculator, a ZIP-priced material catalog (with price snapshotting so a later catalog price change never retroactively changes an existing proposal — see [docs/42](docs/42-material-catalog-by-zip.md)), current-job and previous-work (Portfolio) photos, discounts/tax, a live preview, and a reversible "delete" (soft archive/restore — see [docs/43](docs/43-proposal-delete-archive.md)), all server-computed and tenant-isolated. Email delivery, the Client Portal, PDF generation, payments, and real external pricing data (scraping/APIs) do not exist yet. See [docs/](docs/) for the full product and architecture design, [docs/29-proposal-centric-product-pivot.md](docs/29-proposal-centric-product-pivot.md) for the pivot itself, [docs/14-phase-0-foundations.md](docs/14-phase-0-foundations.md) / [docs/20-phase-1-crm-and-projects.md](docs/20-phase-1-crm-and-projects.md) for the earlier phases, and [docs/35-phase-2a-rls-verification.md](docs/35-phase-2a-rls-verification.md) / [docs/36-phase-2a-e2e-verification.md](docs/36-phase-2a-e2e-verification.md) / [docs/44-material-catalog-rls-verification.md](docs/44-material-catalog-rls-verification.md) for real test-run evidence.
 
 ## Stack
 
@@ -47,6 +47,9 @@ Full walkthrough (installing, running migrations, creating a test user, verifyin
 | [docs/39-fixed-labor-pricing.md](docs/39-fixed-labor-pricing.md) | The Labor step's second pricing mode (fixed price alongside hourly) |
 | [docs/40-proposal-total-refresh-fix.md](docs/40-proposal-total-refresh-fix.md) | A reported "Pricing Summary shows $0.00" bug: full investigation, not reproduced, documented honestly |
 | [docs/41-photo-gallery-ui-fix.md](docs/41-photo-gallery-ui-fix.md) | Green upload button, thumbnail photo grid (replacing full-size images) |
+| [docs/42-material-catalog-by-zip.md](docs/42-material-catalog-by-zip.md) | Phase 2B: the material catalog data model, ZIP price fallback, snapshot pricing, permissions, seed data, known limitations |
+| [docs/43-proposal-delete-archive.md](docs/43-proposal-delete-archive.md) | Phase 2B: "Delete proposal" is always a soft archive, confirmation copy, Danger zone placement, Active/Archived/All filter |
+| [docs/44-material-catalog-rls-verification.md](docs/44-material-catalog-rls-verification.md) | Real PASS/FAIL results for Phase 2B against Postgres, including a real cross-tenant security bug found and fixed by the test suite |
 | [docs/14-phase-0-foundations.md](docs/14-phase-0-foundations.md) | What Phase 0 implements and why, including deviations from the original design |
 | [docs/15-local-development.md](docs/15-local-development.md) | Local setup, commands, troubleshooting |
 | [docs/16-environments-and-deployment.md](docs/16-environments-and-deployment.md) | Dev/staging/production separation, migrations, secrets |
@@ -75,9 +78,10 @@ src/
     supabase/     Client separation: browser, server, middleware, admin
     auth/         Session, tenant resolution, permissions
     audit/        Application-layer audit logging
-    validation/   Zod schemas (schemas.ts: Phase 0, crm.ts: Phase 1, proposals.ts: Phase 2A)
+    validation/   Zod schemas (schemas.ts: Phase 0, crm.ts: Phase 1, proposals.ts: Phase 2A/2B)
     crm/          State transition maps, activity labels, list-page data helpers, status badges
-    proposals/    Phase 2A: calculation engine (mirror, not authority), data fetchers, formatting
+    proposals/    Phase 2A: calculation engine (mirror, not authority), data fetchers, formatting;
+                  materials.ts: Phase 2B, material catalog search
     storage/      Phase 2A: private Storage upload + signed URL helpers
     search.ts     Safe ILIKE/PostgREST filter escaping for list-page search
   proxy.ts        Route protection (Next.js 16's successor to middleware.ts)

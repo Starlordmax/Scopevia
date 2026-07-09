@@ -49,11 +49,15 @@ test.describe("Proposals — full builder flow", () => {
     await page.getByRole("link", { name: "Continue to Materials & Costs" }).click();
     await page.waitForURL(/step=materials/);
 
-    // Step 4: Materials
-    await page.getByLabel("Description").fill("Exterior paint (5 gal)");
-    await page.getByLabel("Quantity").fill("5");
-    await page.getByLabel("Unit price ($)").fill("40");
-    await page.getByRole("button", { name: "+ Add cost item" }).click();
+    // Step 4: Materials. Scoped to "Add a custom cost" specifically — the
+    // material catalog's per-row Add forms above it also have a
+    // "Quantity — <material name>" field whose accessible name contains
+    // "Quantity" as a substring (Playwright's getByLabel default match).
+    const customCostSection1 = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Add a custom cost" }) });
+    await customCostSection1.getByLabel("Description").fill("Exterior paint (5 gal)");
+    await customCostSection1.getByLabel("Quantity").fill("5");
+    await customCostSection1.getByLabel("Unit price ($)").fill("40");
+    await customCostSection1.getByRole("button", { name: "+ Add cost item" }).click();
     await expect(page.getByRole("cell", { name: "Exterior paint (5 gal)" })).toBeVisible();
 
     await page.getByRole("link", { name: "Continue to Photos" }).click();
@@ -108,17 +112,28 @@ test.describe("Proposals — full builder flow", () => {
     await expect(page.getByRole("cell", { name: "Lead painter" })).toBeVisible();
     await expect(page.getByRole("cell", { name: "$30.00/hr" })).toBeVisible();
 
-    // Archive and restore. archiveProposalAction/restoreProposalAction
-    // redirect back to the SAME URL the button was clicked from
-    // (/proposals/[id] -> /proposals/[id]) — unlike Mark Ready/Return to
-    // Draft, which redirect between two different routes, a same-URL
-    // Server Action redirect gives the client-side router nothing to
-    // distinguish "already there" from "just navigated," so relying on a
-    // soft-navigation repaint is unreliable (the same root cause as the
-    // original tenant-switching bug in docs/26). Poll with an explicit
-    // hard reload each iteration instead of trusting the client transition.
+    // Delete (archive) and restore, via the "Danger zone" secondary
+    // section — never the primary action row. Delete requires an explicit
+    // native confirm() dialog with the brief's exact copy; Playwright
+    // dismisses dialogs by default, so a listener must accept it. Both
+    // archiveProposalAction/restoreProposalAction redirect back to the SAME
+    // URL the button was clicked from (/proposals/[id] -> /proposals/[id])
+    // — unlike Mark Ready/Return to Draft, which redirect between two
+    // different routes, a same-URL Server Action redirect gives the
+    // client-side router nothing to distinguish "already there" from "just
+    // navigated," so relying on a soft-navigation repaint is unreliable
+    // (the same root cause as the original tenant-switching bug in
+    // docs/26). Poll with an explicit hard reload each iteration instead of
+    // trusting the client transition.
     await page.goto(proposalUrl);
-    await page.getByRole("button", { name: "Archive" }).click();
+    await page.getByText("Danger zone").click();
+    page.once("dialog", (dialog) => {
+      expect(dialog.message()).toBe(
+        "Delete this proposal? This will remove it from your active proposals. You can restore it later from archived proposals."
+      );
+      dialog.accept();
+    });
+    await page.getByRole("button", { name: "Delete proposal" }).click();
     await expect
       .poll(
         async () => {
@@ -129,7 +144,17 @@ test.describe("Proposals — full builder flow", () => {
       )
       .toBeGreaterThan(0);
 
-    await page.getByRole("button", { name: "Restore" }).click();
+    // Deleted proposals disappear from the Active list...
+    await page.goto("/proposals");
+    await expect(page.getByText(proposalTitle)).toHaveCount(0);
+    // ...and appear in Archived.
+    await page.goto("/proposals?view=archived");
+    await expect(page.getByText(proposalTitle)).toBeVisible();
+
+    await page.goto(proposalUrl);
+    await page.getByText("Danger zone").click();
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.getByRole("button", { name: "Restore proposal" }).click();
     await expect
       .poll(
         async () => {
@@ -139,6 +164,12 @@ test.describe("Proposals — full builder flow", () => {
         { timeout: 30_000 }
       )
       .toBeGreaterThan(0);
+
+    // Restored, back in Active, with its total intact.
+    await page.goto("/proposals");
+    await expect(page.getByText(proposalTitle)).toBeVisible();
+    await page.goto(proposalUrl);
+    await expect(page.getByText("$2,400.00").first()).toBeVisible();
   });
 
   test("Portfolio: create a project, upload a photo, and select it as previous work in a proposal", async ({ page }) => {
@@ -309,11 +340,17 @@ test.describe("Labor pricing method", () => {
 
     await page.getByRole("link", { name: /3.*Materials/i }).click();
     await page.waitForURL(/step=materials/);
-    await page.getByLabel("Description").fill("Paint");
-    await page.getByLabel("Quantity").fill("2");
-    await page.getByLabel("Unit price ($)").fill("40.00");
-    await page.getByRole("button", { name: "+ Add cost item" }).click();
-    await expect(page.getByRole("cell", { name: "Paint" })).toBeVisible();
+    // Scoped to "Add a custom cost" — see the comment at the equivalent
+    // call in "Proposals — full builder flow" above.
+    const customCostSection2 = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Add a custom cost" }) });
+    await customCostSection2.getByLabel("Description").fill("Paint");
+    await customCostSection2.getByLabel("Quantity").fill("2");
+    await customCostSection2.getByLabel("Unit price ($)").fill("40.00");
+    await customCostSection2.getByRole("button", { name: "+ Add cost item" }).click();
+    // Scoped to "Saved costs" — the material catalog's own results table
+    // above it also has several rows whose name contains "Paint".
+    const savedCosts2 = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Saved costs" }) });
+    await expect(savedCosts2.getByRole("cell", { name: "Paint" })).toBeVisible();
 
     await page.getByRole("link", { name: /5.*Terms.*Pricing/i }).click();
     await page.waitForURL(/step=pricing/);
@@ -413,14 +450,20 @@ test.describe("Labor pricing method", () => {
 
     await page.getByRole("link", { name: /3.*Materials/i }).click();
     await page.waitForURL(/step=materials/);
-    await page.getByLabel("Description").fill("Paint");
-    await page.getByLabel("Quantity").fill("1");
-    await page.getByLabel("Unit price ($)").fill("50.00");
+    // Scoped to "Add a custom cost" — see the comment at the equivalent
+    // call in "Proposals — full builder flow" above.
+    const customCostSection3 = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Add a custom cost" }) });
+    await customCostSection3.getByLabel("Description").fill("Paint");
+    await customCostSection3.getByLabel("Quantity").fill("1");
+    await customCostSection3.getByLabel("Unit price ($)").fill("50.00");
     await expect(page.getByText("Not saved yet.")).toBeVisible();
     await expect(page.locator(".unsaved-preview-tile")).toContainText("$50.00");
 
-    await page.getByRole("button", { name: "+ Add cost item" }).click();
-    await expect(page.getByRole("cell", { name: "Paint" })).toBeVisible();
+    await customCostSection3.getByRole("button", { name: "+ Add cost item" }).click();
+    // Scoped to "Saved costs" — the material catalog's own results table
+    // above it also has several rows whose name contains "Paint".
+    const savedCosts3 = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Saved costs" }) });
+    await expect(savedCosts3.getByRole("cell", { name: "Paint" })).toBeVisible();
     await expect(page.getByText(/Saved materials & costs subtotal:/)).toContainText("$50.00");
 
     await page.getByRole("link", { name: /5.*Terms.*Pricing/i }).click();

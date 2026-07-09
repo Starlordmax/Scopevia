@@ -40,6 +40,33 @@ this document's numbers were not stale.
 > and fixed it. **61/61 PASS.** See "Phase 2A.3 E2E re-verification"
 > below.
 
+> **Nota de estado (2026-07-09, Phase 2B):** Adds two new spec files —
+> `tests/e2e/material-catalog.spec.ts` (desktop, 2 tests: the brief's
+> full worked ZIP-catalog scenario including delete/restore, and a
+> Sales-persona no-price-available case) and
+> `tests/e2e/material-catalog.mobile.spec.ts` (mobile, 1 test) — plus
+> updates to the existing "full builder flow" test's archive/restore
+> section (now "Delete proposal"/"Restore proposal" inside a collapsed
+> "Danger zone," with a real `window.confirm()` dialog handler and an
+> Active/Archived-list visibility check). **Full suite: 64/64 PASS**
+> (5 setup + desktop + mobile projects combined, confirmed by a full
+> clean `npx playwright test` run — see
+> [docs/44](44-material-catalog-rls-verification.md)).
+>
+> Fixing these specs surfaced two real bugs, both fixed before this
+> phase shipped: (1) the catalog category `<select>`'s "All categories"
+> option submits `catalogCategory=` (empty string), which `?? null`
+> does not normalize to null — the SQL side then filtered
+> `category = ''` (never true), silently returning zero results for
+> every unfiltered-category search; fixed by normalizing empty string
+> to null in `searchMaterialCatalog()` for all three filters. (2) the
+> per-row catalog Add form's quantity input was given an inline
+> `flexWrap: "nowrap"` style, which forced horizontal overflow on the
+> mobile viewport; removed, relying on `.tenant-form`'s existing
+> `flex-wrap: wrap`. Neither bug was reachable by any pre-existing test
+> — both were found by writing and running the new E2E coverage this
+> phase's brief required, not by code review.
+
 ## Environment
 
 Identical to Phase 1: production build (`next build && next start`), the

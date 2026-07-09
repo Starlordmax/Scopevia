@@ -2,11 +2,17 @@
 
 import { useActionState, useState } from "react";
 import Link from "next/link";
-import { addProposalLineItemAction, archiveProposalLineItemAction } from "../../../../../actions/proposals";
+import {
+  addProposalLineItemAction,
+  addProposalLineItemFromCatalogAction,
+  archiveProposalLineItemAction,
+  updateProposalPricingZipAction,
+} from "../../../../../actions/proposals";
 import type { ActionResult } from "../../../../../actions/auth";
 import { SubmitButton } from "../../../../../components/submit-button";
 import { computeLineItemTotalCents } from "../../../../../lib/proposals/calculations";
 import { formatCents } from "../../../../../lib/proposals/format";
+import type { MaterialCatalogSearchResult } from "../../../../../lib/proposals/materials";
 import type { Database } from "../../../../../../types/database";
 
 type ProposalLineItem = Database["public"]["Tables"]["proposal_line_items"]["Row"];
@@ -14,23 +20,184 @@ type ProposalSection = Database["public"]["Tables"]["proposal_sections"]["Row"];
 
 const CATEGORIES = ["material", "equipment", "subcontractor", "travel", "disposal", "additional_service", "allowance", "other"];
 const UNITS = ["each", "hour", "day", "gallon", "sq_ft", "linear_ft", "fixed"];
+const MATERIAL_CATEGORIES = [
+  "paint",
+  "primer",
+  "tape",
+  "brushes",
+  "rollers",
+  "drop_cloths",
+  "drywall",
+  "tile",
+  "flooring",
+  "wood",
+  "plumbing",
+  "electrical",
+  "hardware",
+  "disposal",
+  "other",
+];
 
 const initialState: ActionResult = {};
+
+function ZipForm({ proposalId, proposalVersionId, pricingZipCode }: { proposalId: string; proposalVersionId: string; pricingZipCode: string | null }) {
+  const [state, formAction] = useActionState(updateProposalPricingZipAction, initialState);
+
+  return (
+    <div className="section-card stack">
+      <h3>ZIP code for pricing</h3>
+      {state.error ? <p className="error-banner">{state.error}</p> : null}
+      <form action={formAction} className="tenant-form" style={{ width: "100%" }}>
+        <input type="hidden" name="proposalVersionId" value={proposalVersionId} />
+        <input type="hidden" name="proposalId" value={proposalId} />
+        <div className="field" style={{ flex: 1 }}>
+          <label htmlFor="zipCode">ZIP code</label>
+          <input id="zipCode" name="zipCode" type="text" inputMode="numeric" maxLength={5} defaultValue={pricingZipCode ?? ""} placeholder="e.g. 33101" />
+        </div>
+        <SubmitButton pendingText="Saving…" className="button-secondary">
+          Save ZIP
+        </SubmitButton>
+      </form>
+      <p className="hint">
+        <strong>Changing ZIP code only affects new materials you add. Existing proposal items keep their saved prices.</strong>
+      </p>
+    </div>
+  );
+}
+
+function CatalogSearchForm({ proposalId, catalogSearch, catalogCategory }: { proposalId: string; catalogSearch: string; catalogCategory: string }) {
+  return (
+    <form method="get" action={`/proposals/${proposalId}/edit`} className="tenant-form" style={{ width: "100%" }}>
+      <input type="hidden" name="step" value="materials" />
+      <input
+        type="search"
+        name="catalogSearch"
+        aria-label="Search the material catalog"
+        placeholder="Search the material catalog…"
+        defaultValue={catalogSearch}
+        style={{ flex: 1 }}
+      />
+      <select name="catalogCategory" aria-label="Category" defaultValue={catalogCategory} style={{ flex: "0 0 auto" }}>
+        <option value="">All categories</option>
+        {MATERIAL_CATEGORIES.map((c) => (
+          <option key={c} value={c}>
+            {c.replace(/_/g, " ")}
+          </option>
+        ))}
+      </select>
+      <button type="submit" className="button-secondary">
+        Search
+      </button>
+    </form>
+  );
+}
+
+function CatalogResultRow({
+  proposalId,
+  proposalVersionId,
+  sections,
+  result,
+  canAddFromCatalog,
+  canManagePricing,
+}: {
+  proposalId: string;
+  proposalVersionId: string;
+  sections: ProposalSection[];
+  result: MaterialCatalogSearchResult;
+  canAddFromCatalog: boolean;
+  canManagePricing: boolean;
+}) {
+  const [state, formAction] = useActionState(addProposalLineItemFromCatalogAction, initialState);
+  const hasPrice = result.unit_price_cents !== null;
+
+  return (
+    <tr>
+      <td data-label="Name">
+        {result.name}
+        {result.description ? <div className="hint">{result.description}</div> : null}
+      </td>
+      <td data-label="Unit">{result.default_unit.replace(/_/g, " ")}</td>
+      <td data-label="Supplier">{result.price_supplier_name ?? result.supplier_name ?? "—"}</td>
+      <td data-label="Price">
+        {hasPrice ? (
+          <>
+            {formatCents(result.unit_price_cents!)}
+            {result.price_zip_code ? null : result.price_state_code ? <div className="hint">state default</div> : <div className="hint">default price</div>}
+          </>
+        ) : (
+          <span className="hint">No price available for this ZIP</span>
+        )}
+      </td>
+      <td data-label="Add">
+        {canAddFromCatalog ? (
+          <form action={formAction} className="stack" style={{ gap: 4 }}>
+            <input type="hidden" name="proposalVersionId" value={proposalVersionId} />
+            <input type="hidden" name="proposalId" value={proposalId} />
+            <input type="hidden" name="materialCatalogItemId" value={result.id} />
+            {state.error ? <p className="error-banner">{state.error}</p> : null}
+            <div className="tenant-form" style={{ width: "100%" }}>
+              <input
+                type="number"
+                name="quantity"
+                min={0.001}
+                step={0.001}
+                defaultValue={1}
+                required
+                style={{ width: 80 }}
+                aria-label={`Quantity — ${result.name}`}
+              />
+              {sections.length > 0 ? (
+                <select name="sectionId" defaultValue="" aria-label={`Section — ${result.name}`} style={{ flex: "0 0 auto" }}>
+                  <option value="">No section</option>
+                  {sections.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.title}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+              {canManagePricing ? (
+                <input type="text" name="unitPriceOverride" inputMode="decimal" placeholder="Override price ($)" style={{ width: 160 }} />
+              ) : null}
+              <SubmitButton pendingText="Adding…" className="button-primary" disabled={!hasPrice && !canManagePricing}>
+                Add to proposal
+              </SubmitButton>
+            </div>
+          </form>
+        ) : null}
+      </td>
+    </tr>
+  );
+}
 
 export function StepMaterials({
   proposalId,
   proposalVersionId,
+  pricingZipCode,
   lineItems,
   sections,
   lineItemsSubtotalCents,
-  canEdit,
+  canViewMaterials,
+  canAddFromCatalog,
+  canManagePricing,
+  isDraft,
+  catalogResults,
+  catalogSearch,
+  catalogCategory,
 }: {
   proposalId: string;
   proposalVersionId: string;
+  pricingZipCode: string | null;
   lineItems: ProposalLineItem[];
   sections: ProposalSection[];
   lineItemsSubtotalCents: number;
-  canEdit: boolean;
+  canViewMaterials: boolean;
+  canAddFromCatalog: boolean;
+  canManagePricing: boolean;
+  isDraft: boolean;
+  catalogResults: MaterialCatalogSearchResult[];
+  catalogSearch: string;
+  catalogCategory: string;
 }) {
   const [state, formAction] = useActionState(addProposalLineItemAction, initialState);
   const [quantity, setQuantity] = useState("1");
@@ -44,10 +211,53 @@ export function StepMaterials({
 
   return (
     <div className="stack">
-      <div className="section-card stack">
-        <h2>Materials &amp; Costs</h2>
+      {isDraft && canViewMaterials ? <ZipForm proposalId={proposalId} proposalVersionId={proposalVersionId} pricingZipCode={pricingZipCode} /> : null}
 
-        {canEdit ? (
+      {isDraft && canViewMaterials ? (
+        <div className="section-card stack">
+          <h2>Material catalog</h2>
+          <CatalogSearchForm proposalId={proposalId} catalogSearch={catalogSearch} catalogCategory={catalogCategory} />
+
+          {catalogResults.length === 0 ? (
+            <p className="hint">
+              No materials match your search. {pricingZipCode ? null : "Set a ZIP code above to see local pricing."}
+            </p>
+          ) : (
+            <div className="table-card">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Unit</th>
+                    <th>Supplier</th>
+                    <th>Price{pricingZipCode ? ` (ZIP ${pricingZipCode})` : ""}</th>
+                    <th>Add</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {catalogResults.map((result) => (
+                    <CatalogResultRow
+                      key={result.id}
+                      proposalId={proposalId}
+                      proposalVersionId={proposalVersionId}
+                      sections={sections}
+                      result={result}
+                      canAddFromCatalog={canAddFromCatalog}
+                      canManagePricing={canManagePricing}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      <div className="section-card stack">
+        <h2>Add a custom cost</h2>
+        <p className="hint">For anything not in the material catalog — equipment, subcontractor fees, travel, disposal, etc.</p>
+
+        {canManagePricing ? (
           <>
             {state.error ? <p className="error-banner">{state.error}</p> : null}
             <form action={formAction} className="stack">
@@ -144,11 +354,13 @@ export function StepMaterials({
             </form>
           </>
         ) : null}
+      </div>
 
+      <div className="section-card stack">
         <h3>Saved costs</h3>
 
         {lineItems.length === 0 ? (
-          <p className="hint">No materials or additional costs saved yet. Fill in the form above and click &quot;+ Add cost item&quot;.</p>
+          <p className="hint">No materials or additional costs saved yet.</p>
         ) : (
           <div className="table-card">
             <table>
@@ -160,13 +372,18 @@ export function StepMaterials({
                   <th>Unit price</th>
                   <th>Taxable</th>
                   <th>Total</th>
-                  {canEdit ? <th /> : null}
+                  {canManagePricing ? <th /> : null}
                 </tr>
               </thead>
               <tbody>
                 {lineItems.map((item) => (
                   <tr key={item.id}>
-                    <td data-label="Description">{item.description}</td>
+                    <td data-label="Description">
+                      {item.description}
+                      {item.source_type === "catalog" ? (
+                        <div className="hint">via catalog{item.source_zip_code ? ` — ZIP ${item.source_zip_code}` : ""}</div>
+                      ) : null}
+                    </td>
                     <td data-label="Category">{item.category.replace(/_/g, " ")}</td>
                     <td data-label="Qty">
                       {item.quantity} {item.unit.replace(/_/g, " ")}
@@ -176,7 +393,7 @@ export function StepMaterials({
                     <td data-label="Total">
                       <strong>{formatCents(item.line_total_cents)}</strong>
                     </td>
-                    {canEdit ? (
+                    {canManagePricing ? (
                       <td data-label="">
                         <form action={archiveProposalLineItemAction}>
                           <input type="hidden" name="lineItemId" value={item.id} />

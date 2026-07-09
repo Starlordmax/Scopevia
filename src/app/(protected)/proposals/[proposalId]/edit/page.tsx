@@ -3,6 +3,7 @@ import { requireActiveTenant } from "../../../../../lib/auth/tenant";
 import { hasPermission, PERMISSIONS } from "../../../../../lib/auth/permissions";
 import { getFullProposal } from "../../../../../lib/proposals/data";
 import { getPortfolioMediaOptions } from "../../../../../lib/proposals/portfolio-options";
+import { searchMaterialCatalog } from "../../../../../lib/proposals/materials";
 import { createClient } from "../../../../../lib/supabase/server";
 import { PageHeader } from "../../../../../components/page-header";
 import { FileEdit } from "lucide-react";
@@ -21,7 +22,7 @@ export default async function ProposalEditPage({
   searchParams,
 }: {
   params: Promise<{ proposalId: string }>;
-  searchParams: Promise<{ step?: string }>;
+  searchParams: Promise<{ step?: string; catalogSearch?: string; catalogCategory?: string }>;
 }) {
   const { tenant } = await requireActiveTenant();
   const canView = await hasPermission(tenant.tenant_id, PERMISSIONS.PROPOSALS_VIEW);
@@ -31,15 +32,16 @@ export default async function ProposalEditPage({
   const data = await getFullProposal(tenant.tenant_id, proposalId);
   if (!data) notFound();
 
-  const { step: rawStep } = await searchParams;
+  const { step: rawStep, catalogSearch, catalogCategory } = await searchParams;
   const step = (BUILDER_STEPS.find((s) => s.key === rawStep)?.key ?? "scope") as BuilderStep;
 
-  const [canUpdate, canManagePricing, canUploadMedia, canViewPortfolio, canMarkReady] = await Promise.all([
+  const [canUpdate, canManagePricing, canUploadMedia, canViewPortfolio, canMarkReady, canViewMaterials] = await Promise.all([
     hasPermission(tenant.tenant_id, PERMISSIONS.PROPOSALS_UPDATE),
     hasPermission(tenant.tenant_id, PERMISSIONS.PROPOSALS_MANAGE_PRICING),
     hasPermission(tenant.tenant_id, PERMISSIONS.MEDIA_UPLOAD),
     hasPermission(tenant.tenant_id, PERMISSIONS.PORTFOLIO_VIEW),
     hasPermission(tenant.tenant_id, PERMISSIONS.PROPOSALS_MARK_READY),
+    hasPermission(tenant.tenant_id, PERMISSIONS.MATERIALS_VIEW),
   ]);
 
   const isDraft = data.version.version_status === "draft" && data.proposal.status === "draft";
@@ -51,6 +53,15 @@ export default async function ProposalEditPage({
     const { data: settings } = await supabase.rpc("get_tenant_proposal_settings", { p_tenant_id: tenant.tenant_id });
     if (settings) defaultHourlyRateCents = settings.default_customer_hourly_rate_cents;
   }
+
+  const catalogResults =
+    step === "materials" && canViewMaterials
+      ? await searchMaterialCatalog(tenant.tenant_id, {
+          zipCode: data.version.pricing_zip_code,
+          searchText: catalogSearch,
+          category: catalogCategory,
+        })
+      : [];
 
   return (
     <div className="stack">
@@ -84,10 +95,17 @@ export default async function ProposalEditPage({
         <StepMaterials
           proposalId={proposalId}
           proposalVersionId={data.version.id}
+          pricingZipCode={data.version.pricing_zip_code}
           lineItems={data.lineItems}
           sections={data.sections}
           lineItemsSubtotalCents={data.version.line_items_subtotal_cents}
-          canEdit={canManagePricing && isDraft}
+          canViewMaterials={canViewMaterials}
+          canAddFromCatalog={canUpdate && isDraft}
+          canManagePricing={canManagePricing && isDraft}
+          isDraft={isDraft}
+          catalogResults={catalogResults}
+          catalogSearch={catalogSearch ?? ""}
+          catalogCategory={catalogCategory ?? ""}
         />
       ) : null}
       {step === "photos" ? (

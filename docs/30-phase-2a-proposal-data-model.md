@@ -6,6 +6,12 @@ See [docs/adr/0025](adr/0025-proposal-before-project.md) through
 [0034](adr/0034-project-creation-after-acceptance.md) for the decisions
 behind this shape.
 
+> **Phase 2B addendum (2026-07-09):** two new tables,
+> `material_catalog_items` and `material_zip_prices`, plus
+> provenance-only snapshot columns on `proposal_line_items` and a
+> pricing ZIP on `proposal_versions` — see
+> [docs/42-material-catalog-by-zip.md](42-material-catalog-by-zip.md).
+
 ## Entity relationship overview
 
 ```text
@@ -24,6 +30,11 @@ portfolio_projects (tenant_id)
   └─ portfolio_project_media (portfolio_project_id, media_asset_id)
 
 proposal_creation_requests (tenant_id, idempotency_key) — internal ledger only
+
+-- Phase 2B
+material_catalog_items (scope: global|tenant; tenant_id nullable)
+  └─ material_zip_prices (material_catalog_item_id; tenant_id nullable)
+proposal_line_items also optionally references material_catalog_items / material_zip_prices (provenance only)
 ```
 
 ## Tables
@@ -89,6 +100,15 @@ RLS enabled with **no policy and no grant** — deny-by-default, never
 queried by the client directly). Used only by
 `create_proposal_direct()`/`create_proposal_from_opportunity()`.
 
+### `material_catalog_items` / `material_zip_prices` (Phase 2B)
+
+See [docs/42](42-material-catalog-by-zip.md) for full detail. Briefly:
+a global-vs-tenant material catalog with ZIP/state/default-tiered
+pricing, cross-tenant integrity enforced by a dedicated trigger (rather
+than the composite-FK pattern below, which can't express a nullable-tenant
+global row), and price snapshotting into `proposal_line_items` at the
+moment a material is added.
+
 ## Cross-tenant integrity
 
 Every parent/child relationship uses the same composite-FK pattern
@@ -125,6 +145,9 @@ deliberately not added yet.
 | `register_media_asset` / `attach_media_to_proposal` / `detach_media_from_proposal` | Media |
 | `create_portfolio_project` / `update_portfolio_project` / `archive_portfolio_project` / `restore_portfolio_project` / `add_portfolio_project_media` | Portfolio |
 | `create_project_from_accepted_proposal` | Architecture prep (ADR 0034), not exposed |
+| `find_material_zip_price` / `search_material_catalog` | ZIP price fallback + catalog browse/search (Phase 2B) |
+| `create/update/archive_tenant_material` / `create/update/archive_tenant_material_price` | Tenant catalog/price CRUD (Phase 2B) |
+| `update_proposal_pricing_zip` / `add_proposal_line_item_from_catalog` | Version pricing ZIP + catalog-sourced line item snapshot (Phase 2B) |
 
 Every function follows the same discipline as Phase 0/1: `auth.uid()`
 required, membership/permission checked via `user_has_permission()`,

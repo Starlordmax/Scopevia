@@ -4,6 +4,42 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Phase 2B — Material catalog by ZIP code, and proposal delete/archive
+
+Adds a browsable, ZIP-priced material catalog to the Materials & Costs
+step: enter a ZIP code, search/filter the catalog, add a material at
+its resolved local price (or a state/default fallback — never an
+invented price), and every added item **snapshots** its price
+permanently — a later catalog price change never retroactively changes
+an existing proposal. Two new tables (`material_catalog_items`,
+`material_zip_prices`), 8 new permissions (`materials.*`,
+`material_prices.*`), a global-vs-tenant RLS pattern (mirroring the
+existing `roles.is_system` precedent), and a dedicated cross-tenant
+integrity trigger where the standard composite-FK pattern can't express
+a nullable-tenant global row. 26 seeded global materials across paint,
+bathroom remodeling, and flooring, priced at 4 demo ZIPs — all
+explicitly fictional/demo data, no scraping, no real supplier
+integration. See [docs/42-material-catalog-by-zip.md](docs/42-material-catalog-by-zip.md).
+
+Also relabels proposal "Archive" to "Delete proposal" in the UI
+(internally unchanged — still the same `archive_proposal()`/
+`restore_proposal()` functions from Phase 2A, never a hard delete), adds
+a required confirmation dialog with exact copy, moves it into a
+collapsed "Danger zone" section instead of the primary action row, and
+replaces the proposals list's binary Active/Archived toggle with a real
+three-way Active/Archived/All filter. See
+[docs/43-proposal-delete-archive.md](docs/43-proposal-delete-archive.md).
+
+A real cross-tenant security bug was found and fixed by this phase's
+own RLS test suite before shipping: an internal price-lookup helper
+(`find_material_zip_price()`) was mistakenly grantable directly to any
+authenticated user, which would have let a caller pass an arbitrary
+tenant id and read that tenant's private price overrides. See
+[docs/44-material-catalog-rls-verification.md](docs/44-material-catalog-rls-verification.md).
+
+No Client Portal, email, PDF, Stripe, payments, AI, or scraping work —
+out of scope for this phase.
+
 ### Phase 2A.3 — Pricing Summary "$0.00" root cause found: unsaved-preview vs. saved-total clarity
 
 Found the actual cause of the reported "Pricing Summary shows $0.00"
