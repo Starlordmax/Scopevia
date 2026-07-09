@@ -4,6 +4,33 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Phase 2B.1 — Unified ZIP + search panel, broader search, real empty-string bug fix
+
+Merges the Materials & Costs step's ZIP field and material catalog
+search/results — previously two separate cards — into a single
+"Material pricing" panel, matching the actual mental flow (pick a ZIP,
+then search within it). Broadens catalog text search to match
+description/brand/supplier_name in addition to name, and replaces the
+one generic "no materials match" message with three distinct, situation-
+specific empty states (no ZIP yet / no matching materials / materials
+matched but none priced for this ZIP).
+
+Root-causes and fixes a real bug reported against the previous phase:
+an empty-string category filter or search box (the literal value the
+UI's "All categories" `<option>` and a cleared search input submit)
+reached `search_material_catalog()` as `''`, not `null` — Phase 2B's
+earlier fix only normalized this at the Next.js call site, which turned
+out to be incomplete; any other caller passing `''` directly still hit
+the bug. Fixed at the actual source this time: every optional filter is
+normalized inside the SQL function itself
+(`nullif(btrim(coalesce(…, '')), '')`), so `''` and `null` are always
+equivalent regardless of caller. See
+[docs/42](docs/42-material-catalog-by-zip.md#the-empty-string-bug-found-and-fixed).
+
+8 new RLS/integration tests, 2 new E2E tests; 208/208 RLS + 107/107 unit
++ 66/66 E2E all passing. No Client Portal, email, PDF, Stripe, AI, or
+scraping work; no new modules outside this scope.
+
 ### Phase 2B — Material catalog by ZIP code, and proposal delete/archive
 
 Adds a browsable, ZIP-priced material catalog to the Materials & Costs

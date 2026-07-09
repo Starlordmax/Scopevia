@@ -67,6 +67,24 @@ this document's numbers were not stale.
 > — both were found by writing and running the new E2E coverage this
 > phase's brief required, not by code review.
 
+> **Nota de estado (2026-07-09, Phase 2B.1):** The empty-string
+> normalization above turned out to be an incomplete fix — it only
+> patched the Next.js call site (`searchMaterialCatalog()`), not the SQL
+> function itself, so any other caller passing a literal `''` directly
+> to `search_material_catalog()` still got zero results. This phase
+> unifies the ZIP field and catalog search into a single "Material
+> pricing" panel, broadens the search to match description/brand/
+> supplier_name (not just name), adds three distinct empty states, and
+> fixes the empty-string bug at its actual source (normalized inside the
+> SQL function itself — see
+> [docs/42](42-material-catalog-by-zip.md#the-empty-string-bug-found-and-fixed)).
+> Adds `tests/e2e/material-catalog.spec.ts` "category filter narrows
+> results…" and "empty states…" (2 new desktop tests). **Full suite:
+> 66/66 PASS** (a fresh `next build` was required for this run — the
+> Playwright `webServer`'s `reuseExistingServer` had reused a stale
+> build from before this phase's UI changes on the first attempt,
+> unrelated to any test logic).
+
 ## Environment
 
 Identical to Phase 1: production build (`next build && next start`), the

@@ -40,12 +40,13 @@ const MATERIAL_CATEGORIES = [
 
 const initialState: ActionResult = {};
 
+/** Just the ZIP form + warning — no heading/card of its own; rendered as
+ * one part of the single "Material pricing" panel in StepMaterials. */
 function ZipForm({ proposalId, proposalVersionId, pricingZipCode }: { proposalId: string; proposalVersionId: string; pricingZipCode: string | null }) {
   const [state, formAction] = useActionState(updateProposalPricingZipAction, initialState);
 
   return (
-    <div className="section-card stack">
-      <h3>ZIP code for pricing</h3>
+    <div className="stack" style={{ gap: 4 }}>
       {state.error ? <p className="error-banner">{state.error}</p> : null}
       <form action={formAction} className="tenant-form" style={{ width: "100%" }}>
         <input type="hidden" name="proposalVersionId" value={proposalVersionId} />
@@ -65,6 +66,8 @@ function ZipForm({ proposalId, proposalVersionId, pricingZipCode }: { proposalId
   );
 }
 
+/** Just the search/category form — no heading/card of its own. A plain
+ * GET form: Enter in the search box submits it natively, no JS needed. */
 function CatalogSearchForm({ proposalId, catalogSearch, catalogCategory }: { proposalId: string; catalogSearch: string; catalogCategory: string }) {
   return (
     <form method="get" action={`/proposals/${proposalId}/edit`} className="tenant-form" style={{ width: "100%" }}>
@@ -73,7 +76,7 @@ function CatalogSearchForm({ proposalId, catalogSearch, catalogCategory }: { pro
         type="search"
         name="catalogSearch"
         aria-label="Search the material catalog"
-        placeholder="Search the material catalog…"
+        placeholder="Search by name, description, brand, or supplier…"
         defaultValue={catalogSearch}
         style={{ flex: 1 }}
       />
@@ -170,6 +173,97 @@ function CatalogResultRow({
   );
 }
 
+function MaterialPricingPanel({
+  proposalId,
+  proposalVersionId,
+  pricingZipCode,
+  sections,
+  canAddFromCatalog,
+  canManagePricing,
+  catalogResults,
+  catalogSearch,
+  catalogCategory,
+}: {
+  proposalId: string;
+  proposalVersionId: string;
+  pricingZipCode: string | null;
+  sections: ProposalSection[];
+  canAddFromCatalog: boolean;
+  canManagePricing: boolean;
+  catalogResults: MaterialCatalogSearchResult[];
+  catalogSearch: string;
+  catalogCategory: string;
+}) {
+  const hasResults = catalogResults.length > 0;
+  const hasAnyPrice = catalogResults.some((r) => r.unit_price_cents !== null);
+  const categoryLabel = catalogCategory ? catalogCategory.replace(/_/g, " ") : "";
+
+  // Three distinct empty/hint states — never the same generic message for
+  // different underlying reasons (no ZIP yet, no matching materials at
+  // all, or materials matched but none priced for this ZIP).
+  let resultsHeading: string;
+  if (pricingZipCode && categoryLabel) {
+    resultsHeading = `Showing ${categoryLabel} materials for ZIP ${pricingZipCode}`;
+  } else if (pricingZipCode) {
+    resultsHeading = `Results for ZIP ${pricingZipCode}`;
+  } else {
+    resultsHeading = "Results";
+  }
+
+  return (
+    <div className="section-card stack">
+      <h2>Material pricing</h2>
+
+      <ZipForm proposalId={proposalId} proposalVersionId={proposalVersionId} pricingZipCode={pricingZipCode} />
+
+      <h3 style={{ marginBottom: 0 }}>Search materials</h3>
+      <CatalogSearchForm proposalId={proposalId} catalogSearch={catalogSearch} catalogCategory={catalogCategory} />
+
+      <h3 style={{ marginBottom: 0 }}>{resultsHeading}</h3>
+
+      {!hasResults ? (
+        !pricingZipCode ? (
+          <p className="hint">Enter a ZIP code to load material pricing.</p>
+        ) : (
+          <p className="hint">No materials match your search for this ZIP code. Try a different keyword or category.</p>
+        )
+      ) : (
+        <>
+          {pricingZipCode && !hasAnyPrice ? (
+            <p className="hint">No price is available for these materials in this ZIP code. Try another ZIP code or add a custom cost.</p>
+          ) : null}
+          <div className="table-card">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Unit</th>
+                  <th>Supplier</th>
+                  <th>Price</th>
+                  <th>Add</th>
+                </tr>
+              </thead>
+              <tbody>
+                {catalogResults.map((result) => (
+                  <CatalogResultRow
+                    key={result.id}
+                    proposalId={proposalId}
+                    proposalVersionId={proposalVersionId}
+                    sections={sections}
+                    result={result}
+                    canAddFromCatalog={canAddFromCatalog}
+                    canManagePricing={canManagePricing}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function StepMaterials({
   proposalId,
   proposalVersionId,
@@ -211,46 +305,18 @@ export function StepMaterials({
 
   return (
     <div className="stack">
-      {isDraft && canViewMaterials ? <ZipForm proposalId={proposalId} proposalVersionId={proposalVersionId} pricingZipCode={pricingZipCode} /> : null}
-
       {isDraft && canViewMaterials ? (
-        <div className="section-card stack">
-          <h2>Material catalog</h2>
-          <CatalogSearchForm proposalId={proposalId} catalogSearch={catalogSearch} catalogCategory={catalogCategory} />
-
-          {catalogResults.length === 0 ? (
-            <p className="hint">
-              No materials match your search. {pricingZipCode ? null : "Set a ZIP code above to see local pricing."}
-            </p>
-          ) : (
-            <div className="table-card">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Unit</th>
-                    <th>Supplier</th>
-                    <th>Price{pricingZipCode ? ` (ZIP ${pricingZipCode})` : ""}</th>
-                    <th>Add</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {catalogResults.map((result) => (
-                    <CatalogResultRow
-                      key={result.id}
-                      proposalId={proposalId}
-                      proposalVersionId={proposalVersionId}
-                      sections={sections}
-                      result={result}
-                      canAddFromCatalog={canAddFromCatalog}
-                      canManagePricing={canManagePricing}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        <MaterialPricingPanel
+          proposalId={proposalId}
+          proposalVersionId={proposalVersionId}
+          pricingZipCode={pricingZipCode}
+          sections={sections}
+          canAddFromCatalog={canAddFromCatalog}
+          canManagePricing={canManagePricing}
+          catalogResults={catalogResults}
+          catalogSearch={catalogSearch}
+          catalogCategory={catalogCategory}
+        />
       ) : null}
 
       <div className="section-card stack">

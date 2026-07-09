@@ -1,9 +1,21 @@
 # 42 — Material Catalog by ZIP Code
 
 Status: **Implemented**, verified against real Postgres
-(`tests/rls/phase2b-materials.test.ts`, 27 tests) and end-to-end via
+(`tests/rls/phase2b-materials.test.ts`, 35 tests) and end-to-end via
 Playwright (`tests/e2e/material-catalog.spec.ts` +
 `material-catalog.mobile.spec.ts`).
+
+> **Nota de estado (Phase 2B.1, 2026-07-09):** The ZIP field and the
+> catalog search/results now live in a single unified panel ("Material
+> pricing") instead of two separate cards, and the search text now
+> matches name/description/brand/supplier_name (not just name), with
+> three distinct empty states instead of one generic message. A real
+> bug is fixed: an empty-string category/search filter (the literal
+> value the UI's "All categories" option and a cleared search box
+> submit) was reaching the SQL function as `''`, not `null`, and
+> `category = ''` matched nothing — silently returning zero results
+> instead of "no filter." See "ZIP + search: one unified panel" and
+> "The empty-string bug" below.
 
 > **This phase is internal/demo data.** Every price seeded in
 > `20260708120500_seed_material_catalog_demo_data.sql` is fictional
@@ -206,19 +218,13 @@ it was a bug, not a limitation, closed same-day).
 
 Materials & Costs step (`step-materials.tsx`):
 
-1. **ZIP code for pricing** — a small form, editable any time the
-   version is a draft, with the "only affects new materials" warning
-   always visible beneath it.
-2. **Material catalog** — search box + category filter (a plain GET
-   form, `?catalogSearch=&catalogCategory=`, matching this codebase's
-   existing simplicity discipline — no client-side fetch/autosave).
-   Results render as a table; each row has its own compact Add form
-   (quantity, optional section, and — only for users with
-   `manage_pricing` — an optional price override).
-3. **Add a custom cost** — the pre-existing (Phase 2A) manual entry
+1. **Material pricing** — a single panel (`MaterialPricingPanel`)
+   containing the ZIP field, the search/category form, and the results
+   list, in that order — see "ZIP + search: one unified panel" below.
+2. **Add a custom cost** — the pre-existing (Phase 2A) manual entry
    form, relabeled to make the distinction from catalog items explicit;
    unchanged behavior, still gated by `proposals.manage_pricing`.
-4. **Saved costs** — unchanged table, with a small "via catalog — ZIP
+3. **Saved costs** — unchanged table, with a small "via catalog — ZIP
    NNNNN" hint under any catalog-sourced row's description.
 
 No preview-vs-saved-total regression: adding a catalog item calls
@@ -226,6 +232,77 @@ No preview-vs-saved-total regression: adding a catalog item calls
 this module, and the Pricing Summary reads the same server-computed
 totals it always has — see
 [docs/40](40-proposal-total-refresh-fix.md#round-2-definitive-db-proof-and-the-actual-ux-fix).
+
+## ZIP + search: one unified panel
+
+Originally the ZIP field and the catalog search/results were two
+separate `.section-card`s, read as two unrelated modules rather than one
+flow. Phase 2B.1 merges them into a single card, `MaterialPricingPanel`,
+under one heading ("Material pricing"):
+
+1. ZIP code field + Save ZIP + the "only affects new materials" warning.
+2. "Search materials" — the search box (matches name, description,
+   brand, and supplier_name — see below) + category filter, a plain GET
+   form (`?catalogSearch=&catalogCategory=`, matching this codebase's
+   existing simplicity discipline — no client-side fetch/autosave;
+   pressing Enter in the search box submits it natively, no JS needed).
+3. A results heading that reflects the current filter state —
+   `Results for ZIP 33101`, or `Showing plumbing materials for ZIP
+   33101` once a category is applied — followed by the results table,
+   each row with its own compact Add form (quantity, optional section,
+   and — only for users with `manage_pricing` — an optional price
+   override).
+
+### Three distinct empty states
+
+Previously every "nothing to show" case rendered the same generic "No
+materials match your search," which conflated three different
+situations. Now:
+
+| Situation | Message |
+|---|---|
+| No ZIP saved yet, and the current filter matches zero materials | "Enter a ZIP code to load material pricing." |
+| A ZIP is saved, but the filter matches zero materials at all | "No materials match your search for this ZIP code. Try a different keyword or category." |
+| The filter matches real materials, but none of them have a price at this ZIP (all three fallback tiers exhausted) | "No price is available for these materials in this ZIP code. Try another ZIP code or add a custom cost." (shown above the results table, which still lists the matched — just unpriced — materials) |
+
+An unfiltered browse (no ZIP, no search text, no category) always shows
+the full catalog with every price column reading "No price available
+for this ZIP" — it is never blank just because no ZIP has been set yet.
+
+## Broadened text search
+
+`search_material_catalog()`'s text filter previously matched only
+`name`. It now matches `name`, `description`, `brand`, and
+`supplier_name` (all via case-insensitive `ILIKE '%…%'` partial match)
+— e.g. searching "weather-resistant" now finds Exterior Paint via its
+description, not just its name. Results are capped at 200 rows (a
+defensive bound, not a real constraint against the current ~26-item
+seed catalog).
+
+## The empty-string bug (found and fixed)
+
+A real bug, not just a design gap: the category `<select>`'s "All
+categories" option has `value=""`, and a cleared search box also
+submits `""`. The Next.js call site normalized `""` to `null` before
+calling the RPC (`emptyToNull()` in `src/lib/proposals/materials.ts`),
+but **the SQL function itself did not** — a raw call to
+`search_material_catalog()` with `p_category = ''` hit
+`mci.category = p_category`, which is never true for an empty string,
+silently returning zero rows instead of "no filter." Any caller that
+didn't go through the specific JS wrapper (a different action, a
+future API route, a direct RPC call, a test) would hit the same bug.
+
+Fixed at the source in
+`20260709100100_material_catalog_search_empty_string_fix.sql`: every
+optional filter (`p_zip_code`, `p_search_text`, `p_category`,
+`p_service_type`) is normalized with `nullif(btrim(coalesce(…, '')), '')`
+inside the function body itself, so `''` and `null` are always
+equivalent regardless of who calls it — the caller-side normalization
+in the JS wrapper is now redundant defense-in-depth, not the only
+guard. Verified directly:
+`tests/rls/phase2b-materials.test.ts`, "Text search…", calls the RPC
+with a literal `""` for both `p_search_text` and `p_category` and
+asserts the full catalog still comes back.
 
 ## Seed data
 

@@ -46,6 +46,19 @@ return to draft → archive → restore) and by the E2E suite in
 > colapsada (Delete/Restore, con confirmación) — ver
 > [43-proposal-delete-archive.md](43-proposal-delete-archive.md).
 
+> **Nota de estado (2026-07-09, Phase 2B.1):** El campo de ZIP y el
+> catálogo (búsqueda + resultados) ahora viven en un solo panel unificado
+> ("Material pricing"), en vez de dos cards separados — la búsqueda de
+> texto ahora también encuentra por description/brand/supplier_name (no
+> solo por name), y hay tres empty states distintos (sin ZIP, sin
+> coincidencias, o coincidencias sin precio para ese ZIP) en vez de un
+> solo mensaje genérico. Se encontró y corrigió un bug real: un filtro de
+> categoría o búsqueda vacío ("", el valor literal que envía la opción
+> "All categories") llegaba a la función SQL como `''` en vez de `null`,
+> y `category = ''` no coincidía con nada — la corrección normaliza esto
+> dentro de la función misma, no solo en el cliente. Ver
+> [42-material-catalog-by-zip.md](42-material-catalog-by-zip.md#zip--search-one-unified-panel).
+
 ## Routes
 
 | Route | Purpose |

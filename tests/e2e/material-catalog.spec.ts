@@ -42,14 +42,15 @@ test.describe("Material catalog by ZIP", () => {
     await page.getByRole("button", { name: "Save ZIP" }).click();
     await expect(page.getByText("Changing ZIP code only affects new materials you add.")).toBeVisible();
 
-    // Search the catalog for "Paint" and confirm the ZIP-based price.
-    // Scoped to "Material catalog" specifically — the "Saved costs" table
-    // below it also gets a row named "Interior Paint" once added, and both
-    // tables are on screen at once.
-    const catalogTable = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Material catalog" }) });
+    // ZIP + search + results all live in one "Material pricing" panel.
+    // Scoped specifically — the "Saved costs" table below it also gets a
+    // row named "Interior Paint" once added, and both tables are on
+    // screen at once.
+    const catalogTable = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Material pricing" }) });
     await page.getByLabel("Search the material catalog").fill("Paint");
     await page.getByRole("button", { name: "Search" }).click();
     await page.waitForURL(/catalogSearch=Paint/);
+    await expect(catalogTable.getByRole("heading", { name: "Results for ZIP 33101" })).toBeVisible();
 
     const interiorPaintRow = catalogTable.locator("tr").filter({ hasText: "Interior Paint" });
     await expect(interiorPaintRow).toBeVisible();
@@ -175,5 +176,95 @@ test.describe("Material catalog by ZIP", () => {
     // Sales has no manage_pricing, so no override field is rendered at all
     // -- the Add button must stay disabled rather than silently adding at $0.
     await expect(debrisRow.getByRole("button", { name: "Add to proposal" })).toBeDisabled();
+  });
+
+  test("category filter narrows results and updates the results heading", async ({ page }) => {
+    const suffix = uniqueSuffix();
+    const clientName = `E2E Category Filter Client ${suffix}`;
+
+    await page.goto("/clients/new");
+    await page.getByLabel("Display name").fill(clientName);
+    await page.getByRole("button", { name: "Create client" }).click();
+    await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
+
+    await page.goto("/proposals/new");
+    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.waitForURL(/clientId=/);
+    await page.getByLabel("Proposal title").fill(`E2E Category Filter ${suffix}`);
+    await page.getByLabel("Service type").selectOption("bathroom_remodeling");
+    await page.getByRole("button", { name: "Save and continue" }).click();
+    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=scope/);
+    const proposalUrl = page.url().replace(/\/edit\?step=scope$/, "");
+
+    await page.goto(`${proposalUrl}/edit?step=materials`);
+    const catalogTable = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Material pricing" }) });
+
+    await page.getByLabel("ZIP code").fill("33101");
+    await page.getByRole("button", { name: "Save ZIP" }).click();
+
+    // Scoped to the catalog panel — "Add a custom cost" below it has its
+    // own, differently-optioned "Category" select.
+    await catalogTable.getByLabel("Category").selectOption("plumbing");
+    await catalogTable.getByRole("button", { name: "Search" }).click();
+    await page.waitForURL(/catalogCategory=plumbing/);
+
+    await expect(catalogTable.getByRole("heading", { name: "Showing plumbing materials for ZIP 33101" })).toBeVisible();
+    const rows = catalogTable.locator("tbody tr");
+    await expect(rows).toHaveCount(3);
+    await expect(catalogTable).toContainText("Toilet, Standard");
+    await expect(catalogTable).toContainText("Bathtub, Standard");
+    await expect(catalogTable).toContainText("Shower Fixture Set");
+    // Confirms this isn't a name-only match — none of these names contain
+    // "plumbing" as a substring, so a working category filter (not a
+    // coincidental text match) is what's actually narrowing the list.
+    await expect(catalogTable).not.toContainText("Interior Paint");
+  });
+
+  test("empty states: no ZIP yet, no match for a search, and materials with no price for the ZIP", async ({ page }) => {
+    const suffix = uniqueSuffix();
+    const clientName = `E2E Empty States Client ${suffix}`;
+
+    await page.goto("/clients/new");
+    await page.getByLabel("Display name").fill(clientName);
+    await page.getByRole("button", { name: "Create client" }).click();
+    await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
+
+    await page.goto("/proposals/new");
+    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.waitForURL(/clientId=/);
+    await page.getByLabel("Proposal title").fill(`E2E Empty States ${suffix}`);
+    await page.getByLabel("Service type").selectOption("custom");
+    await page.getByRole("button", { name: "Save and continue" }).click();
+    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=scope/);
+    const proposalUrl = page.url().replace(/\/edit\?step=scope$/, "");
+
+    // Case A: no ZIP saved yet, no filters -> the base catalog still has
+    // rows (price-less), so this only shows the "enter a ZIP" hint when a
+    // filter narrows it to zero, e.g. a nonsense search.
+    await page.goto(`${proposalUrl}/edit?step=materials`);
+    const catalogTable = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Material pricing" }) });
+    await catalogTable.getByLabel("Search the material catalog").fill("zzz-no-such-material-zzz");
+    await catalogTable.getByRole("button", { name: "Search" }).click();
+    await page.waitForURL(/catalogSearch=/);
+    await expect(catalogTable.getByText("Enter a ZIP code to load material pricing.")).toBeVisible();
+
+    // Case B: ZIP set, search matches nothing.
+    await page.getByLabel("ZIP code").fill("33101");
+    await page.getByRole("button", { name: "Save ZIP" }).click();
+    await catalogTable.getByLabel("Search the material catalog").fill("zzz-no-such-material-zzz");
+    await catalogTable.getByRole("button", { name: "Search" }).click();
+    await page.waitForURL(/catalogSearch=/);
+    await expect(catalogTable.getByText("No materials match your search for this ZIP code. Try a different keyword or category.")).toBeVisible();
+
+    // Case C: ZIP set to one with no coverage at all for any material
+    // (outside the 4 seeded demo ZIPs and not the global-default items) —
+    // materials list, but none priced.
+    await page.getByLabel("ZIP code").fill("55555");
+    await page.getByRole("button", { name: "Save ZIP" }).click();
+    await catalogTable.getByLabel("Search the material catalog").fill("Bathtub");
+    await catalogTable.getByRole("button", { name: "Search" }).click();
+    await page.waitForURL(/catalogSearch=Bathtub/);
+    await expect(catalogTable.getByText("No price is available for these materials in this ZIP code. Try another ZIP code or add a custom cost.")).toBeVisible();
+    await expect(catalogTable.getByRole("cell", { name: "Bathtub, Standard" })).toBeVisible();
   });
 });

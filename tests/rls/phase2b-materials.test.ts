@@ -230,6 +230,83 @@ describe.skipIf(!canRun)("Phase 2B Material catalog & ZIP pricing (requires real
   });
 
   // ===========================================================================
+  // Phase 2B.1: expanded text search (name/description/brand/supplier_name),
+  // case-insensitivity, partial match, category-only, and empty-filter
+  // normalization -- the root cause of the reported "search doesn't find
+  // anything" bug was an empty-string category filter (from the UI's "All
+  // categories" option) not being normalized to null before reaching
+  // search_material_catalog(), so `category = ''` matched zero rows. See
+  // 20260709100000_material_catalog_search_improvements.sql.
+  // ===========================================================================
+  describe("Text search (name/description/brand/supplier), case-insensitive, partial match", () => {
+    it("matches partial, case-insensitive text in the name (Interior Paint / Exterior Paint for 'paint')", async () => {
+      const { data, error } = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_search_text: "PAINT" });
+      expect(error).toBeNull();
+      const names = (data as CatalogRow[]).map((r) => r.name);
+      expect(names).toContain("Interior Paint");
+      expect(names).toContain("Exterior Paint");
+    });
+
+    it("matches text that only appears in the description, not the name", async () => {
+      // "Exterior Paint"'s description is "Weather-resistant exterior
+      // acrylic paint" -- "weather-resistant" appears nowhere in the name.
+      const { data, error } = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_search_text: "weather-resistant" });
+      expect(error).toBeNull();
+      const names = (data as CatalogRow[]).map((r) => r.name);
+      expect(names).toEqual(["Exterior Paint"]);
+    });
+
+    it("matches text in supplier_name (all seed materials are 'Demo Supplier')", async () => {
+      const { data, error } = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_search_text: "Demo Supplier" });
+      expect(error).toBeNull();
+      expect((data as CatalogRow[]).length).toBeGreaterThanOrEqual(26);
+    });
+
+    it("category alone (no search text) returns every material in that category, not zero", async () => {
+      const { data, error } = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_category: "plumbing" });
+      expect(error).toBeNull();
+      const names = (data as CatalogRow[]).map((r) => r.name).sort();
+      expect(names).toEqual(["Bathtub, Standard", "Shower Fixture Set", "Toilet, Standard"]);
+    });
+
+    it("empty search text and empty category (both '', as the UI's cleared inputs send) still returns the full catalog, not zero", async () => {
+      const { data, error } = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_search_text: "", p_category: "" });
+      expect(error).toBeNull();
+      expect((data as CatalogRow[]).length).toBeGreaterThanOrEqual(26);
+    });
+
+    it("an empty-string category ('' -- the literal value the 'All categories' <option> submits) is treated as no filter, not as category = ''", async () => {
+      const { data, error } = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_category: "" });
+      expect(error).toBeNull();
+      expect((data as CatalogRow[]).length).toBeGreaterThanOrEqual(26);
+    });
+
+    it("no results for a nonsense search term (a real empty state, not an error)", async () => {
+      const { data, error } = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_search_text: "zzz-no-such-material-zzz" });
+      expect(error).toBeNull();
+      expect(data).toEqual([]);
+    });
+
+    it("search does not expose another tenant's custom material by name/description/brand/supplier text", async () => {
+      const uniqueBrand = `TenantOnlyBrand-${RUN_ID}`;
+      const { data: material } = await bClient
+        .rpc("create_tenant_material", {
+          p_tenant_id: tenantBId,
+          p_name: `Tenant B Searchable Material ${RUN_ID}`,
+          p_category: "other",
+          p_default_unit: "each",
+          p_brand: uniqueBrand,
+        })
+        .single();
+      expect(material).toBeTruthy();
+
+      const { data: results, error } = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_search_text: uniqueBrand });
+      expect(error).toBeNull();
+      expect(results).toEqual([]);
+    });
+  });
+
+  // ===========================================================================
   // Cross-tenant integrity
   // ===========================================================================
   describe("Cross-tenant integrity", () => {
