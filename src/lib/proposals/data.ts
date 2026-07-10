@@ -10,6 +10,10 @@ type ProposalSection = Database["public"]["Tables"]["proposal_sections"]["Row"];
 type ProposalLaborItem = Database["public"]["Tables"]["proposal_labor_items"]["Row"];
 type ProposalLineItem = Database["public"]["Tables"]["proposal_line_items"]["Row"];
 type ProposalMedia = Database["public"]["Tables"]["proposal_media"]["Row"];
+type ProposalMeasurementGroup = Database["public"]["Tables"]["proposal_measurement_groups"]["Row"];
+type ProposalMeasurement = Database["public"]["Tables"]["proposal_measurements"]["Row"];
+type ProposalMeasurementShape = Database["public"]["Tables"]["proposal_measurement_shapes"]["Row"];
+type ProposalMeasurementMaterial = Database["public"]["Tables"]["proposal_measurement_materials"]["Row"];
 
 export type ProposalMediaWithUrl = ProposalMedia & {
   signedUrl: string | null;
@@ -25,6 +29,10 @@ export type FullProposal = {
   lineItems: ProposalLineItem[];
   currentJobMedia: ProposalMediaWithUrl[];
   previousWorkMedia: ProposalMediaWithUrl[];
+  measurementGroups: ProposalMeasurementGroup[];
+  measurements: ProposalMeasurement[];
+  measurementShapes: ProposalMeasurementShape[];
+  measurementMaterials: ProposalMeasurementMaterial[];
 };
 
 /**
@@ -45,7 +53,17 @@ export async function getFullProposal(tenantId: string, proposalId: string): Pro
 
   if (!proposal || !proposal.current_version_id) return null;
 
-  const [{ data: version }, { data: sections }, { data: laborItems }, { data: lineItems }, { data: media }] = await Promise.all([
+  const [
+    { data: version },
+    { data: sections },
+    { data: laborItems },
+    { data: lineItems },
+    { data: media },
+    { data: measurementGroups },
+    { data: measurements },
+    { data: measurementShapes },
+    { data: measurementMaterials },
+  ] = await Promise.all([
     supabase.from("proposal_versions").select("*").eq("id", proposal.current_version_id).single(),
     supabase
       .from("proposal_sections")
@@ -71,6 +89,20 @@ export async function getFullProposal(tenantId: string, proposalId: string): Pro
       .eq("proposal_version_id", proposal.current_version_id)
       .is("archived_at", null)
       .order("sort_order", { ascending: true }),
+    supabase
+      .from("proposal_measurement_groups")
+      .select("*")
+      .eq("proposal_version_id", proposal.current_version_id)
+      .is("archived_at", null)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("proposal_measurements")
+      .select("*")
+      .eq("proposal_version_id", proposal.current_version_id)
+      .is("archived_at", null)
+      .order("sort_order", { ascending: true }),
+    supabase.from("proposal_measurement_shapes").select("*").eq("proposal_version_id", proposal.current_version_id),
+    supabase.from("proposal_measurement_materials").select("*").eq("proposal_version_id", proposal.current_version_id),
   ]);
 
   if (!version) return null;
@@ -94,5 +126,9 @@ export async function getFullProposal(tenantId: string, proposalId: string): Pro
     lineItems: lineItems ?? [],
     currentJobMedia: withUrls.filter((m) => m.usage_type === "current_job"),
     previousWorkMedia: withUrls.filter((m) => m.usage_type === "previous_work"),
+    measurementGroups: measurementGroups ?? [],
+    measurements: measurements ?? [],
+    measurementShapes: measurementShapes ?? [],
+    measurementMaterials: measurementMaterials ?? [],
   };
 }

@@ -17,6 +17,16 @@ Playwright (`tests/e2e/material-catalog.spec.ts` +
 > instead of "no filter." See "ZIP + search: one unified panel" and
 > "The empty-string bug" below.
 
+> **Nota de estado (Phase 2C, 2026-07-09/10):** A third way to add a
+> catalog material to a proposal now exists —
+> `generate_material_from_measurement()` — alongside manually
+> typing a custom cost and browsing/adding straight from this catalog.
+> It reuses the exact same material lookup, `find_material_zip_price()`
+> fallback, and "never invent a price" guarantee documented below; the
+> only difference is the quantity is computed from a measurement's area/
+> perimeter/linear length rather than typed directly. See
+> [docs/45-measurements-takeoff-builder.md](45-measurements-takeoff-builder.md).
+
 > **This phase is internal/demo data.** Every price seeded in
 > `20260708120500_seed_material_catalog_demo_data.sql` is fictional
 > (though reasonable) and every supplier name is the generic "Demo

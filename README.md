@@ -4,7 +4,7 @@
 
 Scopevia is a mobile-first SaaS platform that helps contractors manage leads, calculate costs, produce Good/Better/Best proposals, and get paid — starting with painting contractors.
 
-This repository is currently at **Phase 2B: Material catalog by ZIP code + proposal delete/archive**, built on top of **Phase 2A: Proposal-centric pivot**, **Phase 1: CRM & Projects**, and **Phase 0: Foundations**. The primary workflow is Client → Opportunity → **Proposal** → *(future Sent/Viewed/Accepted)* → Project — a Project is no longer required before pricing a job. A contractor can build a professional proposal with a labor calculator, a ZIP-priced material catalog (with price snapshotting so a later catalog price change never retroactively changes an existing proposal — see [docs/42](docs/42-material-catalog-by-zip.md)), current-job and previous-work (Portfolio) photos, discounts/tax, a live preview, and a reversible "delete" (soft archive/restore — see [docs/43](docs/43-proposal-delete-archive.md)), all server-computed and tenant-isolated. Email delivery, the Client Portal, PDF generation, payments, and real external pricing data (scraping/APIs) do not exist yet. See [docs/](docs/) for the full product and architecture design, [docs/29-proposal-centric-product-pivot.md](docs/29-proposal-centric-product-pivot.md) for the pivot itself, [docs/14-phase-0-foundations.md](docs/14-phase-0-foundations.md) / [docs/20-phase-1-crm-and-projects.md](docs/20-phase-1-crm-and-projects.md) for the earlier phases, and [docs/35-phase-2a-rls-verification.md](docs/35-phase-2a-rls-verification.md) / [docs/36-phase-2a-e2e-verification.md](docs/36-phase-2a-e2e-verification.md) / [docs/44-material-catalog-rls-verification.md](docs/44-material-catalog-rls-verification.md) for real test-run evidence.
+This repository is currently at **Phase 2C: Measurements / Takeoff builder**, built on top of **Phase 2B: Material catalog by ZIP code + proposal delete/archive**, **Phase 2A: Proposal-centric pivot**, **Phase 1: CRM & Projects**, and **Phase 0: Foundations**. The primary workflow is Client → Opportunity → **Proposal** → *(future Sent/Viewed/Accepted)* → Project — a Project is no longer required before pricing a job. A contractor can build a professional proposal with a **Measurements step** (manual entry or a simple rectangle drawn on-screen, calibrated to real-world units — see [docs/45](docs/45-measurements-takeoff-builder.md)) that can generate priced materials and labor directly from a room's computed area/perimeter, a labor calculator, a ZIP-priced material catalog (with price snapshotting so a later catalog price change never retroactively changes an existing proposal — see [docs/42](docs/42-material-catalog-by-zip.md)), current-job and previous-work (Portfolio) photos, discounts/tax, a live preview, and a reversible "delete" (soft archive/restore — see [docs/43](docs/43-proposal-delete-archive.md)), all server-computed and tenant-isolated. Email delivery, the Client Portal, PDF generation, payments, real external pricing data (scraping/APIs), and AI-assisted measurement/blueprint parsing do not exist yet. See [docs/](docs/) for the full product and architecture design, [docs/29-proposal-centric-product-pivot.md](docs/29-proposal-centric-product-pivot.md) for the pivot itself, [docs/14-phase-0-foundations.md](docs/14-phase-0-foundations.md) / [docs/20-phase-1-crm-and-projects.md](docs/20-phase-1-crm-and-projects.md) for the earlier phases, and [docs/35](docs/35-phase-2a-rls-verification.md) / [docs/36](docs/36-phase-2a-e2e-verification.md) / [docs/44](docs/44-material-catalog-rls-verification.md) / [docs/48](docs/48-measurement-rls-verification.md) for real test-run evidence.
 
 ## Stack
 
@@ -50,6 +50,10 @@ Full walkthrough (installing, running migrations, creating a test user, verifyin
 | [docs/42-material-catalog-by-zip.md](docs/42-material-catalog-by-zip.md) | Phase 2B: the material catalog data model, ZIP price fallback, snapshot pricing, permissions, seed data, known limitations |
 | [docs/43-proposal-delete-archive.md](docs/43-proposal-delete-archive.md) | Phase 2B: "Delete proposal" is always a soft archive, confirmation copy, Danger zone placement, Active/Archived/All filter |
 | [docs/44-material-catalog-rls-verification.md](docs/44-material-catalog-rls-verification.md) | Real PASS/FAIL results for Phase 2B against Postgres, including a real cross-tenant security bug found and fixed by the test suite |
+| [docs/45-measurements-takeoff-builder.md](docs/45-measurements-takeoff-builder.md) | Phase 2C: the Measurements step, data model, permissions, generating materials/labor from a measurement, known limitations |
+| [docs/46-measurement-calculation-engine.md](docs/46-measurement-calculation-engine.md) | Phase 2C: area/perimeter/wall-area/waste/material-quantity/labor formulas, rounding table, units |
+| [docs/47-drawing-sketch-mode.md](docs/47-drawing-sketch-mode.md) | Phase 2C: the rectangle-only drawing mode, why no CAD library was added, known limitations |
+| [docs/48-measurement-rls-verification.md](docs/48-measurement-rls-verification.md) | Real PASS/FAIL results for Phase 2C against Postgres |
 | [docs/14-phase-0-foundations.md](docs/14-phase-0-foundations.md) | What Phase 0 implements and why, including deviations from the original design |
 | [docs/15-local-development.md](docs/15-local-development.md) | Local setup, commands, troubleshooting |
 | [docs/16-environments-and-deployment.md](docs/16-environments-and-deployment.md) | Dev/staging/production separation, migrations, secrets |
@@ -72,16 +76,18 @@ src/
                   module; pipeline/projects: Phase 1, now legacy redirect-only stubs — see
                   docs/38; proposals/portfolio/settings/proposals: Phase 2A, the primary flow)
   actions/        Server Actions (auth, tenant, membership, profile, clients, opportunities,
-                  projects, notes, proposals, media, portfolio, proposal-settings)
+                  projects, notes, proposals, media, portfolio, proposal-settings,
+                  measurements: Phase 2C)
   components/     Shared UI components
   lib/
     supabase/     Client separation: browser, server, middleware, admin
     auth/         Session, tenant resolution, permissions
     audit/        Application-layer audit logging
-    validation/   Zod schemas (schemas.ts: Phase 0, crm.ts: Phase 1, proposals.ts: Phase 2A/2B)
+    validation/   Zod schemas (schemas.ts: Phase 0, crm.ts: Phase 1, proposals.ts: Phase 2A/2B/2C)
     crm/          State transition maps, activity labels, list-page data helpers, status badges
     proposals/    Phase 2A: calculation engine (mirror, not authority), data fetchers, formatting;
-                  materials.ts: Phase 2B, material catalog search
+                  materials.ts: Phase 2B, material catalog search;
+                  measurements.ts: Phase 2C, measurement calculation engine (mirror, not authority)
     storage/      Phase 2A: private Storage upload + signed URL helpers
     search.ts     Safe ILIKE/PostgREST filter escaping for list-page search
   proxy.ts        Route protection (Next.js 16's successor to middleware.ts)

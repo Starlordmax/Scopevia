@@ -10,8 +10,9 @@
  * sync with supabase/migrations/20260701120900_seed_roles_and_permissions.sql
  * (Phase 0), supabase/migrations/20260702131100_seed_crm_permissions.sql
  * (Phase 1), supabase/migrations/20260706141600_seed_proposal_permissions.sql
- * (Phase 2A), and supabase/migrations/20260708120200_seed_material_catalog_permissions.sql
- * (Phase 2B).
+ * (Phase 2A), supabase/migrations/20260708120200_seed_material_catalog_permissions.sql
+ * (Phase 2B), and supabase/migrations/20260709140300_measurements_rls_and_permissions.sql
+ * (Phase 2C).
  */
 export const PERMISSIONS = {
   TENANT_VIEW: "tenant.view",
@@ -94,6 +95,13 @@ export const PERMISSIONS = {
   MATERIAL_PRICES_CREATE: "material_prices.create",
   MATERIAL_PRICES_UPDATE: "material_prices.update",
   MATERIAL_PRICES_ARCHIVE: "material_prices.archive",
+
+  // Phase 2C: Measurements / Takeoff builder
+  MEASUREMENTS_VIEW: "measurements.view",
+  MEASUREMENTS_CREATE: "measurements.create",
+  MEASUREMENTS_UPDATE: "measurements.update",
+  MEASUREMENTS_ARCHIVE: "measurements.archive",
+  MEASUREMENTS_GENERATE_MATERIALS: "measurements.generate_materials",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

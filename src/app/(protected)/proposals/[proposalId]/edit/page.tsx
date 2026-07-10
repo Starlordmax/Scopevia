@@ -8,6 +8,7 @@ import { createClient } from "../../../../../lib/supabase/server";
 import { PageHeader } from "../../../../../components/page-header";
 import { FileEdit } from "lucide-react";
 import { StepperNav, BUILDER_STEPS, type BuilderStep } from "./stepper-nav";
+import { StepMeasurements } from "./step-measurements";
 import { StepScope } from "./step-scope";
 import { StepLabor } from "./step-labor";
 import { StepMaterials } from "./step-materials";
@@ -35,13 +36,28 @@ export default async function ProposalEditPage({
   const { step: rawStep, catalogSearch, catalogCategory } = await searchParams;
   const step = (BUILDER_STEPS.find((s) => s.key === rawStep)?.key ?? "scope") as BuilderStep;
 
-  const [canUpdate, canManagePricing, canUploadMedia, canViewPortfolio, canMarkReady, canViewMaterials] = await Promise.all([
+  const [
+    canUpdate,
+    canManagePricing,
+    canUploadMedia,
+    canViewPortfolio,
+    canMarkReady,
+    canViewMaterials,
+    canViewMeasurements,
+    canCreateMeasurements,
+    canArchiveMeasurements,
+    canGenerateFromMeasurements,
+  ] = await Promise.all([
     hasPermission(tenant.tenant_id, PERMISSIONS.PROPOSALS_UPDATE),
     hasPermission(tenant.tenant_id, PERMISSIONS.PROPOSALS_MANAGE_PRICING),
     hasPermission(tenant.tenant_id, PERMISSIONS.MEDIA_UPLOAD),
     hasPermission(tenant.tenant_id, PERMISSIONS.PORTFOLIO_VIEW),
     hasPermission(tenant.tenant_id, PERMISSIONS.PROPOSALS_MARK_READY),
     hasPermission(tenant.tenant_id, PERMISSIONS.MATERIALS_VIEW),
+    hasPermission(tenant.tenant_id, PERMISSIONS.MEASUREMENTS_VIEW),
+    hasPermission(tenant.tenant_id, PERMISSIONS.MEASUREMENTS_CREATE),
+    hasPermission(tenant.tenant_id, PERMISSIONS.MEASUREMENTS_ARCHIVE),
+    hasPermission(tenant.tenant_id, PERMISSIONS.MEASUREMENTS_GENERATE_MATERIALS),
   ]);
 
   const isDraft = data.version.version_status === "draft" && data.proposal.status === "draft";
@@ -55,7 +71,7 @@ export default async function ProposalEditPage({
   }
 
   const catalogResults =
-    step === "materials" && canViewMaterials
+    (step === "materials" || step === "measurements") && canViewMaterials
       ? await searchMaterialCatalog(tenant.tenant_id, {
           zipCode: data.version.pricing_zip_code,
           searchText: catalogSearch,
@@ -72,6 +88,25 @@ export default async function ProposalEditPage({
       />
       <StepperNav proposalId={proposalId} currentStep={step} />
 
+      {step === "measurements" ? (
+        <StepMeasurements
+          proposalId={proposalId}
+          proposalVersionId={data.version.id}
+          pricingZipCode={data.version.pricing_zip_code}
+          measurementGroups={data.measurementGroups}
+          measurements={data.measurements}
+          sections={data.sections}
+          isDraft={isDraft}
+          canView={canViewMeasurements}
+          canCreate={canCreateMeasurements}
+          canArchive={canArchiveMeasurements}
+          canGenerate={canGenerateFromMeasurements}
+          canManagePricing={canManagePricing}
+          catalogResults={catalogResults}
+          catalogSearch={catalogSearch ?? ""}
+          catalogCategory={catalogCategory ?? ""}
+        />
+      ) : null}
       {step === "scope" ? (
         <StepScope
           proposalId={proposalId}

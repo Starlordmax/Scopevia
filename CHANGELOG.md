@@ -4,6 +4,40 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Phase 2C — Measurements / Takeoff builder
+
+Adds a new **Measurements** step to the Proposal Builder (first tab in
+the stepper, before Scope of Work): a contractor can record room/surface
+dimensions manually (rectangle, direct area, or direct linear length,
+with a live area/perimeter/waste preview) or by drawing a simple
+rectangle on an SVG canvas and calibrating it to a real-world length —
+no drawing library added, rectangles only in this phase (documented
+limitation, see [docs/47](docs/47-drawing-sketch-mode.md)). A
+measurement can then **generate** a catalog material (reusing the exact
+ZIP-price fallback, snapshot pricing, and "never invent a price"
+guarantee from Phase 2B) or a priced labor item (two new
+`pricing_method` values, `area` and `linear`, added via a dedicated
+function that leaves the existing hourly/fixed labor functions
+untouched). Four new tables
+(`proposal_measurement_groups`/`proposal_measurements`/
+`proposal_measurement_shapes`/`proposal_measurement_materials`), five
+new permissions (`measurements.view`/`.create`/`.update`/`.archive`/
+`.generate_materials` — a dedicated set, not a reuse of
+`proposals.update`, since Field Worker must be able to create
+measurements despite never holding that permission), and the same
+composite-FK + dedicated-trigger cross-tenant integrity pattern as
+every other phase. Preview now shows measurements alongside what they
+generated. See [docs/45](docs/45-measurements-takeoff-builder.md),
+[docs/46](docs/46-measurement-calculation-engine.md),
+[docs/47](docs/47-drawing-sketch-mode.md), and
+[docs/48](docs/48-measurement-rls-verification.md).
+
+27 new unit tests (calculation engine), 25 new RLS/integration tests, 2
+new E2E specs (desktop + mobile); 233/233 RLS + 134/134 unit + 68/68 E2E
+all passing. No AI measurement detection, blueprint/PDF upload parsing,
+full CAD editor, external material APIs, scraping, Client Portal,
+payments, PDF, Stripe, or email — out of scope for this phase.
+
 ### Phase 2B.1 — Unified ZIP + search panel, broader search, real empty-string bug fix
 
 Merges the Materials & Costs step's ZIP field and material catalog

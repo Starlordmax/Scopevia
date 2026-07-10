@@ -239,6 +239,95 @@ export const createPortfolioProjectSchema = z.object({
   completedAt: optionalText(10),
 });
 
+// =============================================================================
+// Phase 2C: Measurements / Takeoff builder
+// =============================================================================
+
+export const unitSystemSchema = z.enum(["imperial", "metric"]);
+export const measurementUnitSchema = z.enum(["ft", "m"]);
+export const measurementTypeSchema = z.enum(["floor_area", "wall_area", "ceiling_area", "room", "surface", "linear", "custom"]);
+export const manualShapeTypeSchema = z.enum(["manual_rectangle", "manual_area", "manual_linear"]);
+export const measurementValueFieldSchema = z.enum(["area", "perimeter", "linear_length"]);
+export const laborMeasurementPricingMethodSchema = z.enum(["area", "linear"]);
+
+const positiveDimension = (max: number, label: string) => z.coerce.number().positive(`${label} must be greater than zero`).max(max);
+
+export const createMeasurementGroupSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(160),
+  unitSystem: unitSystemSchema.default("imperial"),
+  serviceType: serviceTypeSchema.optional(),
+});
+
+/**
+ * A discriminated union on shapeType, same rationale as
+ * addProposalLaborItemSchema above: which dimension fields are required
+ * is entirely determined by shapeType, and a discriminated union makes
+ * that exhaustive and compiler-checked rather than ad hoc .refine() calls.
+ */
+export const addMeasurementSchema = z.discriminatedUnion("shapeType", [
+  z.object({
+    shapeType: z.literal("manual_rectangle"),
+    name: z.string().trim().min(1, "Name is required").max(160),
+    measurementType: measurementTypeSchema,
+    unit: measurementUnitSchema,
+    length: positiveDimension(100000, "Length"),
+    width: positiveDimension(100000, "Width"),
+    height: positiveDimension(100000, "Height").optional(),
+    wastePercent: percentToBpsSchema,
+    notes: optionalText(2000),
+  }),
+  z.object({
+    shapeType: z.literal("manual_area"),
+    name: z.string().trim().min(1, "Name is required").max(160),
+    measurementType: measurementTypeSchema,
+    unit: measurementUnitSchema,
+    area: positiveDimension(10000000, "Area"),
+    wastePercent: percentToBpsSchema,
+    notes: optionalText(2000),
+  }),
+  z.object({
+    shapeType: z.literal("manual_linear"),
+    name: z.string().trim().min(1, "Name is required").max(160),
+    measurementType: measurementTypeSchema,
+    unit: measurementUnitSchema,
+    linearLength: positiveDimension(100000, "Linear length"),
+    wastePercent: percentToBpsSchema,
+    notes: optionalText(2000),
+  }),
+]);
+
+export const updateMeasurementSchema = addMeasurementSchema;
+
+export const saveMeasurementShapeSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(160),
+  measurementType: measurementTypeSchema,
+  unit: measurementUnitSchema,
+  length: positiveDimension(100000, "Length"),
+  width: positiveDimension(100000, "Width"),
+  scaleReferenceLength: positiveDimension(100000, "Reference length"),
+  scaleUnit: measurementUnitSchema,
+  wastePercent: percentToBpsSchema,
+  notes: optionalText(2000),
+});
+
+export const generateMaterialFromMeasurementSchema = z.object({
+  materialCatalogItemId: z.string().uuid(),
+  measurementValueField: measurementValueFieldSchema,
+  coverageRate: positiveDimension(1000000, "Coverage rate"),
+  coverageUnit: optionalText(80),
+  coats: z.coerce.number().int().min(1).max(20).default(1),
+  wastePercent: percentToBpsSchema,
+  zipCode: optionalZipCodeSchema,
+  sectionId: z.string().uuid().optional(),
+  unitPriceCentsOverride: requiredDollarsToCentsSchema.optional(),
+});
+
+export const addLaborFromMeasurementSchema = z.object({
+  label: z.string().trim().min(1, "Label is required").max(160),
+  pricingMethod: laborMeasurementPricingMethodSchema,
+  rateCents: requiredDollarsToCentsSchema,
+});
+
 export const updateProposalSettingsSchema = z.object({
   defaultCustomerHourlyRate: requiredDollarsToCentsSchema,
   defaultHoursPerDay: z.coerce.number().min(0.5).max(24),

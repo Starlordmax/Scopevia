@@ -59,6 +59,17 @@ return to draft → archive → restore) and by the E2E suite in
 > dentro de la función misma, no solo en el cliente. Ver
 > [42-material-catalog-by-zip.md](42-material-catalog-by-zip.md#zip--search-one-unified-panel).
 
+> **Nota de estado (2026-07-09/10, Phase 2C):** Se agregó un nuevo step
+> **Measurements** al inicio del stepper (antes de Scope of Work) —
+> manual entry (rectángulo/área directa/lineal, con preview de
+> área/perímetro/waste) y Draw layout (dibujar un rectángulo simple,
+> calibrarlo con una medida real, guardar). Desde una medición se puede
+> generar un material de catálogo (por ZIP, con snapshot) o mano de obra
+> (`pricing_method` `area`/`linear`, nuevo). Crear una propuesta sigue
+> redirigiendo a Scope (sin cambios) — Measurements es alcanzable como
+> la primera pestaña del stepper, no un paso forzado al crear. Ver
+> [45-measurements-takeoff-builder.md](45-measurements-takeoff-builder.md).
+
 ## Routes
 
 | Route | Purpose |
@@ -66,7 +77,7 @@ return to draft → archive → restore) and by the E2E suite in
 | `/proposals` | List, search, filter, paginate |
 | `/proposals/new` | Step 1 — Client & Job |
 | `/proposals/[proposalId]` | Overview — status, total, primary actions |
-| `/proposals/[proposalId]/edit?step=…` | The 7-step builder (steps 2–7; step 1 lives at `/new`) |
+| `/proposals/[proposalId]/edit?step=…` | The 8-step builder (steps 2–8; step 1 lives at `/new`) |
 | `/proposals/[proposalId]/preview` | Read-only professional document |
 | `/portfolio`, `/portfolio/new`, `/portfolio/[id]`, `/portfolio/[id]/edit` | Reusable previous-work gallery |
 | `/settings/proposals` | Tenant-wide proposal defaults |
@@ -74,12 +85,13 @@ return to draft → archive → restore) and by the E2E suite in
 ## The stepper
 
 `src/app/(protected)/proposals/[proposalId]/edit/stepper-nav.tsx` renders
-Scope of Work → Labor → Materials & Costs → Photos → Terms & Pricing →
-Review as plain links (`?step=scope`, `?step=labor`, …) — every step is a
-real URL, reachable directly, refreshable, and shareable, not client-only
-routing state. On mobile the stepper scrolls horizontally within its own
-container (`.proposal-stepper`), never widening the page itself — verified
-in `proposals.mobile.spec.ts`.
+Measurements → Scope of Work → Labor → Materials & Costs → Photos →
+Terms & Pricing → Review as plain links (`?step=measurements`,
+`?step=scope`, `?step=labor`, …) — every step is a real URL, reachable
+directly, refreshable, and shareable, not client-only routing state. On
+mobile the stepper scrolls horizontally within its own container
+(`.proposal-stepper`), never widening the page itself — verified in
+`proposals.mobile.spec.ts`.
 
 Client & Job (step 1) happens on `/proposals/new` before the proposal
 exists at all — it can't be a step *within* the builder since the
@@ -92,28 +104,32 @@ proposal id doesn't exist yet at that point.
    `ClientSelect` reloads the page with `?clientId=` on change (a small,
    focused Client Component, same pattern as `tenant-switcher.tsx`) so the
    server can refetch that client's contacts/open opportunities.
-2. **Scope of Work** — sections with a type (`scope`/`schedule`/
+2. **Measurements** — record room/surface dimensions (manual entry or
+   drawn — see [docs/45](45-measurements-takeoff-builder.md)) and
+   optionally generate a catalog material or priced labor item directly
+   from a measurement's area/perimeter/linear length.
+3. **Scope of Work** — sections with a type (`scope`/`schedule`/
    `materials`/`additional_services`/`exclusions`/`custom`), basic
    templates per service type (Interior Painting, Bathroom Remodeling,
    General Remodeling — structure only, no invented prices or quantities,
    matching the brief's explicit constraint).
-3. **Labor** — the calculator, with a live client-side preview
+4. **Labor** — the calculator, with a live client-side preview
    (`src/lib/proposals/calculations.ts`, explicitly labeled orientative)
    that's replaced by the real server value the instant the item is
    saved.
-4. **Materials & Costs** — a ZIP-priced material catalog (search,
+5. **Materials & Costs** — a ZIP-priced material catalog (search,
    category filter, resolved price, add flow) plus the original manual
    "Add a custom cost" form (category, unit, quantity, unit price,
    taxable toggle, optional section assignment, live preview identical
    in spirit to Labor's) for anything not in the catalog. See
    [docs/42](42-material-catalog-by-zip.md).
-5. **Photos** — two clearly separate areas: **Current job photos**
+6. **Photos** — two clearly separate areas: **Current job photos**
    (direct upload) and **Previous work** (select from the Portfolio,
    attaches the same underlying file rather than duplicating it).
-6. **Terms & Pricing** — terms, exclusions, notes for client, discount
+7. **Terms & Pricing** — terms, exclusions, notes for client, discount
    type/value, tax rate, plus the running `PricingSummary` showing the
    server-computed breakdown.
-7. **Review** — the full `ProposalDocument` (shared with the standalone
+8. **Review** — the full `ProposalDocument` (shared with the standalone
    Preview route so both always render identically), plus **Back to
    edit**, **Save draft**, a disabled **Send** button (tooltip: "Sending
    will be available in the Client Portal phase"), and **Mark ready**.
@@ -130,11 +146,14 @@ couldn't use anyway is a UX nicety; the real enforcement is server-side
 
 `src/app/(protected)/proposals/[proposalId]/proposal-document.tsx` renders,
 in the brief's fixed order: business identity, proposal number, prepared
-for, title, summary, scope, schedule, labor breakdown, materials & costs,
+for, title, summary, scope, **measurements** (Phase 2C — name, type,
+dimensions, area, perimeter, waste, and any material/labor generated
+from each one), schedule, labor breakdown, materials & costs,
 current-job photos, previous-work gallery, terms, exclusions, pricing
-summary, total. No internal IDs, storage paths, or technical metadata are
-ever rendered — photos are always shown via already-resolved signed URLs
-computed server-side (`getSignedMediaUrls`), never a raw path.
+summary, total. No internal IDs, storage paths, `shape_data` JSON, or
+technical metadata are ever rendered — photos are always shown via
+already-resolved signed URLs computed server-side
+(`getSignedMediaUrls`), never a raw path.
 
 ## Dashboard
 

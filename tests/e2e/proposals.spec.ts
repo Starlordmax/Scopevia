@@ -326,7 +326,7 @@ test.describe("Labor pricing method", () => {
     // Jump straight to Labor via the stepper (not the sequential "Continue"
     // link) — the reported bug's steps weren't specific about navigation,
     // so this exercises the same interaction pattern used to diagnose it.
-    await page.getByRole("link", { name: /2.*Labor/i }).click();
+    await page.getByRole("link", { name: /3.*Labor/i }).click();
     await page.waitForURL(/step=labor/);
 
     // Switch to Fixed price mode — the hourly fields must disappear.
@@ -338,7 +338,7 @@ test.describe("Labor pricing method", () => {
     await expect(page.getByRole("cell", { name: "Bathroom remodeling labor" })).toBeVisible();
     await expect(page.getByText(/Saved labor total:/)).toContainText("$700.00");
 
-    await page.getByRole("link", { name: /3.*Materials/i }).click();
+    await page.getByRole("link", { name: /4.*Materials/i }).click();
     await page.waitForURL(/step=materials/);
     // Scoped to "Add a custom cost" — see the comment at the equivalent
     // call in "Proposals — full builder flow" above.
@@ -352,7 +352,7 @@ test.describe("Labor pricing method", () => {
     const savedCosts2 = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Saved costs" }) });
     await expect(savedCosts2.getByRole("cell", { name: "Paint" })).toBeVisible();
 
-    await page.getByRole("link", { name: /5.*Terms.*Pricing/i }).click();
+    await page.getByRole("link", { name: /6.*Terms.*Pricing/i }).click();
     await page.waitForURL(/step=pricing/);
     await page.waitForLoadState("networkidle");
 
@@ -389,7 +389,7 @@ test.describe("Labor pricing method", () => {
     await page.getByRole("button", { name: "Save and continue" }).click();
     await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=scope/);
 
-    await page.getByRole("link", { name: /2.*Labor/i }).click();
+    await page.getByRole("link", { name: /3.*Labor/i }).click();
     await page.waitForURL(/step=labor/);
     // Hourly is the default mode — no extra click needed.
     await page.getByLabel("Label").fill("Solo painter");
@@ -401,7 +401,7 @@ test.describe("Labor pricing method", () => {
     await expect(page.getByRole("cell", { name: "Solo painter" })).toBeVisible();
     await expect(page.getByText(/Saved labor total:/)).toContainText("$280.00");
 
-    await page.getByRole("link", { name: /5.*Terms.*Pricing/i }).click();
+    await page.getByRole("link", { name: /6.*Terms.*Pricing/i }).click();
     await page.waitForURL(/step=pricing/);
     await page.waitForLoadState("networkidle");
     await expect(page.locator(".pricing-summary-row").filter({ hasText: "Labor" })).toContainText("$280.00");
@@ -427,7 +427,7 @@ test.describe("Labor pricing method", () => {
     await page.getByRole("button", { name: "Save and continue" }).click();
     await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=scope/);
 
-    await page.getByRole("link", { name: /2.*Labor/i }).click();
+    await page.getByRole("link", { name: /3.*Labor/i }).click();
     await page.waitForURL(/step=labor/);
     await page.getByLabel("Label").fill("Painting labor");
     await page.getByLabel("Workers").fill("1");
@@ -448,7 +448,7 @@ test.describe("Labor pricing method", () => {
     await expect(page.getByRole("cell", { name: "Painting labor" })).toBeVisible();
     await expect(page.getByText(/Saved labor total:/)).toContainText("$280.00");
 
-    await page.getByRole("link", { name: /3.*Materials/i }).click();
+    await page.getByRole("link", { name: /4.*Materials/i }).click();
     await page.waitForURL(/step=materials/);
     // Scoped to "Add a custom cost" — see the comment at the equivalent
     // call in "Proposals — full builder flow" above.
@@ -466,7 +466,7 @@ test.describe("Labor pricing method", () => {
     await expect(savedCosts3.getByRole("cell", { name: "Paint" })).toBeVisible();
     await expect(page.getByText(/Saved materials & costs subtotal:/)).toContainText("$50.00");
 
-    await page.getByRole("link", { name: /5.*Terms.*Pricing/i }).click();
+    await page.getByRole("link", { name: /6.*Terms.*Pricing/i }).click();
     await page.waitForURL(/step=pricing/);
     await page.waitForLoadState("networkidle");
     const laborRow = page.locator(".pricing-summary-row").filter({ hasText: "Labor" });

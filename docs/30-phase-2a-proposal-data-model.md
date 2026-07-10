@@ -12,6 +12,13 @@ behind this shape.
 > pricing ZIP on `proposal_versions` — see
 > [docs/42-material-catalog-by-zip.md](42-material-catalog-by-zip.md).
 
+> **Phase 2C addendum (2026-07-09):** four new tables —
+> `proposal_measurement_groups`, `proposal_measurements`,
+> `proposal_measurement_shapes`, `proposal_measurement_materials` — plus
+> two more `proposal_labor_items.pricing_method` values (`area`,
+> `linear`) generated from a measurement. See
+> [docs/45-measurements-takeoff-builder.md](45-measurements-takeoff-builder.md).
+
 ## Entity relationship overview
 
 ```text
@@ -109,6 +116,19 @@ than the composite-FK pattern below, which can't express a nullable-tenant
 global row), and price snapshotting into `proposal_line_items` at the
 moment a material is added.
 
+### `proposal_measurement_groups` / `proposal_measurements` / `proposal_measurement_shapes` / `proposal_measurement_materials` (Phase 2C)
+
+See [docs/45](45-measurements-takeoff-builder.md) for full detail.
+Briefly: a named grouping (`proposal_measurement_groups`) of individual
+measured values (`proposal_measurements` — floor/wall/ceiling area,
+linear length), an optional drawn rectangle
+(`proposal_measurement_shapes`, 1:1 with a measurement), and provenance
+of any catalog material generated from a measurement
+(`proposal_measurement_materials`). All four denormalize both
+`tenant_id` and `proposal_version_id` directly so the existing generic
+`prevent_locked_version_child_mutation()` trigger and standard RLS
+policy shape apply unchanged.
+
 ## Cross-tenant integrity
 
 Every parent/child relationship uses the same composite-FK pattern
@@ -148,6 +168,8 @@ deliberately not added yet.
 | `find_material_zip_price` / `search_material_catalog` | ZIP price fallback + catalog browse/search (Phase 2B) |
 | `create/update/archive_tenant_material` / `create/update/archive_tenant_material_price` | Tenant catalog/price CRUD (Phase 2B) |
 | `update_proposal_pricing_zip` / `add_proposal_line_item_from_catalog` | Version pricing ZIP + catalog-sourced line item snapshot (Phase 2B) |
+| `create_measurement_group` / `add_measurement` / `update_measurement` / `archive_measurement` / `save_measurement_shape` | Measurement CRUD, manual and drawn (Phase 2C) |
+| `generate_material_from_measurement` / `add_proposal_labor_item_from_measurement` | Generate a priced line item / labor item from a measurement (Phase 2C) |
 
 Every function follows the same discipline as Phase 0/1: `auth.uid()`
 required, membership/permission checked via `user_has_permission()`,

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 export const BUILDER_STEPS = [
+  { key: "measurements", label: "Measurements" },
   { key: "scope", label: "Scope of Work" },
   { key: "labor", label: "Labor" },
   { key: "materials", label: "Materials & Costs" },

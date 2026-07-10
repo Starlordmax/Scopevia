@@ -85,6 +85,23 @@ this document's numbers were not stale.
 > build from before this phase's UI changes on the first attempt,
 > unrelated to any test logic).
 
+> **Nota de estado (2026-07-09/10, Phase 2C):** Adds a new Measurements
+> step (see [docs/45](45-measurements-takeoff-builder.md)) with two new
+> spec files — `tests/e2e/measurements.spec.ts` (desktop, the brief's
+> full worked scenario: manual room 20×15ft → confirm 300 sq ft →
+> generate flooring material with 10% waste → generate area-based labor
+> → confirm the proposal total → confirm Preview shows the measurement
+> and what it generated) and `tests/e2e/measurements.mobile.spec.ts`
+> (mobile, manual entry + a mouse-emulated drag-to-draw rectangle +
+> generate material, all with no-horizontal-overflow checks). **Full
+> suite: 68/68 PASS.**
+>
+> Inserting "Measurements" as the stepper's first tab shifted every
+> other step's number by one (Labor 2→3, Materials 3→4, Terms & Pricing
+> 5→6) — three pre-existing tests in `proposals.spec.ts` navigated via
+> a numbered regex (`/2.*Labor/i` etc.) and broke until updated to the
+> new numbers. Caught immediately by this run, not left for later.
+
 ## Environment
 
 Identical to Phase 1: production build (`next build && next start`), the

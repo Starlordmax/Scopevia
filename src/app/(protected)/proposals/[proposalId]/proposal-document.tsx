@@ -18,7 +18,7 @@ const SERVICE_TYPE_LABELS: Record<string, string> = {
  * content.
  */
 export function ProposalDocument({ businessName, data }: { businessName: string; data: FullProposal }) {
-  const { proposal, version, sections, laborItems, lineItems, currentJobMedia, previousWorkMedia } = data;
+  const { proposal, version, sections, laborItems, lineItems, currentJobMedia, previousWorkMedia, measurements, measurementMaterials, measurementGroups } = data;
   const preparedFor = proposal.clients?.display_name ?? "Client";
   const contactName = proposal.client_contacts ? [proposal.client_contacts.first_name, proposal.client_contacts.last_name].filter(Boolean).join(" ") : null;
 
@@ -59,6 +59,64 @@ export function ProposalDocument({ businessName, data }: { businessName: string;
               {s.description ? <p className="hint">{s.description}</p> : null}
             </div>
           ))}
+        </section>
+      ) : null}
+
+      {measurements.length > 0 ? (
+        <section>
+          <h3>Measurements</h3>
+          <div className="table-card">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Dimensions</th>
+                  <th>Area</th>
+                  <th>Perimeter</th>
+                  <th>Waste</th>
+                </tr>
+              </thead>
+              <tbody>
+                {measurements.map((m) => {
+                  const dimensions =
+                    m.length != null && m.width != null
+                      ? `${m.length} x ${m.width}${m.height != null ? ` x ${m.height}` : ""} ${m.unit}`
+                      : m.linear_length != null
+                        ? `${m.linear_length} ${m.unit}`
+                        : "—";
+                  const generatedMaterials = measurementMaterials.filter((mm) => mm.proposal_measurement_id === m.id);
+                  const generatedLabor = laborItems.filter((l) => l.proposal_measurement_id === m.id);
+                  return (
+                    <tr key={m.id}>
+                      <td data-label="Name">
+                        {m.name}
+                        {measurementGroups.find((g) => g.id === m.measurement_group_id) ? (
+                          <div className="hint">{measurementGroups.find((g) => g.id === m.measurement_group_id)!.name}</div>
+                        ) : null}
+                        {generatedMaterials.length > 0 || generatedLabor.length > 0 ? (
+                          <div className="hint">
+                            {generatedMaterials.map((mm) => {
+                              const li = lineItems.find((l) => l.id === mm.proposal_line_item_id);
+                              return li ? <div key={mm.id}>Material: {li.description}</div> : null;
+                            })}
+                            {generatedLabor.map((l) => (
+                              <div key={l.id}>Labor: {l.label}</div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </td>
+                      <td data-label="Type">{m.measurement_type.replace(/_/g, " ")}</td>
+                      <td data-label="Dimensions">{dimensions}</td>
+                      <td data-label="Area">{m.area != null ? `${m.area} sq ${m.unit}` : "—"}</td>
+                      <td data-label="Perimeter">{m.perimeter != null ? `${m.perimeter} ${m.unit}` : "—"}</td>
+                      <td data-label="Waste">{(m.waste_bps / 100).toFixed(0)}%</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </section>
       ) : null}
 

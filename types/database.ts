@@ -1024,7 +1024,12 @@ export type Database = {
           hours_per_day: number | null
           id: string
           label: string
+          labor_rate_per_area_cents: number | null
+          labor_rate_per_linear_cents: number | null
+          measured_area: number | null
+          measured_linear_length: number | null
           pricing_method: string
+          proposal_measurement_id: string | null
           proposal_version_id: string
           sort_order: number
           tenant_id: string
@@ -1042,7 +1047,12 @@ export type Database = {
           hours_per_day?: number | null
           id?: string
           label: string
+          labor_rate_per_area_cents?: number | null
+          labor_rate_per_linear_cents?: number | null
+          measured_area?: number | null
+          measured_linear_length?: number | null
           pricing_method?: string
+          proposal_measurement_id?: string | null
           proposal_version_id: string
           sort_order?: number
           tenant_id: string
@@ -1060,7 +1070,12 @@ export type Database = {
           hours_per_day?: number | null
           id?: string
           label?: string
+          labor_rate_per_area_cents?: number | null
+          labor_rate_per_linear_cents?: number | null
+          measured_area?: number | null
+          measured_linear_length?: number | null
           pricing_method?: string
+          proposal_measurement_id?: string | null
           proposal_version_id?: string
           sort_order?: number
           tenant_id?: string
@@ -1070,6 +1085,13 @@ export type Database = {
           worker_count?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "proposal_labor_items_measurement_fk"
+            columns: ["proposal_measurement_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_measurements"
+            referencedColumns: ["id", "tenant_id"]
+          },
           {
             foreignKeyName: "proposal_labor_items_proposal_version_id_tenant_id_fkey"
             columns: ["proposal_version_id", "tenant_id"]
@@ -1187,6 +1209,318 @@ export type Database = {
           },
           {
             foreignKeyName: "proposal_line_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_measurement_groups: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          proposal_version_id: string
+          service_type: string | null
+          tenant_id: string
+          unit_system: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          proposal_version_id: string
+          service_type?: string | null
+          tenant_id: string
+          unit_system?: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          proposal_version_id?: string
+          service_type?: string | null
+          tenant_id?: string
+          unit_system?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_measurement_groups_proposal_version_id_tenant_id_fkey"
+            columns: ["proposal_version_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_versions"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_measurement_groups_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_measurement_materials: {
+        Row: {
+          calculated_quantity: number
+          coats: number
+          coverage_rate: number
+          coverage_unit: string | null
+          created_at: string
+          id: string
+          material_catalog_item_id: string
+          material_zip_price_id: string | null
+          measurement_value_field: string
+          proposal_line_item_id: string | null
+          proposal_measurement_id: string
+          proposal_version_id: string
+          tenant_id: string
+          total_cents_snapshot: number
+          unit: string
+          unit_price_cents_snapshot: number
+          updated_at: string
+          waste_bps: number
+        }
+        Insert: {
+          calculated_quantity: number
+          coats?: number
+          coverage_rate: number
+          coverage_unit?: string | null
+          created_at?: string
+          id?: string
+          material_catalog_item_id: string
+          material_zip_price_id?: string | null
+          measurement_value_field: string
+          proposal_line_item_id?: string | null
+          proposal_measurement_id: string
+          proposal_version_id: string
+          tenant_id: string
+          total_cents_snapshot: number
+          unit: string
+          unit_price_cents_snapshot: number
+          updated_at?: string
+          waste_bps?: number
+        }
+        Update: {
+          calculated_quantity?: number
+          coats?: number
+          coverage_rate?: number
+          coverage_unit?: string | null
+          created_at?: string
+          id?: string
+          material_catalog_item_id?: string
+          material_zip_price_id?: string | null
+          measurement_value_field?: string
+          proposal_line_item_id?: string | null
+          proposal_measurement_id?: string
+          proposal_version_id?: string
+          tenant_id?: string
+          total_cents_snapshot?: number
+          unit?: string
+          unit_price_cents_snapshot?: number
+          updated_at?: string
+          waste_bps?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_measurement_material_proposal_line_item_id_tenant_fkey"
+            columns: ["proposal_line_item_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_line_items"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_measurement_material_proposal_measurement_id_tena_fkey"
+            columns: ["proposal_measurement_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_measurements"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_measurement_material_proposal_version_id_tenant_i_fkey"
+            columns: ["proposal_version_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_versions"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_measurement_materials_material_catalog_item_id_fkey"
+            columns: ["material_catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "material_catalog_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposal_measurement_materials_material_zip_price_id_fkey"
+            columns: ["material_zip_price_id"]
+            isOneToOne: false
+            referencedRelation: "material_zip_prices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposal_measurement_materials_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_measurement_shapes: {
+        Row: {
+          created_at: string
+          id: string
+          proposal_measurement_id: string
+          proposal_version_id: string
+          scale_reference_length: number | null
+          scale_unit: string | null
+          shape_data: Json
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          proposal_measurement_id: string
+          proposal_version_id: string
+          scale_reference_length?: number | null
+          scale_unit?: string | null
+          shape_data: Json
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          proposal_measurement_id?: string
+          proposal_version_id?: string
+          scale_reference_length?: number | null
+          scale_unit?: string | null
+          shape_data?: Json
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_measurement_shapes_proposal_measurement_id_tenant_fkey"
+            columns: ["proposal_measurement_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_measurements"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_measurement_shapes_proposal_version_id_tenant_id_fkey"
+            columns: ["proposal_version_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_versions"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_measurement_shapes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_measurements: {
+        Row: {
+          archived_at: string | null
+          area: number | null
+          created_at: string
+          height: number | null
+          id: string
+          length: number | null
+          linear_length: number | null
+          measurement_group_id: string
+          measurement_type: string
+          name: string
+          notes: string | null
+          perimeter: number | null
+          proposal_version_id: string
+          shape_type: string
+          sort_order: number
+          tenant_id: string
+          unit: string
+          updated_at: string
+          volume: number | null
+          waste_bps: number
+          width: number | null
+        }
+        Insert: {
+          archived_at?: string | null
+          area?: number | null
+          created_at?: string
+          height?: number | null
+          id?: string
+          length?: number | null
+          linear_length?: number | null
+          measurement_group_id: string
+          measurement_type: string
+          name: string
+          notes?: string | null
+          perimeter?: number | null
+          proposal_version_id: string
+          shape_type: string
+          sort_order?: number
+          tenant_id: string
+          unit: string
+          updated_at?: string
+          volume?: number | null
+          waste_bps?: number
+          width?: number | null
+        }
+        Update: {
+          archived_at?: string | null
+          area?: number | null
+          created_at?: string
+          height?: number | null
+          id?: string
+          length?: number | null
+          linear_length?: number | null
+          measurement_group_id?: string
+          measurement_type?: string
+          name?: string
+          notes?: string | null
+          perimeter?: number | null
+          proposal_version_id?: string
+          shape_type?: string
+          sort_order?: number
+          tenant_id?: string
+          unit?: string
+          updated_at?: string
+          volume?: number | null
+          waste_bps?: number
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_measurements_measurement_group_id_tenant_id_fkey"
+            columns: ["measurement_group_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_measurement_groups"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_measurements_proposal_version_id_tenant_id_fkey"
+            columns: ["proposal_version_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_versions"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_measurements_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -1765,6 +2099,53 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      add_measurement: {
+        Args: {
+          p_area?: number
+          p_height?: number
+          p_length?: number
+          p_linear_length?: number
+          p_measurement_group_id: string
+          p_measurement_type: string
+          p_name: string
+          p_notes?: string
+          p_proposal_version_id: string
+          p_shape_type: string
+          p_sort_order?: number
+          p_unit: string
+          p_waste_bps?: number
+          p_width?: number
+        }
+        Returns: {
+          archived_at: string | null
+          area: number | null
+          created_at: string
+          height: number | null
+          id: string
+          length: number | null
+          linear_length: number | null
+          measurement_group_id: string
+          measurement_type: string
+          name: string
+          notes: string | null
+          perimeter: number | null
+          proposal_version_id: string
+          shape_type: string
+          sort_order: number
+          tenant_id: string
+          unit: string
+          updated_at: string
+          volume: number | null
+          waste_bps: number
+          width: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_measurements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       add_portfolio_project_media: {
         Args: {
           p_caption?: string
@@ -1809,7 +2190,51 @@ export type Database = {
           hours_per_day: number | null
           id: string
           label: string
+          labor_rate_per_area_cents: number | null
+          labor_rate_per_linear_cents: number | null
+          measured_area: number | null
+          measured_linear_length: number | null
           pricing_method: string
+          proposal_measurement_id: string | null
+          proposal_version_id: string
+          sort_order: number
+          tenant_id: string
+          total_cents: number
+          total_hours: number
+          updated_at: string
+          worker_count: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_labor_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      add_proposal_labor_item_from_measurement: {
+        Args: {
+          p_label: string
+          p_pricing_method: string
+          p_proposal_measurement_id: string
+          p_proposal_version_id: string
+          p_rate_cents: number
+          p_sort_order?: number
+        }
+        Returns: {
+          archived_at: string | null
+          created_at: string
+          estimated_days: number | null
+          fixed_total_cents: number | null
+          hourly_rate_cents: number | null
+          hours_per_day: number | null
+          id: string
+          label: string
+          labor_rate_per_area_cents: number | null
+          labor_rate_per_linear_cents: number | null
+          measured_area: number | null
+          measured_linear_length: number | null
+          pricing_method: string
+          proposal_measurement_id: string | null
           proposal_version_id: string
           sort_order: number
           tenant_id: string
@@ -1996,6 +2421,38 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      archive_measurement: {
+        Args: { p_measurement_id: string }
+        Returns: {
+          archived_at: string | null
+          area: number | null
+          created_at: string
+          height: number | null
+          id: string
+          length: number | null
+          linear_length: number | null
+          measurement_group_id: string
+          measurement_type: string
+          name: string
+          notes: string | null
+          perimeter: number | null
+          proposal_version_id: string
+          shape_type: string
+          sort_order: number
+          tenant_id: string
+          unit: string
+          updated_at: string
+          volume: number | null
+          waste_bps: number
+          width: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_measurements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       archive_note: {
         Args: { p_note_id: string }
         Returns: {
@@ -2167,7 +2624,12 @@ export type Database = {
           hours_per_day: number | null
           id: string
           label: string
+          labor_rate_per_area_cents: number | null
+          labor_rate_per_linear_cents: number | null
+          measured_area: number | null
+          measured_linear_length: number | null
           pricing_method: string
+          proposal_measurement_id: string | null
           proposal_version_id: string
           sort_order: number
           tenant_id: string
@@ -2536,6 +2998,32 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "proposal_versions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_measurement_group: {
+        Args: {
+          p_name: string
+          p_proposal_version_id: string
+          p_service_type?: string
+          p_unit_system?: string
+        }
+        Returns: {
+          archived_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          proposal_version_id: string
+          service_type: string | null
+          tenant_id: string
+          unit_system: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_measurement_groups"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -3002,6 +3490,52 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      generate_material_from_measurement: {
+        Args: {
+          p_coats?: number
+          p_coverage_rate: number
+          p_coverage_unit?: string
+          p_material_catalog_item_id: string
+          p_measurement_value_field: string
+          p_proposal_measurement_id: string
+          p_proposal_version_id: string
+          p_section_id?: string
+          p_sort_order?: number
+          p_taxable?: boolean
+          p_unit_price_cents_override?: number
+          p_waste_bps?: number
+          p_zip_code?: string
+        }
+        Returns: {
+          archived_at: string | null
+          category: string
+          created_at: string
+          description: string
+          id: string
+          line_total_cents: number
+          material_catalog_item_id: string | null
+          material_zip_price_id: string | null
+          proposal_version_id: string
+          quantity: number
+          section_id: string | null
+          sort_order: number
+          source_price_effective_date: string | null
+          source_supplier_name: string | null
+          source_type: string
+          source_zip_code: string | null
+          taxable: boolean
+          tenant_id: string
+          unit: string
+          unit_price_cents: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_line_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       get_pending_invitations: {
         Args: never
         Returns: {
@@ -3430,6 +3964,52 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      save_measurement_shape: {
+        Args: {
+          p_length: number
+          p_measurement_group_id: string
+          p_measurement_type: string
+          p_name: string
+          p_notes?: string
+          p_proposal_version_id: string
+          p_scale_reference_length: number
+          p_scale_unit: string
+          p_shape_data: Json
+          p_sort_order?: number
+          p_unit: string
+          p_waste_bps?: number
+          p_width: number
+        }
+        Returns: {
+          archived_at: string | null
+          area: number | null
+          created_at: string
+          height: number | null
+          id: string
+          length: number | null
+          linear_length: number | null
+          measurement_group_id: string
+          measurement_type: string
+          name: string
+          notes: string | null
+          perimeter: number | null
+          proposal_version_id: string
+          shape_type: string
+          sort_order: number
+          tenant_id: string
+          unit: string
+          updated_at: string
+          volume: number | null
+          waste_bps: number
+          width: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_measurements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       search_material_catalog: {
         Args: {
           p_category?: string
@@ -3595,6 +4175,49 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "client_contacts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_measurement: {
+        Args: {
+          p_area?: number
+          p_height?: number
+          p_length?: number
+          p_linear_length?: number
+          p_measurement_id: string
+          p_measurement_type: string
+          p_name: string
+          p_notes?: string
+          p_waste_bps?: number
+          p_width?: number
+        }
+        Returns: {
+          archived_at: string | null
+          area: number | null
+          created_at: string
+          height: number | null
+          id: string
+          length: number | null
+          linear_length: number | null
+          measurement_group_id: string
+          measurement_type: string
+          name: string
+          notes: string | null
+          perimeter: number | null
+          proposal_version_id: string
+          shape_type: string
+          sort_order: number
+          tenant_id: string
+          unit: string
+          updated_at: string
+          volume: number | null
+          waste_bps: number
+          width: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_measurements"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -3807,7 +4430,12 @@ export type Database = {
           hours_per_day: number | null
           id: string
           label: string
+          labor_rate_per_area_cents: number | null
+          labor_rate_per_linear_cents: number | null
+          measured_area: number | null
+          measured_linear_length: number | null
           pricing_method: string
+          proposal_measurement_id: string | null
           proposal_version_id: string
           sort_order: number
           tenant_id: string

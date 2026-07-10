@@ -23,6 +23,21 @@ real-browser manual walkthrough. See
 > price came from a manual entry or a catalog lookup. See
 > [docs/42-material-catalog-by-zip.md](42-material-catalog-by-zip.md).
 
+> **Nota de estado (2026-07-09, Phase 2C):** `proposal_labor_items`
+> gains two more `pricing_method` values, `area` and `linear`, generated
+> exclusively from a measurement's computed area/perimeter/linear_length
+> via a new, separate function
+> (`add_proposal_labor_item_from_measurement()` — the existing
+> `add_proposal_labor_item()`/`update_proposal_labor_item()` for
+> hourly/fixed labor are untouched). `total_cents` is still always
+> `round(measured_value × rate_cents)`, still recalculated through the
+> same `recalculate_proposal_version()`. Generating a material from a
+> measurement (`generate_material_from_measurement()`) uses its own
+> formula layered on top of the existing catalog snapshot mechanics —
+> see [docs/45](45-measurements-takeoff-builder.md) and
+> [docs/46](46-measurement-calculation-engine.md) for the full detail
+> (rounding table, worked examples, unit handling).
+
 ## Authority
 
 The **only** authoritative implementation is
