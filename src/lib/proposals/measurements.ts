@@ -113,3 +113,109 @@ export function computeLinearLaborTotalCents(measuredLinearLength: number, rateP
 export function computePaintGallons(areaSqFt: number, coats: number, wasteBps: number, coveragePerGallon: number): number {
   return computeMaterialQuantity({ measurementValue: areaSqFt, coverageRate: coveragePerGallon, coats, wasteBps, unit: "gallon" });
 }
+
+// =============================================================================
+// Phase 2C.1: freehand/brush drawing — polygon geometry. Mirrors
+// save_measurement_polygon_shape() (20260710100000_measurement_freehand_polygon.sql)
+// exactly: the shoelace formula for a closed shape's area, plain edge-length
+// summation for perimeter (closed) or linear_length (open path, no wrap-around
+// edge). See docs/46-measurement-calculation-engine.md, "Freehand polygon
+// geometry".
+// =============================================================================
+
+export type Point = { x: number; y: number };
+
+/** Shoelace formula: area = |sum(x_i * y_(i+1) - x_(i+1) * y_i)| / 2, wrapping the last point back to the first. Requires at least 3 points and a non-degenerate (non-collinear) shape. */
+export function computePolygonArea(points: Point[]): number {
+  if (points.length < 3) {
+    throw new Error("A closed shape needs at least 3 points");
+  }
+  let sum = 0;
+  for (let i = 0; i < points.length; i++) {
+    const { x: x1, y: y1 } = points[i]!;
+    const { x: x2, y: y2 } = points[(i + 1) % points.length]!;
+    sum += x1 * y2 - x2 * y1;
+  }
+  const area = Math.abs(sum) / 2;
+  if (area <= 0) {
+    throw new Error("The drawn shape has no area -- points may be collinear or too close together");
+  }
+  return roundTo(area, 2);
+}
+
+/**
+ * Sums consecutive edge lengths. `closed=true` (an area shape) includes the
+ * final edge back to point 0, matching `computePolygonArea`'s perimeter;
+ * `closed=false` (an open linear path, e.g. a hand-traced trim run) sums only
+ * the n-1 drawn segments, with no wrap-around edge and no implied area.
+ */
+export function computePolygonPerimeter(points: Point[], closed: boolean): number {
+  if (closed && points.length < 3) {
+    throw new Error("A closed shape needs at least 3 points");
+  }
+  if (!closed && points.length < 2) {
+    throw new Error("A linear path needs at least 2 points");
+  }
+  const edgeCount = closed ? points.length : points.length - 1;
+  let sum = 0;
+  for (let i = 0; i < edgeCount; i++) {
+    const a = points[i]!;
+    const b = points[(i + 1) % points.length]!;
+    sum += Math.hypot(b.x - a.x, b.y - a.y);
+  }
+  if (sum <= 0) {
+    throw new Error("The drawn shape has no length -- points may be too close together");
+  }
+  return roundTo(sum, 2);
+}
+
+/** Perpendicular distance from `point` to the infinite line through `lineStart`/`lineEnd` (or to `lineStart` itself if they coincide). */
+function perpendicularDistance(point: Point, lineStart: Point, lineEnd: Point): number {
+  const dx = lineEnd.x - lineStart.x;
+  const dy = lineEnd.y - lineStart.y;
+  if (dx === 0 && dy === 0) {
+    return Math.hypot(point.x - lineStart.x, point.y - lineStart.y);
+  }
+  const t = ((point.x - lineStart.x) * dx + (point.y - lineStart.y) * dy) / (dx * dx + dy * dy);
+  const projX = lineStart.x + t * dx;
+  const projY = lineStart.y + t * dy;
+  return Math.hypot(point.x - projX, point.y - projY);
+}
+
+/**
+ * Douglas-Peucker polyline simplification: recursively keeps only the point
+ * furthest from the line connecting a segment's endpoints (if that distance
+ * exceeds `tolerancePx`), discarding everything else — the standard,
+ * well-understood algorithm for "reduce a hand-drawn stroke's point count
+ * without visibly deforming its shape" (see docs/47-drawing-sketch-mode.md,
+ * "Point simplification"). `tolerancePx` is in the same pixel units as the
+ * input points (applied before scaling to real-world units).
+ */
+export function simplifyPolyline(points: Point[], tolerancePx: number): Point[] {
+  if (points.length <= 2) return points;
+
+  let maxDistance = 0;
+  let maxIndex = 0;
+  const first = points[0]!;
+  const last = points[points.length - 1]!;
+  for (let i = 1; i < points.length - 1; i++) {
+    const distance = perpendicularDistance(points[i]!, first, last);
+    if (distance > maxDistance) {
+      maxDistance = distance;
+      maxIndex = i;
+    }
+  }
+
+  if (maxDistance > tolerancePx) {
+    const left = simplifyPolyline(points.slice(0, maxIndex + 1), tolerancePx);
+    const right = simplifyPolyline(points.slice(maxIndex), tolerancePx);
+    return [...left.slice(0, -1), ...right];
+  }
+  return [first, last];
+}
+
+/** Converts an array of pixel-space points to real-world units using a pixels-per-unit scale factor (the same scale the rectangle mode derives from its reference length). */
+export function scalePoints(points: Point[], pixelsPerUnit: number): Point[] {
+  requirePositive(pixelsPerUnit, "Scale");
+  return points.map((p) => ({ x: p.x / pixelsPerUnit, y: p.y / pixelsPerUnit }));
+}

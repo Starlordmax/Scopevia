@@ -1,10 +1,11 @@
 # 45 — Measurements / Takeoff Builder
 
 Status: **Implemented**, verified against real Postgres
-(`tests/rls/phase2c-measurements.test.ts`, 25 tests), a pure unit suite
-(`tests/unit/measurement-calculations.test.ts`, 27 tests), and end-to-end
+(`tests/rls/phase2c-measurements.test.ts`, 39 tests), a pure unit suite
+(`tests/unit/measurement-calculations.test.ts`, 46 tests), and end-to-end
 via Playwright (`tests/e2e/measurements.spec.ts` +
-`measurements.mobile.spec.ts`).
+`measurements.mobile.spec.ts`, 2 scenarios each — manual/rectangle and
+freehand).
 
 ## What this phase adds
 
@@ -16,8 +17,10 @@ Client & Job → Measurements → Scope → Labor → Materials & Costs → Phot
 ```
 
 A contractor can record room/surface dimensions — either typed
-(**Manual entry**) or drawn (**Draw layout**, rectangle-only — see
-[docs/47](47-drawing-sketch-mode.md)) — and then **generate** a catalog
+(**Manual entry**) or drawn (**Draw layout** — freehand/brush tracing
+for irregular rooms, with rectangle mode kept as a secondary option
+for simple rectangular rooms; see [docs/47](47-drawing-sketch-mode.md))
+— and then **generate** a catalog
 material or a priced labor item directly from a measurement's computed
 area, perimeter, or linear length. Generated materials/labor are
 ordinary `proposal_line_items`/`proposal_labor_items` rows afterward —
@@ -159,9 +162,10 @@ this document.
 
 ## Known limitations
 
-- **Draw layout supports rectangles only** — no polygons, no moving
-  individual points after drawing. See [docs/47](47-drawing-sketch-mode.md)
-  for the full reasoning.
+- **Draw layout: one shape per session, no moving individual points
+  after drawing** (true of both freehand and rectangle mode). See
+  [docs/47](47-drawing-sketch-mode.md) for the full reasoning, the
+  freehand/polygon geometry model, and mobile behavior.
 - **No cross-unit-system conversion.** A measurement's dimensions are
   stored in whichever base unit (`ft` or `m`) its group uses; generating
   a material trusts the coverage rate the user enters to already be in

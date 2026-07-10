@@ -17,18 +17,18 @@ calls.
 
 | Suite | Tests | Result |
 |---|---|---|
-| `tests/rls/phase2c-measurements.test.ts` (new, this phase) | 25 | PASS |
-| Full `tests/rls/*` suite (all phases) | 233 | PASS, zero regressions |
-| `npm run test` (unit, includes 27 new measurement-calculation tests) | 134 | PASS |
-| `npx playwright test` (E2E, desktop + mobile, includes 2 new measurement specs) | 68 | PASS |
+| `tests/rls/phase2c-measurements.test.ts` (25 Phase 2C + 14 Phase 2C.1 freehand) | 39 | PASS |
+| Full `tests/rls/*` suite (all phases) | 247 (144 run + 103 skipped by env guard) | PASS, zero regressions |
+| `npm run test` (unit, includes 46 measurement-calculation tests — 27 Phase 2C + 19 Phase 2C.1 polygon/simplify/scale) | 153 | PASS |
+| `npx playwright test` (E2E, desktop + mobile, includes 2 measurement specs each — manual/rectangle + freehand) | 70 | PASS |
 
-(As in every prior phase's verification, a full `test:rls` run
-immediately after the full Playwright E2E suite hit
-`AuthApiError: Request rate limit reached` on two files — both create
-many throwaway auth users in a short window. Re-running each affected
-file alone passed cleanly (`tenant-isolation.test.ts` 40/40,
-`phase2c-measurements.test.ts` 25/25); not a real failure, the same
-documented flakiness pattern as [docs/35](35-phase-2a-rls-verification.md)/
+(As in every prior phase's verification, running the full `tests/rls/*`
+suite with default parallelism hit `AuthApiError: Request rate limit
+reached` on two files that each create many throwaway auth users in a
+short window. Re-running those two files sequentially
+(`--fileParallelism=false`) passed cleanly, 103/103 combined; not a
+real failure, the same documented flakiness pattern as
+[docs/35](35-phase-2a-rls-verification.md)/
 [44](44-material-catalog-rls-verification.md).)
 
 ## What `phase2c-measurements.test.ts` covers
@@ -75,6 +75,42 @@ to a measurement's `perimeter` when it has no distinct `linear_length`.
 `generate_material_from_measurement()` reject a `locked` proposal
 version, consistent with every other mutation function in this
 codebase.
+
+## Phase 2C.1: freehand/brush drawing (14 additional tests)
+
+**Freehand polygon CRUD & calculation correctness**: a closed polygon
+(an L-shape) computes area via the shoelace formula and perimeter as
+the full edge sum, matching a hand-worked example (75 sq ft, 40 ft
+perimeter); an open path computes only `linear_length` (no area, no
+perimeter); a closed shape with fewer than 3 points is rejected; an
+open path with fewer than 2 points is rejected; collinear points (zero
+area) are rejected; a negative scale reference length is rejected.
+
+**Update/archive parity with rectangle mode**: `update_measurement()`
+rejects editing a `sketch_polygon` row's dimensions identically to
+`sketch_rectangle` (archive-and-redraw only); `archive_measurement()`
+works normally on a freehand-created row.
+
+**Tenant isolation**: Tenant B cannot read Tenant A's freehand
+measurement or its `proposal_measurement_shapes` row via a direct
+table query.
+
+**Material + labor generation from a freehand-derived area**:
+`generate_material_from_measurement()` against a `sketch_polygon`'s
+`area` field produces the same snapshotted price/quantity as a
+rectangle-derived measurement (200 sq ft, 2 coats, 10% waste, $0.42/sq
+ft coverage → 2 gallons, $84.00), and correctly rejects a material
+belonging to another tenant; `add_proposal_labor_item_from_measurement()`
+against a freehand area computes `total_cents = area × rate` identically.
+
+**Locked version rejection**: `save_measurement_polygon_shape()` itself
+(not just downstream generation) rejects a `locked` proposal version.
+
+**Permission parity**: Field Worker can save a freehand measurement via
+`save_measurement_polygon_shape()` despite holding no `proposals.update`
+— the same dedicated-permission design Phase 2C established extends
+unchanged to the freehand path, since it is gated by the same
+`measurements.create` check, not a new one.
 
 ## Design decisions this suite validates
 

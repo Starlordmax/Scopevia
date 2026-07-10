@@ -310,6 +310,23 @@ export const saveMeasurementShapeSchema = z.object({
   notes: optionalText(2000),
 });
 
+/**
+ * Freehand/brush drawing (Phase 2C.1) — the points array and raw
+ * shapeData are parsed as JSON directly in the Server Action (same
+ * pattern as saveMeasurementShapeSchema's shapeData), not validated
+ * field-by-field here; this schema covers the plain form fields.
+ */
+export const saveMeasurementPolygonShapeSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(160),
+  measurementType: measurementTypeSchema,
+  unit: measurementUnitSchema,
+  scaleReferenceLength: positiveDimension(100000, "Reference length"),
+  scaleUnit: measurementUnitSchema,
+  closed: z.coerce.boolean(),
+  wastePercent: percentToBpsSchema,
+  notes: optionalText(2000),
+});
+
 export const generateMaterialFromMeasurementSchema = z.object({
   materialCatalogItemId: z.string().uuid(),
   measurementValueField: measurementValueFieldSchema,

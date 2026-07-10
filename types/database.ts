@@ -3964,6 +3964,52 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      save_measurement_polygon_shape: {
+        Args: {
+          p_closed: boolean
+          p_measurement_group_id: string
+          p_measurement_type: string
+          p_name: string
+          p_notes?: string
+          p_points: Json
+          p_proposal_version_id: string
+          p_scale_reference_length: number
+          p_scale_unit: string
+          p_shape_data: Json
+          p_sort_order?: number
+          p_unit: string
+          p_waste_bps?: number
+        }
+        Returns: {
+          archived_at: string | null
+          area: number | null
+          created_at: string
+          height: number | null
+          id: string
+          length: number | null
+          linear_length: number | null
+          measurement_group_id: string
+          measurement_type: string
+          name: string
+          notes: string | null
+          perimeter: number | null
+          proposal_version_id: string
+          shape_type: string
+          sort_order: number
+          tenant_id: string
+          unit: string
+          updated_at: string
+          volume: number | null
+          waste_bps: number
+          width: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_measurements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       save_measurement_shape: {
         Args: {
           p_length: number

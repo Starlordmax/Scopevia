@@ -1,16 +1,18 @@
 # 46 — Measurement Calculation Engine
 
 Status: **Implemented and verified** two ways: a pure unit test suite
-(`tests/unit/measurement-calculations.test.ts`, 27 tests) and an
+(`tests/unit/measurement-calculations.test.ts`, 46 tests) and an
 integration test suite against real Postgres RPCs
 (`tests/rls/phase2c-measurements.test.ts`).
 
 ## Authority
 
 The **only** authoritative implementation is the PL/pgSQL functions in
-`supabase/migrations/20260709140200_measurement_functions.sql` and
-`20260709140100_labor_area_linear_pricing.sql` —
+`supabase/migrations/20260709140200_measurement_functions.sql`,
+`20260709140100_labor_area_linear_pricing.sql`, and (Phase 2C.1)
+`20260710100000_measurement_freehand_polygon.sql` —
 `add_measurement()`, `update_measurement()`, `save_measurement_shape()`,
+`save_measurement_polygon_shape()`,
 `generate_material_from_measurement()`,
 `add_proposal_labor_item_from_measurement()`. Every value that gets
 persisted (area, perimeter, calculated material quantity, labor total)
@@ -51,6 +53,36 @@ Height is required for `wall_area`; omitting it is rejected server-side
 shapes): the user-entered value is stored as-is (rounded to 2 decimals);
 no perimeter is derivable from a direct area, and no area/perimeter
 from a direct linear length — both columns are left `null`.
+
+**Freehand polygon geometry** (`sketch_polygon` shape, Phase 2C.1 —
+`save_measurement_polygon_shape()`): points must already be in
+real-world units (the client scales raw canvas pixels using a
+user-entered reference length before sending them; see
+[docs/47](47-drawing-sketch-mode.md)). A **closed** shape computes area
+via the shoelace formula and perimeter as the sum of every edge
+including the closing edge back to the first point:
+
+```
+area      = |Σ(x_i · y_(i+1) − x_(i+1) · y_i)| / 2      (i wraps around: point n connects back to point 0)
+perimeter = Σ distance(point_i, point_(i+1))              (n edges for n points, including the closing edge)
+```
+
+An **open** path (not closed) computes only `linear_length` — the same
+edge-distance sum, but **without** the closing edge (n−1 edges for n
+points) — and leaves `area`/`perimeter` `null`, identical in shape to a
+`manual_linear` row. A closed shape needs at least 3 points; an open
+path needs at least 2. A degenerate shape (collinear points, or points
+too close together to form any area/length) is rejected server-side
+with a friendly error, not silently accepted as zero.
+
+`src/lib/proposals/measurements.ts`'s `computePolygonArea()` /
+`computePolygonPerimeter()` mirror this exactly (same shoelace formula,
+same closed-vs-open edge counting) for the Draw layout tab's live
+preview. `simplifyPolyline()` (Douglas-Peucker point decimation,
+2px tolerance) runs client-side **before** scaling, purely to keep the
+point list small and legible — it never changes which geometry
+function computes the final area/perimeter, only how many points that
+function receives.
 
 **Waste** (applied when *generating* a material, not stored on the
 measurement's own area/perimeter):

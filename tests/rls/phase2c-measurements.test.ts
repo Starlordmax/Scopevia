@@ -633,4 +633,263 @@ describe.skipIf(!canRun)("Phase 2C Measurements / Takeoff builder (requires real
       expect(error).not.toBeNull();
     });
   });
+
+  // ===========================================================================
+  // Phase 2C.1: freehand/brush drawing (sketch_polygon)
+  // ===========================================================================
+  describe("Freehand polygon measurements", () => {
+    it("saves a closed polygon: area via the shoelace formula, full perimeter (an L-shape: 10x10 minus a 5x5 corner -> area 75, perimeter 40)", async () => {
+      const { versionId } = await createDraftProposal("Freehand L-shape");
+      const groupId = await createGroup(versionId);
+      const { data, error } = await aClient
+        .rpc("save_measurement_polygon_shape", {
+          p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "L-shaped room",
+          p_measurement_type: "floor_area", p_unit: "ft",
+          p_points: [
+            { x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 5 }, { x: 5, y: 5 }, { x: 5, y: 10 }, { x: 0, y: 10 },
+          ],
+          p_closed: true, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: { type: "freehand", closed: true },
+        })
+        .single();
+      expect(error).toBeNull();
+      const m = data as { area: number; perimeter: number; linear_length: number | null; shape_type: string };
+      expect(m.area).toBe(75);
+      expect(m.perimeter).toBe(40);
+      expect(m.linear_length).toBeNull();
+      expect(m.shape_type).toBe("sketch_polygon");
+    });
+
+    it("saves an open path as a linear measurement (no area, no perimeter)", async () => {
+      const { versionId } = await createDraftProposal("Freehand open path");
+      const groupId = await createGroup(versionId);
+      const { data, error } = await aClient
+        .rpc("save_measurement_polygon_shape", {
+          p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Traced trim run",
+          p_measurement_type: "linear", p_unit: "ft",
+          p_points: [{ x: 0, y: 0 }, { x: 5, y: 0 }, { x: 5, y: 5 }],
+          p_closed: false, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: { type: "freehand", closed: false },
+        })
+        .single();
+      expect(error).toBeNull();
+      const m = data as { area: number | null; perimeter: number | null; linear_length: number };
+      expect(m.area).toBeNull();
+      expect(m.perimeter).toBeNull();
+      expect(m.linear_length).toBe(10);
+    });
+
+    it("rejects a closed shape with fewer than 3 points", async () => {
+      const { versionId } = await createDraftProposal("Freehand too few points closed");
+      const groupId = await createGroup(versionId);
+      const { error } = await aClient.rpc("save_measurement_polygon_shape", {
+        p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Bad",
+        p_measurement_type: "floor_area", p_unit: "ft",
+        p_points: [{ x: 0, y: 0 }, { x: 10, y: 0 }],
+        p_closed: true, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: {},
+      });
+      expect(error).not.toBeNull();
+    });
+
+    it("rejects an open path with fewer than 2 points", async () => {
+      const { versionId } = await createDraftProposal("Freehand too few points open");
+      const groupId = await createGroup(versionId);
+      const { error } = await aClient.rpc("save_measurement_polygon_shape", {
+        p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Bad",
+        p_measurement_type: "linear", p_unit: "ft",
+        p_points: [{ x: 0, y: 0 }],
+        p_closed: false, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: {},
+      });
+      expect(error).not.toBeNull();
+    });
+
+    it("rejects collinear points for a closed shape (zero area)", async () => {
+      const { versionId } = await createDraftProposal("Freehand collinear");
+      const groupId = await createGroup(versionId);
+      const { error } = await aClient.rpc("save_measurement_polygon_shape", {
+        p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Bad",
+        p_measurement_type: "floor_area", p_unit: "ft",
+        p_points: [{ x: 0, y: 0 }, { x: 5, y: 0 }, { x: 10, y: 0 }],
+        p_closed: true, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: {},
+      });
+      expect(error).not.toBeNull();
+    });
+
+    it("rejects an invalid (negative) scale reference length", async () => {
+      const { versionId } = await createDraftProposal("Freehand bad scale");
+      const groupId = await createGroup(versionId);
+      const { error } = await aClient.rpc("save_measurement_polygon_shape", {
+        p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Bad",
+        p_measurement_type: "floor_area", p_unit: "ft",
+        p_points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }],
+        p_closed: true, p_scale_reference_length: -5, p_scale_unit: "ft", p_shape_data: {},
+      });
+      expect(error).not.toBeNull();
+    });
+
+    it("update_measurement rejects editing a sketch_polygon's dimensions (archive-and-redraw only)", async () => {
+      const { versionId } = await createDraftProposal("Freehand update rejected");
+      const groupId = await createGroup(versionId);
+      const { data } = await aClient
+        .rpc("save_measurement_polygon_shape", {
+          p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Square",
+          p_measurement_type: "floor_area", p_unit: "ft",
+          p_points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }],
+          p_closed: true, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: {},
+        })
+        .single();
+
+      const { error } = await aClient.rpc("update_measurement", {
+        p_measurement_id: (data as { id: string }).id, p_name: "Changed", p_measurement_type: "floor_area",
+        p_length: 12, p_width: 10,
+      });
+      expect(error).not.toBeNull();
+    });
+
+    it("archive_measurement still works for a sketch_polygon", async () => {
+      const { versionId } = await createDraftProposal("Freehand archive");
+      const groupId = await createGroup(versionId);
+      const { data } = await aClient
+        .rpc("save_measurement_polygon_shape", {
+          p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Square",
+          p_measurement_type: "floor_area", p_unit: "ft",
+          p_points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }],
+          p_closed: true, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: {},
+        })
+        .single();
+
+      const { data: archived, error } = await aClient.rpc("archive_measurement", { p_measurement_id: (data as { id: string }).id }).single();
+      expect(error).toBeNull();
+      expect((archived as { archived_at: string | null }).archived_at).not.toBeNull();
+    });
+
+    it("Tenant A cannot read Tenant B's freehand measurement or its shape", async () => {
+      const { versionId } = await createDraftProposal("Freehand tenant isolation");
+      const groupId = await createGroup(versionId);
+      const { data } = await aClient
+        .rpc("save_measurement_polygon_shape", {
+          p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "A only",
+          p_measurement_type: "floor_area", p_unit: "ft",
+          p_points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }],
+          p_closed: true, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: {},
+        })
+        .single();
+      const id = (data as { id: string }).id;
+
+      const { data: bMeasurement } = await bClient.from("proposal_measurements").select("id").eq("id", id);
+      expect(bMeasurement ?? []).toHaveLength(0);
+      const { data: bShape } = await bClient.from("proposal_measurement_shapes").select("id").eq("proposal_measurement_id", id);
+      expect(bShape ?? []).toHaveLength(0);
+    });
+
+    it("generates a catalog material from a freehand-derived area, snapshotted and recalculated", async () => {
+      const { versionId } = await createDraftProposal("Freehand generate material");
+      await aClient.rpc("update_proposal_pricing_zip", { p_proposal_version_id: versionId, p_zip_code: "33101" });
+      const groupId = await createGroup(versionId);
+      const { data: measurement } = await aClient
+        .rpc("save_measurement_polygon_shape", {
+          p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Freehand floor",
+          p_measurement_type: "floor_area", p_unit: "ft",
+          // A 20x10 rectangle drawn as a polygon -> area 200.
+          p_points: [{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 10 }, { x: 0, y: 10 }],
+          p_closed: true, p_scale_reference_length: 20, p_scale_unit: "ft", p_shape_data: {},
+        })
+        .single();
+
+      const { data: lineItem, error } = await aClient
+        .rpc("generate_material_from_measurement", {
+          p_proposal_version_id: versionId,
+          p_proposal_measurement_id: (measurement as { id: string }).id,
+          p_material_catalog_item_id: interiorPaintId,
+          p_measurement_value_field: "area",
+          p_coverage_rate: 350,
+          p_coats: 2,
+          p_waste_bps: 1000,
+        })
+        .single();
+      expect(error).toBeNull();
+      // area=200, coats=2, waste 10% -> ceil(200*2*1.1/350) = ceil(1.257) = 2 gallons @ $42.00 = $84.00
+      const li = lineItem as { quantity: number; line_total_cents: number };
+      expect(li.quantity).toBe(2);
+      expect(li.line_total_cents).toBe(8400);
+
+      const { data: version } = await admin.from("proposal_versions").select("line_items_subtotal_cents").eq("id", versionId).single();
+      expect((version as { line_items_subtotal_cents: number }).line_items_subtotal_cents).toBe(8400);
+    });
+
+    it("generates area-based labor from a freehand-derived area", async () => {
+      const { versionId } = await createDraftProposal("Freehand generate labor");
+      const groupId = await createGroup(versionId);
+      const { data: measurement } = await aClient
+        .rpc("save_measurement_polygon_shape", {
+          p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Freehand floor for labor",
+          p_measurement_type: "floor_area", p_unit: "ft",
+          p_points: [{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 15 }, { x: 0, y: 15 }], // area 300
+          p_closed: true, p_scale_reference_length: 20, p_scale_unit: "ft", p_shape_data: {},
+        })
+        .single();
+
+      const { data: laborItem, error } = await aClient
+        .rpc("add_proposal_labor_item_from_measurement", {
+          p_proposal_version_id: versionId, p_proposal_measurement_id: (measurement as { id: string }).id,
+          p_label: "Freehand area labor", p_pricing_method: "area", p_rate_cents: 400,
+        })
+        .single();
+      expect(error).toBeNull();
+      expect((laborItem as { total_cents: number }).total_cents).toBe(120000); // 300 * 400
+    });
+
+    it("generate_material_from_measurement rejects a material belonging to another tenant, even for a freehand measurement", async () => {
+      const { versionId } = await createDraftProposal("Freehand cross-tenant material");
+      const groupId = await createGroup(versionId);
+      const { data: measurement } = await aClient
+        .rpc("save_measurement_polygon_shape", {
+          p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Floor",
+          p_measurement_type: "floor_area", p_unit: "ft",
+          p_points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }],
+          p_closed: true, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: {},
+        })
+        .single();
+
+      const { data: tenantBMaterial } = await bClient
+        .rpc("create_tenant_material", { p_tenant_id: tenantBId, p_name: `Tenant B freehand material ${RUN_ID}`, p_category: "other", p_default_unit: "each" })
+        .single();
+
+      const { error } = await aClient.rpc("generate_material_from_measurement", {
+        p_proposal_version_id: versionId,
+        p_proposal_measurement_id: (measurement as { id: string }).id,
+        p_material_catalog_item_id: (tenantBMaterial as { id: string }).id,
+        p_measurement_value_field: "area",
+        p_coverage_rate: 1,
+      });
+      expect(error).not.toBeNull();
+    });
+
+    it("save_measurement_polygon_shape rejects a locked proposal version", async () => {
+      const { versionId } = await createDraftProposal("Freehand locked version");
+      const groupId = await createGroup(versionId);
+      await admin.from("proposal_versions").update({ version_status: "locked", locked_at: new Date().toISOString() }).eq("id", versionId);
+
+      const { error } = await aClient.rpc("save_measurement_polygon_shape", {
+        p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Should not save",
+        p_measurement_type: "floor_area", p_unit: "ft",
+        p_points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }],
+        p_closed: true, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: {},
+      });
+      expect(error).not.toBeNull();
+    });
+
+    it("Field Worker can save a freehand measurement despite lacking proposals.update entirely", async () => {
+      const { versionId } = await createDraftProposal("Freehand field worker");
+      const groupId = await createGroup(versionId);
+      const { data, error } = await fieldWorkerClient
+        .rpc("save_measurement_polygon_shape", {
+          p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Field worker freehand",
+          p_measurement_type: "floor_area", p_unit: "ft",
+          p_points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }],
+          p_closed: true, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: {},
+        })
+        .single();
+      expect(error).toBeNull();
+      expect(data).toBeTruthy();
+    });
+  });
 });

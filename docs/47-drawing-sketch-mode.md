@@ -1,103 +1,180 @@
 # 47 — Drawing / Sketch Mode
 
-Status: **Implemented — rectangles only**, verified end-to-end
-(`tests/e2e/measurements.spec.ts`, `measurements.mobile.spec.ts` — the
-mobile spec drags a rectangle via mouse-emulated Pointer Events, the
-same code path a real touch drag exercises).
+Status: **Implemented — freehand (primary) + rectangle (secondary)**,
+verified end-to-end (`tests/e2e/measurements.spec.ts`,
+`measurements.mobile.spec.ts` — the mobile specs drag via
+mouse-emulated Pointer Events, the same code path a real touch drag
+exercises).
 
-## Why rectangles only
+## Phase 2C.1: freehand/brush drawing
 
-The brief explicitly allows starting with rectangles if a full polygon
-editor "adds too much complexity," with the instruction to document the
-limitation. A construction-takeoff CAD editor — arbitrary polygons,
-draggable vertices, multi-shape layers, undo/redo — is a genuinely
-large feature (real takeoff software is a product category unto
-itself); this phase scopes down to exactly what the worked examples in
-the brief need: a rectangular room or surface, scaled to real-world
-units. **No polygon support exists in this phase** — `shape_type`
-reserves the enum value `sketch_polygon` in the database for a future
-phase, but no function anywhere accepts or produces one.
+Phase 2C shipped rectangle-only sketching, with the limitation
+explicitly documented and `sketch_polygon` reserved (but unused) in the
+schema for a future phase. Phase 2C.1 adds **freehand/brush drawing** —
+tracing an irregular outline (an L-shaped room, a bathroom with a
+jog, a patio) with mouse, touch, or stylus — as the **default,
+recommended** Draw layout mode. Rectangle mode is kept as a secondary
+option (a "Drawing mode" `<select>` switches between them) for the
+common case of a simple rectangular room, where typing two numbers is
+faster than tracing an outline.
 
-## No drawing library — a plain SVG rectangle drawer
+### Freehand is represented internally as a polygon
+
+There is no separate "freehand" geometry — a freehand trace is
+captured as an ordered list of points and, once closed, is treated as
+a `sketch_polygon`: the exact same `shape_type` Phase 2C reserved. This
+is a deliberate simplification, not an oversight: a hand-drawn outline
+and a manually-plotted polygon are mathematically identical once
+you have the point list, so one code path (`save_measurement_polygon_shape()`)
+and one set of geometry formulas (shoelace area, edge-length perimeter)
+serve both. If a future phase adds vertex-by-vertex manual polygon
+entry, it would call the same function.
+
+An **open** path (the user never taps "Close shape") is stored as a
+**linear measurement** instead — `area`/`perimeter` are left `null` and
+only `linear_length` (the sum of segment lengths, no closing edge) is
+computed. This lets the same tool double as "trace a trim/fencing run"
+without a separate UI mode.
+
+### No table migration needed
+
+Diagnosis before writing any code (per this phase's explicit
+instruction) found that Phase 2C had already made freehand support a
+pure function addition, not a schema change:
+
+- `shape_type`'s CHECK constraint already allowed `'sketch_polygon'`
+  (added in `20260709140000_measurements_schema.sql`, unused until now).
+- `proposal_measurements.length`/`width` were already nullable — a
+  polygon has no natural single length/width pair, and the rectangle
+  path already left them `null` for `manual_area`/`manual_linear` rows.
+- `proposal_measurement_shapes.shape_data` was already flexible JSONB
+  with only a byte-size bound (20KB), no rectangle-specific structure.
+
+So Phase 2C.1 adds exactly one new SQL function,
+`save_measurement_polygon_shape()`
+(`supabase/migrations/20260710100000_measurement_freehand_polygon.sql`),
+alongside the existing `save_measurement_shape()` (rectangle) —
+deliberately a separate function, not an extended signature, keeping
+zero regression risk to the already-tested rectangle path.
+
+`update_measurement()`'s existing rejection of sketch-derived rows
+already covered `sketch_polygon` (its `else` branch catches any
+shape_type that isn't `manual_*`) — no change was needed there either.
+
+## Why no drawing library — a plain SVG point-capture drawer
 
 `src/app/(protected)/proposals/[proposalId]/edit/draw-layout-canvas.tsx`
-implements the entire drawing surface with a plain `<svg>` and React
-state — no Fabric.js, Konva, react-konva, or similar dependency.
-Justification, per the brief's explicit requirement to justify any
-drawing dependency:
+implements both drawing modes with a plain `<svg>` and React state — no
+Fabric.js, Konva, react-konva, or similar dependency. The same
+justification from Phase 2C extends to freehand capture:
 
-- **Size**: a real CAD-style library is typically 80–150KB minified
-  (Fabric.js ~300KB unminified, Konva ~200KB) for capabilities (layers,
-  multi-shape selection, custom filters) this phase does not use at
-  all. The rectangle-drawer above adds **zero** dependency weight.
-- **Need**: the entire interaction is "drag to draw one rectangle,
-  enter a reference length, save" — a single `<rect>` element kept in
-  sync with two `{x, y}` points in React state. A general-purpose
-  canvas library solves a much bigger problem than this one.
-- **Maintenance**: no third-party API surface to track across React/
-  Next.js upgrades; the whole implementation is ~200 lines of
-  plain React + SVG, auditable in one read.
-- **Mobile compatibility**: the browser's native
+- **Size**: a real CAD-style library is typically 80–150KB minified for
+  capabilities (layers, multi-shape selection, vertex editing) neither
+  drawing mode uses. Freehand capture adds **zero** dependency weight —
+  it's an array of `{x, y}` points appended on `pointermove`.
+- **Need**: the entire interaction is "drag to trace an outline, close
+  it or not, enter a reference length, save" — a `<polygon>`/`<polyline>`
+  element kept in sync with a point array in React state.
+- **Mobile compatibility**: the same native
   [Pointer Events API](https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events)
-  (`onPointerDown`/`onPointerMove`/`onPointerUp`) already unifies mouse
-  and touch input with zero extra code or polyfills — exactly the
-  cross-device requirement the brief asks for, at no cost.
+  (`onPointerDown`/`onPointerMove`/`onPointerUp`) unifies mouse, touch,
+  and stylus input with zero extra code or polyfills.
 
-SVG (not a `<canvas>` 2D context) was chosen specifically because a
-`<rect>` element declaratively tracks React state — no manual redraw
-loop, no imperative draw calls to keep in sync with re-renders.
+## The freehand flow
 
-## The flow
+1. **Draw**: drag anywhere on the canvas (mouse, touch, or stylus) — one
+   or more strokes are captured as they're drawn, rendered live as an
+   SVG `<polyline>`. Multiple strokes concatenate into one point list
+   (draw a few short strokes, or one continuous trace — both work).
+2. **Undo** removes the last completed stroke; **Clear** discards
+   everything and starts over; both are disabled mid-stroke.
+3. **Close shape** (a toggle button, the brief's recommended MVP
+   choice over auto-close-on-release or tap-near-start) marks the
+   outline as a closed area — leaving it un-toggled saves a **linear**
+   measurement instead (see above). The button requires at least 3
+   captured points and is disabled mid-drag.
+4. **Scale**: enter the real-world length the *drawing's bounding-box
+   width* represents (e.g. "This drawing's width represents: 20 ft").
+   Unlike rectangle mode (which has one obvious "width" side), an
+   arbitrary polygon has no natural single reference edge, so the
+   calibration dimension is the outline's overall horizontal extent
+   (`max(x) − min(x)` across every captured point) — matching the
+   brief's own suggested approach.
+5. A live preview (area + perimeter, or linear length) computes
+   client-side using the exact same formulas the server uses — see
+   [docs/46](46-measurement-calculation-engine.md).
+6. **Save** sends the already-scaled real-world points (not raw
+   pixels) to `save_measurement_polygon_shape()`, which independently
+   recomputes area/perimeter/linear_length server-side via the
+   shoelace formula and edge-length summation — the server never
+   trusts a client-computed area, exactly the same discipline as
+   rectangle mode.
 
-1. Drag anywhere on the grid (mouse or touch) — a single rectangle
-   follows the drag in real time, replacing any previous one (this
-   phase supports **one shape per drawing session**, not multiple
-   simultaneous shapes).
-2. Enter the real-world length of the rectangle's width (a single
-   calibration number, e.g. "12 ft") — this establishes a scale
-   (pixels-per-unit) purely on the client, the same arithmetic a
-   contractor would do by hand with a scale ruler.
-3. The client computes the real-world height from that same scale and
-   shows a live preview (area, perimeter) using the exact same
-   `computeRectangle()` helper the Manual entry tab's preview uses —
-   see [docs/46](46-measurement-calculation-engine.md).
-4. On save, the client sends the **already-converted real-world
-   length/width** (not raw pixels) to `save_measurement_shape()`, which
-   independently recomputes area/perimeter server-side from those two
-   numbers — exactly like a manual rectangle. The server never trusts a
-   client-computed area, only client-computed length/width (the same
-   discipline as every other calculation in this codebase).
-5. `shape_data` (the four corner points + viewport dimensions, as
-   small JSON) is stored in `proposal_measurement_shapes` purely for
-   provenance/future re-editing — it is never used to compute anything
-   that matters; the measurement's own `length`/`width`/`area`/
-   `perimeter` columns are the source of truth for every downstream use
-   (material/labor generation, Preview).
+## Point simplification (Douglas-Peucker)
+
+A real mouse/touch drag can produce hundreds of points, most of them
+redundant (near-collinear samples along a straight stretch of the
+trace). Before scaling and submission, the raw point list is run
+through Douglas-Peucker simplification
+(`simplifyPolyline()` in `src/lib/proposals/measurements.ts`, tolerance
+2px): recursively keep only the point furthest from the line
+connecting a segment's endpoints (if beyond the tolerance), discard
+the rest. This is the standard, well-understood point-decimation
+algorithm — chosen because the brief allowed "a reasonable strategy"
+and asked that it be documented, not because any more exotic technique
+was needed. It:
+
+- keeps the shape's corners and curves recognizable while dropping
+  near-duplicate points along straight stretches,
+- keeps `shape_data` comfortably under its 20KB bound without a
+  separate ad-hoc point-count cap doing the real work (a defensive
+  500-point server-side cap exists as a backstop, not a realistic
+  limit given simplification),
+- is applied **before** scaling, so the tolerance is in canvas pixels,
+  not real-world units (the same 2px feels right regardless of what
+  the final scale turns out to be).
 
 ## What is explicitly NOT stored
 
-`shape_data` is bounded to 20KB
-(`octet_length(shape_data::text) <= 20000`, enforced by a CHECK
-constraint) specifically to guarantee nobody stores an image (a base64
-photo, a scanned blueprint) in this column — it holds only point
-coordinates and viewport metadata, never pixel/image data. There is no
-blueprint or PDF upload/parsing anywhere in this phase.
+Same rule as rectangle mode: `shape_data` (bounded to 20KB, enforced by
+a CHECK constraint) holds only point coordinates, a `closed` flag,
+stroke count, and viewport metadata — never a base64 image or scanned
+blueprint. There is no blueprint/PDF upload or parsing anywhere in
+this phase.
+
+## Mobile behavior
+
+`touch-action: none` on the drawing `<svg>` prevents the browser from
+interpreting a drag inside the canvas as a page-scroll gesture — the
+same rule rectangle mode already relied on. Verified at 390×844
+(`measurements.mobile.spec.ts`): a touch-emulated freehand drag closes,
+scales, saves, and generates a material with no horizontal overflow at
+any step. Buttons (Undo/Clear/Close shape/Save) use the same
+touch-friendly sizing as the rest of the builder; no gesture more
+complex than "drag, then tap a button" is required.
 
 ## Known limitations
 
-- **Rectangles only** — no polygons (see above).
-- **One shape per session** — drawing a new rectangle replaces the
-  previous one; there is no way to draw and calibrate multiple shapes
-  before saving.
+- **One shape per session** — drawing again (or starting a new stroke
+  after closing) replaces the in-progress shape; there is no way to
+  draw and calibrate multiple shapes before saving.
 - **No moving individual points after drawing** — to change a drawn
-  shape, draw a new one and save it as a new measurement; there is no
-  "drag a corner to adjust" interaction.
+  shape (freehand or rectangle), draw a new one and save it as a new
+  measurement; there is no "drag a vertex to adjust" interaction.
 - **No re-editing a saved sketch measurement** — `update_measurement()`
   explicitly rejects an attempt to edit a `sketch_rectangle`/
   `sketch_polygon` row's dimensions (the friendly error points the user
-  back to the Draw layout tab to draw a replacement). Editing the
-  *name*, *waste %*, or *notes* of a sketch-derived measurement is not
-  exposed by `update_measurement()` either in this phase — only
+  back to the Draw layout tab to draw a replacement); only
   archive-and-recreate is supported for sketch measurements.
-- **No blueprint/PDF upload, no AI shape detection** — explicitly out
-  of scope, per the brief.
+- **No multi-room/connected-floorplan drawing** — each measurement is
+  one independent shape; there is no "draw a whole floor plan with
+  multiple connected rooms" mode.
+- **No advanced node editing, no PDF/blueprint import, no AI shape
+  detection** — explicitly out of scope, per the brief.
+- **The bounding-box scale calibration assumes the drawing's widest
+  extent is the dimension the user measured in real life.** For a
+  shape drawn at an angle, or where the meaningful reference length
+  isn't the horizontal extent, the resulting scale (and therefore
+  area/perimeter) will be off — the same "approximate precision is
+  acceptable, not topographic accuracy" tradeoff the brief explicitly
+  allows.

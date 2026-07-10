@@ -4,6 +4,50 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Phase 2C.1 — Freehand/brush drawing for the Measurements Draw layout
+
+Replaces the Draw layout tab's rectangle-only sketching with
+**freehand/brush drawing** as the default, recommended mode (rectangle
+mode is kept as a secondary option): trace an irregular outline with
+mouse, touch, or stylus, undo the last stroke, clear and restart, close
+the shape (toggle button) to treat it as an area or leave it open to
+treat it as a linear run, then enter a real-world reference length
+(the drawing's bounding-box width) to scale it. Freehand traces are
+simplified with Douglas-Peucker point decimation before submission and
+stored internally as a polygon — no new `shape_type`, since
+`sketch_polygon` was already reserved (but unused) in Phase 2C's
+schema. A closed shape's area/perimeter are computed server-side via
+the shoelace formula and edge-length summation; an open path computes
+only `linear_length` — the server never trusts a client-computed area,
+the same discipline as rectangle mode. No table migration was needed
+(diagnosed first, per this phase's explicit instruction) — only one
+new function, `save_measurement_polygon_shape()`, alongside the
+existing rectangle-mode `save_measurement_shape()`. Material/labor
+generation from a freehand-derived measurement works identically to a
+manual one (same ZIP/catalog pricing, quantity calc, snapshot
+pricing). Verified at 390×844 with no horizontal overflow at any step
+of the freehand flow. See
+[docs/47](docs/47-drawing-sketch-mode.md) (rewritten for freehand),
+[docs/46](docs/46-measurement-calculation-engine.md) (polygon geometry
+formulas added), [docs/45](docs/45-measurements-takeoff-builder.md),
+and [docs/48](docs/48-measurement-rls-verification.md).
+
+19 new unit tests (polygon area/perimeter/simplification/scaling), 14
+new RLS/integration tests (freehand CRUD, tenant isolation, material/
+labor generation, locked-version rejection), 2 new E2E scenarios
+(desktop + mobile, the brief's worked example: 120 sq ft → 132 sq ft
+flooring at $3.50/sq ft = $462.00, $4.00/sq ft labor = $480.00, $942.00
+total); 39/39 measurements RLS + 153/153 unit + 70/70 E2E all passing,
+zero regressions. Along the way, found and fixed a real bug surfaced by
+the desktop E2E test (not a test artifact): `handlePointerUp` read a
+mutable ref through a `setState` functional updater that React
+evaluates lazily during its render phase — by which point the very
+next line had already reset that same ref, silently dropping every
+freehand stroke. No CAD avanzado, no multi-room connected floorplans,
+no advanced node/vertex editing, no PDF blueprint import, no AI shape
+detection, no external APIs, no scraping, no Client Portal, no Stripe,
+no PDF export — out of scope for this phase.
+
 ### Phase 2C — Measurements / Takeoff builder
 
 Adds a new **Measurements** step to the Proposal Builder (first tab in

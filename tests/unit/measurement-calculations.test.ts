@@ -7,6 +7,11 @@ import {
   computeAreaLaborTotalCents,
   computeLinearLaborTotalCents,
   computePaintGallons,
+  computePolygonArea,
+  computePolygonPerimeter,
+  simplifyPolyline,
+  scalePoints,
+  type Point,
 } from "../../src/lib/proposals/measurements";
 
 describe("computeRectangle", () => {
@@ -142,5 +147,208 @@ describe("computeLinearLaborTotalCents", () => {
 
   it("rejects zero linear length", () => {
     expect(() => computeLinearLaborTotalCents(0, 150)).toThrow();
+  });
+});
+
+// =============================================================================
+// Phase 2C.1: freehand/brush drawing — polygon geometry
+// =============================================================================
+
+describe("computePolygonArea (shoelace formula)", () => {
+  it("a 10x10 square (drawn as 4 corners) has area 100", () => {
+    const square: Point[] = [
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: 10, y: 10 },
+      { x: 0, y: 10 },
+    ];
+    expect(computePolygonArea(square)).toBe(100);
+  });
+
+  it("an L-shape (10x10 square minus a 5x5 corner) has area 75", () => {
+    const lShape: Point[] = [
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: 10, y: 5 },
+      { x: 5, y: 5 },
+      { x: 5, y: 10 },
+      { x: 0, y: 10 },
+    ];
+    expect(computePolygonArea(lShape)).toBe(75);
+  });
+
+  it("works regardless of winding order (clockwise vs counter-clockwise)", () => {
+    const clockwise: Point[] = [
+      { x: 0, y: 0 },
+      { x: 0, y: 10 },
+      { x: 10, y: 10 },
+      { x: 10, y: 0 },
+    ];
+    expect(computePolygonArea(clockwise)).toBe(100);
+  });
+
+  it("rejects fewer than 3 points", () => {
+    expect(() =>
+      computePolygonArea([
+        { x: 0, y: 0 },
+        { x: 10, y: 0 },
+      ])
+    ).toThrow("A closed shape needs at least 3 points");
+  });
+
+  it("rejects collinear points (zero area)", () => {
+    expect(() =>
+      computePolygonArea([
+        { x: 0, y: 0 },
+        { x: 5, y: 0 },
+        { x: 10, y: 0 },
+      ])
+    ).toThrow("The drawn shape has no area");
+  });
+});
+
+describe("computePolygonPerimeter", () => {
+  it("closed: sums all edges including the wrap-around edge (10x10 square = 40)", () => {
+    const square: Point[] = [
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: 10, y: 10 },
+      { x: 0, y: 10 },
+    ];
+    expect(computePolygonPerimeter(square, true)).toBe(40);
+  });
+
+  it("open: sums only the n-1 drawn segments, no wrap-around (two 5-unit segments = 10)", () => {
+    const path: Point[] = [
+      { x: 0, y: 0 },
+      { x: 5, y: 0 },
+      { x: 5, y: 5 },
+    ];
+    expect(computePolygonPerimeter(path, false)).toBe(10);
+  });
+
+  it("rejects a closed shape with fewer than 3 points", () => {
+    expect(() =>
+      computePolygonPerimeter(
+        [
+          { x: 0, y: 0 },
+          { x: 10, y: 0 },
+        ],
+        true
+      )
+    ).toThrow("A closed shape needs at least 3 points");
+  });
+
+  it("rejects an open path with fewer than 2 points", () => {
+    expect(() => computePolygonPerimeter([{ x: 0, y: 0 }], false)).toThrow("A linear path needs at least 2 points");
+  });
+
+  it("rejects a degenerate path with zero length (all points coincide)", () => {
+    expect(() =>
+      computePolygonPerimeter(
+        [
+          { x: 5, y: 5 },
+          { x: 5, y: 5 },
+        ],
+        false
+      )
+    ).toThrow("The drawn shape has no length");
+  });
+});
+
+describe("simplifyPolyline (Douglas-Peucker)", () => {
+  it("a perfectly straight line collapses to its two endpoints", () => {
+    const straightLine: Point[] = [
+      { x: 0, y: 0 },
+      { x: 1, y: 0 },
+      { x: 2, y: 0 },
+      { x: 3, y: 0 },
+      { x: 10, y: 0 },
+    ];
+    expect(simplifyPolyline(straightLine, 0.5)).toEqual([
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+    ]);
+  });
+
+  it("keeps a point far enough from the line to matter", () => {
+    const withABump: Point[] = [
+      { x: 0, y: 0 },
+      { x: 5, y: 5 }, // 5 units off the direct line from (0,0) to (10,0)
+      { x: 10, y: 0 },
+    ];
+    const simplified = simplifyPolyline(withABump, 1);
+    expect(simplified).toContainEqual({ x: 5, y: 5 });
+  });
+
+  it("never increases the point count, and always keeps the endpoints", () => {
+    const jittery: Point[] = Array.from({ length: 50 }, (_, i) => ({ x: i, y: Math.sin(i / 3) * 0.3 }));
+    const simplified = simplifyPolyline(jittery, 2);
+    expect(simplified.length).toBeLessThanOrEqual(jittery.length);
+    expect(simplified[0]).toEqual(jittery[0]);
+    expect(simplified.at(-1)).toEqual(jittery.at(-1));
+  });
+
+  it("a real hand-drawn-shaped stroke still yields a reasonable area after simplification", () => {
+    // A rough approximation of a 10x8 rectangle traced by hand (extra
+    // jittery points along each edge) -- simplifying should not deform the
+    // shape enough to meaningfully change its area.
+    const jitteryRectangle: Point[] = [
+      { x: 0, y: 0 },
+      { x: 2.5, y: 0.05 },
+      { x: 5, y: -0.05 },
+      { x: 7.5, y: 0.05 },
+      { x: 10, y: 0 },
+      { x: 10.05, y: 4 },
+      { x: 9.95, y: 8 },
+      { x: 5, y: 8.05 },
+      { x: 0, y: 8 },
+      { x: 0.05, y: 4 },
+    ];
+    const simplified = simplifyPolyline(jitteryRectangle, 0.5);
+    const area = computePolygonArea(simplified);
+    // True area is 80 (10 x 8) -- allow a small tolerance for the jitter.
+    expect(area).toBeGreaterThan(75);
+    expect(area).toBeLessThan(85);
+  });
+
+  it("leaves a 2-point (or shorter) line untouched", () => {
+    const twoPoints: Point[] = [
+      { x: 0, y: 0 },
+      { x: 10, y: 10 },
+    ];
+    expect(simplifyPolyline(twoPoints, 1)).toEqual(twoPoints);
+  });
+});
+
+describe("scalePoints", () => {
+  it("divides every coordinate by the pixels-per-unit scale", () => {
+    const pixelPoints: Point[] = [
+      { x: 0, y: 0 },
+      { x: 100, y: 50 },
+    ];
+    // 100px represents 10ft -> 10 pixels per unit
+    expect(scalePoints(pixelPoints, 10)).toEqual([
+      { x: 0, y: 0 },
+      { x: 10, y: 5 },
+    ]);
+  });
+
+  it("rejects a zero or negative scale", () => {
+    expect(() => scalePoints([{ x: 0, y: 0 }], 0)).toThrow();
+    expect(() => scalePoints([{ x: 0, y: 0 }], -5)).toThrow();
+  });
+});
+
+describe("Freehand measurement quantity/labor generation (reusing the same generic helpers as rectangle mode)", () => {
+  it("material quantity from a freehand-derived area works identically to a rectangle-derived area", () => {
+    // Freehand area 120 sq ft, 10% waste, 1:1 coverage -> 132 sq ft required (the brief's worked example).
+    const qty = computeMaterialQuantity({ measurementValue: 120, coverageRate: 1, coats: 1, wasteBps: 1000, unit: "sq_ft" });
+    expect(qty).toBe(132);
+  });
+
+  it("area-based labor from a freehand-derived area works identically to a rectangle-derived area", () => {
+    // 120 sq ft x $4.00/sq ft = $480.00 (the brief's worked example).
+    expect(computeAreaLaborTotalCents(120, 400)).toBe(48000);
   });
 });

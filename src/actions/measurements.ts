@@ -9,6 +9,7 @@ import {
   addMeasurementSchema,
   updateMeasurementSchema,
   saveMeasurementShapeSchema,
+  saveMeasurementPolygonShapeSchema,
   generateMaterialFromMeasurementSchema,
   addLaborFromMeasurementSchema,
 } from "../lib/validation/proposals";
@@ -181,6 +182,68 @@ export async function saveMeasurementShapeAction(_prev: ActionResult, formData: 
     p_unit: parsed.data.unit,
     p_length: parsed.data.length,
     p_width: parsed.data.width,
+    p_scale_reference_length: parsed.data.scaleReferenceLength,
+    p_scale_unit: parsed.data.scaleUnit,
+    p_shape_data: shapeData,
+    p_waste_bps: parsed.data.wastePercent,
+    p_notes: (parsed.data.notes ?? null) as string,
+  });
+  if (error) return { error: friendlyRpcErrorMessage(error.message) };
+
+  revalidatePath(`/proposals/${proposalId.data}/edit`);
+  return {};
+}
+
+/**
+ * Freehand/brush drawing (Phase 2C.1). `points` are already converted to
+ * real-world units client-side (the same "client scales, server computes
+ * the derived value" split as saveMeasurementShapeAction above) — this
+ * action just forwards them to the RPC, which independently runs the
+ * shoelace formula rather than trusting any client-computed area.
+ */
+export async function saveMeasurementPolygonShapeAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  await requireUser();
+
+  const proposalVersionId = uuidSchema.safeParse(formData.get("proposalVersionId"));
+  const proposalId = uuidSchema.safeParse(formData.get("proposalId"));
+  const measurementGroupId = uuidSchema.safeParse(formData.get("measurementGroupId"));
+  if (!proposalVersionId.success || !proposalId.success || !measurementGroupId.success) return { error: "Invalid request" };
+
+  const pointsRaw = formData.get("points");
+  const shapeDataRaw = formData.get("shapeData");
+  let points: Json;
+  let shapeData: Json;
+  try {
+    points = JSON.parse(typeof pointsRaw === "string" ? pointsRaw : "[]") as Json;
+    shapeData = JSON.parse(typeof shapeDataRaw === "string" ? shapeDataRaw : "{}") as Json;
+  } catch {
+    return { error: "Invalid drawing data" };
+  }
+  if (!Array.isArray(points) || points.length < 2) {
+    return { error: "Draw a shape before saving" };
+  }
+
+  const parsed = saveMeasurementPolygonShapeSchema.safeParse({
+    name: formData.get("name"),
+    measurementType: formData.get("measurementType"),
+    unit: formData.get("unit"),
+    scaleReferenceLength: formData.get("scaleReferenceLength") || undefined,
+    scaleUnit: formData.get("scaleUnit"),
+    closed: formData.get("closed") === "true",
+    wastePercent: formData.get("wastePercent") || undefined,
+    notes: formData.get("notes") || undefined,
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("save_measurement_polygon_shape", {
+    p_proposal_version_id: proposalVersionId.data,
+    p_measurement_group_id: measurementGroupId.data,
+    p_name: parsed.data.name,
+    p_measurement_type: parsed.data.measurementType,
+    p_unit: parsed.data.unit,
+    p_points: points,
+    p_closed: parsed.data.closed,
     p_scale_reference_length: parsed.data.scaleReferenceLength,
     p_scale_unit: parsed.data.scaleUnit,
     p_shape_data: shapeData,
