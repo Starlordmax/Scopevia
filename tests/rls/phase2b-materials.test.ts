@@ -208,8 +208,13 @@ describe.skipIf(!canRun)("Phase 2B Material catalog & ZIP pricing (requires real
     });
 
     it("state fallback via search_material_catalog: Membrane has a price at 33101 (FL) but not at 78701 (TX)", async () => {
-      const { data: atMiami } = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_zip_code: "33101" });
-      const { data: atAustin } = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_zip_code: "78701" });
+      // p_limit defaults to 20 (Phase 2D.1 pagination) -- these two
+      // searches have no text/category filter, so with 26+ seeded items
+      // "Waterproof Membrane" can fall outside the first page purely by
+      // alphabetical position; request a large enough page to see the
+      // whole seeded catalog, matching this test's actual intent.
+      const { data: atMiami } = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_zip_code: "33101", p_limit: 100 });
+      const { data: atAustin } = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_zip_code: "78701", p_limit: 100 });
       const miamiRow = (atMiami as CatalogRow[]).find((r) => r.id === membraneId);
       const austinRow = (atAustin as CatalogRow[]).find((r) => r.id === membraneId);
       expect(miamiRow?.unit_price_cents).toBe(8500);
@@ -257,7 +262,11 @@ describe.skipIf(!canRun)("Phase 2B Material catalog & ZIP pricing (requires real
     });
 
     it("matches text in supplier_name (all seed materials are 'Demo Supplier')", async () => {
-      const { data, error } = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_search_text: "Demo Supplier" });
+      // p_limit defaults to 20 (Phase 2D.1 pagination) -- request the
+      // whole seeded catalog explicitly, since this test's intent is
+      // "the filter itself doesn't wrongly exclude anything," not "the
+      // first page happens to be large enough."
+      const { data, error } = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_search_text: "Demo Supplier", p_limit: 100 });
       expect(error).toBeNull();
       expect((data as CatalogRow[]).length).toBeGreaterThanOrEqual(26);
     });
@@ -270,13 +279,18 @@ describe.skipIf(!canRun)("Phase 2B Material catalog & ZIP pricing (requires real
     });
 
     it("empty search text and empty category (both '', as the UI's cleared inputs send) still returns the full catalog, not zero", async () => {
-      const { data, error } = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_search_text: "", p_category: "" });
+      const { data, error } = await aClient.rpc("search_material_catalog", {
+        p_tenant_id: tenantAId,
+        p_search_text: "",
+        p_category: "",
+        p_limit: 100,
+      });
       expect(error).toBeNull();
       expect((data as CatalogRow[]).length).toBeGreaterThanOrEqual(26);
     });
 
     it("an empty-string category ('' -- the literal value the 'All categories' <option> submits) is treated as no filter, not as category = ''", async () => {
-      const { data, error } = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_category: "" });
+      const { data, error } = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_category: "", p_limit: 100 });
       expect(error).toBeNull();
       expect((data as CatalogRow[]).length).toBeGreaterThanOrEqual(26);
     });
@@ -303,6 +317,123 @@ describe.skipIf(!canRun)("Phase 2B Material catalog & ZIP pricing (requires real
       const { data: results, error } = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_search_text: uniqueBrand });
       expect(error).toBeNull();
       expect(results).toEqual([]);
+    });
+  });
+
+  // ===========================================================================
+  // Phase 2D.1: server-side pagination -- root-caused the ~30,000px mobile
+  // scroll: search_material_catalog() had no pagination controls at all
+  // (a hard-coded `limit 200`), and the Materials & Costs step rendered
+  // every returned row as a full add-to-proposal card with no windowing.
+  // See docs/51-material-catalog-pagination.md.
+  // ===========================================================================
+  describe("Pagination (Phase 2D.1)", () => {
+    it("defaults to a page of 20 when p_limit is omitted, with total_count reflecting the true full match count", async () => {
+      const { data, error } = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId });
+      expect(error).toBeNull();
+      const rows = data as (CatalogRow & { total_count: number })[];
+      expect(rows.length).toBe(20);
+      expect(rows[0]!.total_count).toBeGreaterThanOrEqual(26);
+      // total_count is identical on every row (count(*) over() is a
+      // whole-result-set aggregate, not per-row), not just the first.
+      expect(new Set(rows.map((r) => r.total_count)).size).toBe(1);
+    });
+
+    it("p_limit/p_offset windows the ordered result set correctly: page1 (limit 5, offset 0) + page2 (limit 5, offset 5) equals one page1+page2 request (limit 10, offset 0)", async () => {
+      const page1 = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_limit: 5, p_offset: 0 });
+      const page2 = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_limit: 5, p_offset: 5 });
+      const combined = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_limit: 10, p_offset: 0 });
+      expect(page1.error).toBeNull();
+      expect(page2.error).toBeNull();
+      expect(combined.error).toBeNull();
+
+      const page1Names = (page1.data as CatalogRow[]).map((r) => r.name);
+      const page2Names = (page2.data as CatalogRow[]).map((r) => r.name);
+      const combinedNames = (combined.data as CatalogRow[]).map((r) => r.name);
+      expect(page1Names.length).toBe(5);
+      expect(page2Names.length).toBe(5);
+      expect([...page1Names, ...page2Names]).toEqual(combinedNames);
+      // No overlap between the two windows -- a real page boundary, not
+      // an off-by-one that repeats or skips a row.
+      expect(page1Names.some((n) => page2Names.includes(n))).toBe(false);
+    });
+
+    it("p_limit combines correctly with a category filter", async () => {
+      const { data, error } = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_category: "plumbing", p_limit: 2, p_offset: 0 });
+      expect(error).toBeNull();
+      const rows = data as (CatalogRow & { total_count: number })[];
+      expect(rows.length).toBe(2);
+      expect(rows[0]!.total_count).toBe(3); // Bathtub, Shower Fixture Set, Toilet -- see the category-only test above
+    });
+
+    it("p_limit combines correctly with search text", async () => {
+      const { data, error } = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_search_text: "paint", p_limit: 1, p_offset: 0 });
+      expect(error).toBeNull();
+      const rows = data as (CatalogRow & { total_count: number })[];
+      expect(rows.length).toBe(1);
+      expect(rows[0]!.total_count).toBeGreaterThanOrEqual(2); // at least Interior Paint + Exterior Paint
+    });
+
+    it("an offset past the end of the result set returns zero rows, not an error", async () => {
+      const { data, error } = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_limit: 20, p_offset: 100000 });
+      expect(error).toBeNull();
+      expect(data).toEqual([]);
+    });
+
+    it("a genuinely empty result (nonsense search) has total_count undefined/absent -- no rows means no total_count row to read, which the caller (searchMaterialCatalog()) treats as 0", async () => {
+      const { data, error } = await aClient.rpc("search_material_catalog", {
+        p_tenant_id: tenantAId,
+        p_search_text: "zzz-no-such-material-zzz",
+      });
+      expect(error).toBeNull();
+      expect(data).toEqual([]);
+    });
+
+    it("p_limit is clamped server-side to a maximum of 100, even if a caller asks for far more", async () => {
+      const { data, error } = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_limit: 999999, p_offset: 0 });
+      expect(error).toBeNull();
+      expect((data as CatalogRow[]).length).toBeLessThanOrEqual(100);
+    });
+
+    it("p_limit is clamped server-side to a minimum of 1, even if a caller asks for zero or a negative number", async () => {
+      const zero = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_limit: 0, p_offset: 0 });
+      const negative = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_limit: -5, p_offset: 0 });
+      expect(zero.error).toBeNull();
+      expect(negative.error).toBeNull();
+      expect((zero.data as CatalogRow[]).length).toBe(1);
+      expect((negative.data as CatalogRow[]).length).toBe(1);
+    });
+
+    it("p_offset is clamped server-side to a minimum of 0, even if a caller asks for a negative offset", async () => {
+      const { data, error } = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_limit: 5, p_offset: -10 });
+      expect(error).toBeNull();
+      expect((data as CatalogRow[]).length).toBe(5);
+    });
+
+    it("total_count for one tenant is unaffected by another tenant's own custom materials (isolation holds under pagination too)", async () => {
+      const uniqueBrand = `TenantOnlyPaginationBrand-${RUN_ID}`;
+      await bClient.rpc("create_tenant_material", {
+        p_tenant_id: tenantBId,
+        p_name: `Tenant B Pagination Material ${RUN_ID}`,
+        p_category: "other",
+        p_default_unit: "each",
+        p_brand: uniqueBrand,
+      });
+
+      const { data: aData } = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_limit: 1, p_offset: 0 });
+      const { data: bSearchesOwnMaterial } = await bClient.rpc("search_material_catalog", {
+        p_tenant_id: tenantBId,
+        p_search_text: uniqueBrand,
+        p_limit: 20,
+        p_offset: 0,
+      });
+      // Tenant A's total_count must not include Tenant B's private material.
+      const aTotal = (aData as (CatalogRow & { total_count: number })[])[0]!.total_count;
+      const { data: aDataLarge } = await aClient.rpc("search_material_catalog", { p_tenant_id: tenantAId, p_limit: 100, p_offset: 0 });
+      const aVisibleIds = new Set((aDataLarge as { id: string }[]).map((r) => r.id));
+      const bMaterialId = (bSearchesOwnMaterial as { id: string }[])[0]!.id;
+      expect(aVisibleIds.has(bMaterialId)).toBe(false);
+      expect(aTotal).toBeGreaterThanOrEqual(26);
     });
   });
 

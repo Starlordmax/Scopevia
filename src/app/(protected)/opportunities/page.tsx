@@ -9,6 +9,7 @@ import { Pagination } from "../../../components/pagination";
 import { PageHeader } from "../../../components/page-header";
 import { EmptyState } from "../../../components/empty-state";
 import { opportunityBadgeClass } from "../../../lib/crm/status-badge";
+import { formatLabel } from "../../../lib/proposals/format";
 
 export const dynamic = "force-dynamic";
 
@@ -73,7 +74,7 @@ export default async function OpportunitiesPage({
         </Link>
       </div>
 
-      {error ? <p className="error-banner">{error.message}</p> : null}
+      {error ? <p className="error-banner">We couldn&apos;t load this page right now. Please try refreshing.</p> : null}
 
       {!opportunities || opportunities.length === 0 ? (
         <div className="section-card">
@@ -115,7 +116,7 @@ export default async function OpportunitiesPage({
                   </td>
                   <td data-label="Client">{o.clients?.display_name ?? "—"}</td>
                   <td data-label="Status">
-                    <span className={`badge ${opportunityBadgeClass(o.status)}`.trim()}>{o.status.replace(/_/g, " ")}</span>
+                    <span className={`badge ${opportunityBadgeClass(o.status)}`.trim()}>{formatLabel(o.status)}</span>
                   </td>
                   <td data-label="Value">{formatMoney(o.estimated_value_cents)}</td>
                 </tr>

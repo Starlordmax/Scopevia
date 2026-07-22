@@ -29,8 +29,8 @@ test.describe("Measurements / Takeoff builder (mobile, 390x844)", () => {
     await page.getByLabel("Proposal title").fill(`E2E Mobile Measurements ${suffix}`);
     await page.getByLabel("Service type").selectOption("flooring");
     await page.getByRole("button", { name: "Save and continue" }).click();
-    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=scope/);
-    const proposalUrl = page.url().replace(/\/edit\?step=scope$/, "");
+    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=measurements/);
+    const proposalUrl = page.url().replace(/\/edit\?step=measurements$/, "");
 
     const viewportWidth = page.viewportSize()!.width;
 
@@ -132,8 +132,8 @@ test.describe("Measurements / Takeoff builder (mobile, 390x844)", () => {
     await page.getByLabel("Proposal title").fill(`E2E Mobile Freehand ${suffix}`);
     await page.getByLabel("Service type").selectOption("flooring");
     await page.getByRole("button", { name: "Save and continue" }).click();
-    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=scope/);
-    const proposalUrl = page.url().replace(/\/edit\?step=scope$/, "");
+    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=measurements/);
+    const proposalUrl = page.url().replace(/\/edit\?step=measurements$/, "");
 
     const viewportWidth = page.viewportSize()!.width;
 

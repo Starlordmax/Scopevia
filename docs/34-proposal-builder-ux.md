@@ -65,10 +65,53 @@ return to draft → archive → restore) and by the E2E suite in
 > área/perímetro/waste) y Draw layout (dibujar un rectángulo simple,
 > calibrarlo con una medida real, guardar). Desde una medición se puede
 > generar un material de catálogo (por ZIP, con snapshot) o mano de obra
-> (`pricing_method` `area`/`linear`, nuevo). Crear una propuesta sigue
-> redirigiendo a Scope (sin cambios) — Measurements es alcanzable como
-> la primera pestaña del stepper, no un paso forzado al crear. Ver
+> (`pricing_method` `area`/`linear`, nuevo). Ver
 > [45-measurements-takeoff-builder.md](45-measurements-takeoff-builder.md).
+> **(Corregido en Phase 2D — ver nota más abajo: crear una propuesta
+> ahora redirige a Measurements, no a Scope.)**
+
+> **Nota de estado (2026-07-13, Phase 2D — visual review & UX polish):**
+> Pase de pulido visual/microcopy sin cambios de backend salvo un bug
+> real encontrado y corregido: `createProposalDirectAction` /
+> `createProposalFromOpportunityAction` redirigían a `?step=scope` tras
+> crear una propuesta — un remanente de antes de que Measurements
+> existiera como step — ahora redirigen a `?step=measurements`, el
+> primer paso real del stepper. Además: iconos distintos por tile en el
+> Dashboard (antes los 6 usaban el mismo ícono de documento); texto
+> explicativo agregado en Measurements (Manual entry vs Draw layout),
+> Labor (Hourly vs Fixed, y Generate labor from measurement), y Photos
+> (Current job vs Previous work); ejemplos concretos en el campo de
+> reference length del Draw layout; se eliminaron referencias a "Phase
+> N"/"Supabase Auth" que aparecían en texto visible al usuario (Proposal
+> Settings, Members, Profile); 5 páginas de listado que mostraban el
+> mensaje de error crudo de Postgres ahora muestran un mensaje genérico
+> amigable; los botones "Remove" en los steps del builder (antes
+> `<button>` planos sin feedback) ahora usan `SubmitButton` con estado
+> de carga. Ver [docs/49](49-phase-2d-ux-polish.md) y
+> [docs/50](50-visual-review-notes.md) para el detalle completo y las
+> capturas de pantalla generadas.
+
+> **Nota de estado (2026-07-15, Phase 2D.1 — material catalog
+> pagination):** El catálogo de materiales ahora pagina server-side (20
+> resultados por página, "Load more materials" en vez de paginación
+> numerada) — antes traía hasta 200 filas sin límite y las renderizaba
+> todas, lo que en mobile producía más de 30,000px de scroll. La
+> búsqueda y el filtro de categoría siguen funcionando igual; el precio
+> por ZIP y el snapshot al agregar a la propuesta no cambiaron. Ver
+> [docs/51](51-material-catalog-pagination.md) y
+> [docs/42](42-material-catalog-by-zip.md#pagination-phase-2d1).
+
+> **Nota de estado (2026-07-15, Phase 3A — Client Portal):** La página de
+> detalle de la propuesta (`/proposals/[proposalId]`) ahora incluye una
+> sección "Client portal" (visible con `proposal_portal_links.view`): crear
+> un link seguro (solo si la propuesta está `ready`), copiar la URL (se
+> muestra una sola vez), ver la lista de links con su estado/expiración/
+> última vista, y revocar uno activo. El link abre un flujo público fuera
+> del shell de la app (`/p/[token]` → `/p/[token]/verify` →
+> `/p/[token]/view`) donde el cliente verifica su email con un código de un
+> solo uso antes de ver una versión de solo lectura de la propuesta (el
+> mismo `ProposalDocument` que usa Preview). Ver
+> [docs/52](52-client-portal-foundation.md).
 
 ## Routes
 
@@ -146,14 +189,21 @@ couldn't use anyway is a UX nicety; the real enforcement is server-side
 
 `src/app/(protected)/proposals/[proposalId]/proposal-document.tsx` renders,
 in the brief's fixed order: business identity, proposal number, prepared
-for, title, summary, scope, **measurements** (Phase 2C — name, type,
-dimensions, area, perimeter, waste, and any material/labor generated
-from each one), schedule, labor breakdown, materials & costs,
+date, prepared for, title, summary, scope, **measurements** (Phase 2C —
+name, type, dimensions, area, perimeter, waste, and any material/labor
+generated from each one), schedule, labor breakdown, materials & costs,
 current-job photos, previous-work gallery, terms, exclusions, pricing
-summary, total. No internal IDs, storage paths, `shape_data` JSON, or
+summary, total, and — when the version has one — a **client response**
+section (Phase 3C). No internal IDs, storage paths, `shape_data` JSON, or
 technical metadata are ever rendered — photos are always shown via
-already-resolved signed URLs computed server-side
-(`getSignedMediaUrls`), never a raw path.
+already-resolved signed URLs computed server-side (`getSignedMediaUrls`),
+never a raw path; a photo whose signed URL failed shows a friendly "Image
+unavailable" placeholder (Phase 3C) rather than silently disappearing.
+
+**Phase 3C** reuses this exact component for a dedicated, control-free
+print/export view (`/proposals/[id]/print`, plus `/p/[token]/print` on the
+Client Portal) — see [docs/60](60-proposal-pdf-print-export.md) and
+[docs/61](61-export-version-safety.md).
 
 ## Dashboard
 

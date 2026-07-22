@@ -21,7 +21,7 @@ export function ProposalSettingsForm({ tenantId, settings }: { tenantId: string;
       <div className="field">
         <label htmlFor="currency">Currency</label>
         <input id="currency" type="text" value="USD" disabled />
-        <span className="hint">Phase 2A supports USD only.</span>
+        <span className="hint">Only USD is supported right now.</span>
       </div>
 
       <div className="tenant-form" style={{ width: "100%" }}>

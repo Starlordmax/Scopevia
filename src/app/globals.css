@@ -195,6 +195,20 @@ textarea {
   min-height: unset;
 }
 
+/* A checkbox/radio must never inherit the block-level input styling above
+   (full width, 44px min-height, box padding) — found via Phase 3B's portal
+   accept-form screenshot review, where "I confirm..." rendered with a huge,
+   disconnected checkbox. Applies retroactively to every existing checkbox
+   in the app (e.g. the Materials step's "Taxable" toggle), not just new
+   ones. */
+input[type="checkbox"],
+input[type="radio"] {
+  width: 16px;
+  min-height: 16px;
+  padding: 0;
+  flex-shrink: 0;
+}
+
 input:focus,
 select:focus,
 textarea:focus,
@@ -892,6 +906,17 @@ tbody tr:hover {
   flex-wrap: wrap;
 }
 
+/* Multi-field rows (e.g. Coverage rate / Coats / Waste %, or the Draw
+   layout's Unit / reference length / Waste %) use `style={{ flex: 1 }}` on
+   each .field -- with flex-basis defaulting to 0%, they shrink to fit rather
+   than ever using flex-wrap's wrap behavior, squeezing labels like "This
+   drawing's width represents (ft)" into an unreadably narrow column on a
+   390px viewport. A min-width gives flex-wrap something to actually wrap
+   against, so tight rows stack into full-width fields instead. */
+.tenant-form > .field {
+  min-width: 140px;
+}
+
 @media (max-width: 640px) {
   table,
   thead,
@@ -1068,5 +1093,160 @@ tbody tr:hover {
 
   .proposal-stepper-item {
     padding: 8px 10px;
+  }
+}
+
+/* Client Portal (Phase 3A) — public, unauthenticated pages under /p/[token].
+   Deliberately its OWN layout, not the contractor app shell (no sidebar, no
+   topbar, no tenant switcher) — a client viewing their proposal should see a
+   clean, professional, client-facing surface only. */
+.portal-page {
+  min-height: 100dvh;
+  background: var(--color-background);
+  padding: 24px 16px 40px;
+}
+
+.portal-content {
+  max-width: var(--content-max-width);
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.portal-content-narrow {
+  max-width: 480px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.portal-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: center;
+}
+
+.portal-header-business {
+  font-size: var(--text-section-title);
+  font-weight: 700;
+}
+
+/* =============================================================================
+   Phase 3C: proposal export/print document.
+   ========================================================================== */
+
+/* A photo whose signed URL could not be generated -- shown instead of
+   silently dropping the photo (see docs/60-proposal-pdf-print-export.md,
+   "Image handling"). Same box size as a real photo-thumb so the grid
+   doesn't jump around. */
+.photo-unavailable {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-background);
+  color: var(--color-text-muted);
+  font-size: var(--text-small);
+  text-align: center;
+  padding: 12px;
+}
+
+.proposal-document-response {
+  border-top: 1px solid var(--color-border);
+  padding-top: 16px;
+}
+
+.proposal-document-footer {
+  border-top: 1px solid var(--color-border);
+  padding-top: 12px;
+  text-align: center;
+}
+
+/* The dedicated export/print routes (/proposals/[id]/print,
+   /p/[token]/print) render nothing but this wrapper + the document itself
+   -- no app shell, no sidebar, no topbar (see their own layout.tsx files) --
+   so on-screen it's already a clean, document-like preview, not just the
+   print output. */
+.print-page {
+  min-height: 100dvh;
+  background: var(--color-background);
+  padding: 24px 16px 40px;
+}
+
+.print-page-content {
+  max-width: var(--content-max-width);
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Elements that exist only for the on-screen preview (the "Print / Save as
+   PDF" button, any back link) -- never part of the actual print output. */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+  }
+
+  .print-page {
+    min-height: 0;
+    padding: 0;
+    background: #ffffff;
+  }
+
+  .print-page-content {
+    max-width: none;
+    gap: 16px;
+  }
+
+  .proposal-document {
+    color: #000000;
+    gap: 16px;
+  }
+
+  .section-card {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  /* Avoid a table header (or a single row) being stranded alone at the
+     bottom of a page, separated from the rows/card it belongs with. */
+  .proposal-document section,
+  .table-card,
+  .photo-card,
+  .pricing-summary {
+    break-inside: avoid;
+  }
+
+  h2,
+  h3 {
+    break-after: avoid;
+  }
+
+  table {
+    font-size: 0.85rem;
+  }
+
+  .photo-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .photo-thumb-lg {
+    height: 140px;
+  }
+
+  a[href]::after {
+    content: none; /* Chromium's default "print link URLs" isn't useful here -- every link in this document is internal navigation, never a citation. */
   }
 }

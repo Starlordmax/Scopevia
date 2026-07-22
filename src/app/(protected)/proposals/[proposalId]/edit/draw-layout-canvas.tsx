@@ -173,6 +173,12 @@ function FreehandDrawForm({
           border: "1px solid var(--color-border)",
           borderRadius: "var(--radius)",
           maxWidth: "100%",
+          // The app shell's topbar is `position: sticky; top: 0` (see
+          // globals.css) -- without this, scrolling the canvas to the very
+          // top of the viewport (e.g. a mobile browser's native
+          // scroll-into-view on focus) tucks its top strip behind the
+          // sticky header, silently swallowing touches/clicks there.
+          scrollMarginTop: "calc(var(--topbar-height) + 12px)",
         }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -279,6 +285,10 @@ function FreehandDrawForm({
             />
           </div>
         </div>
+        <p className="hint">
+          Tell Scopevia what the full width of your drawing represents in real life. For example, if the widest part of
+          your sketch is 10 {scaleUnit === "ft" ? "ft" : "m"} wide, enter 10.
+        </p>
 
         {preview ? (
           <div className="metric-tile unsaved-preview-tile" style={{ maxWidth: 400 }}>
@@ -392,7 +402,14 @@ function RectangleDrawForm({
         width={VIEWPORT_WIDTH}
         height={VIEWPORT_HEIGHT}
         viewBox={`0 0 ${VIEWPORT_WIDTH} ${VIEWPORT_HEIGHT}`}
-        style={{ touchAction: "none", background: "var(--color-surface-alt, #f5f5f5)", border: "1px solid var(--color-border)", borderRadius: "var(--radius)", maxWidth: "100%" }}
+        style={{
+          touchAction: "none",
+          background: "var(--color-surface-alt, #f5f5f5)",
+          border: "1px solid var(--color-border)",
+          borderRadius: "var(--radius)",
+          maxWidth: "100%",
+          scrollMarginTop: "calc(var(--topbar-height) + 12px)",
+        }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -464,6 +481,10 @@ function RectangleDrawForm({
         <input type="hidden" name="scaleUnit" value={scaleUnit} />
         <input type="hidden" name="length" value={realWidth || ""} />
         <input type="hidden" name="width" value={realHeight || ""} />
+        <p className="hint">
+          Tell Scopevia what the width of your rectangle represents in real life. For example, if it&apos;s a 10{" "}
+          {scaleUnit === "ft" ? "ft" : "m"} wide room, enter 10.
+        </p>
 
         {preview ? (
           <div className="metric-tile unsaved-preview-tile" style={{ maxWidth: 360 }}>
@@ -504,8 +525,8 @@ export function DrawLayoutCanvas({
       <div className="field">
         <label htmlFor="drawingMode">Drawing mode</label>
         <select id="drawingMode" value={drawingMode} onChange={(e) => setDrawingMode(e.target.value as DrawingMode)}>
-          <option value="freehand">Freehand (recommended) — for irregular rooms, L-shapes, patios</option>
-          <option value="rectangle">Rectangle — for simple rectangular rooms</option>
+          <option value="freehand">Freehand (recommended) — best for bathrooms, kitchens, patios, and other irregular spaces</option>
+          <option value="rectangle">Rectangle — best for simple rectangular rooms</option>
         </select>
       </div>
 

@@ -37,6 +37,7 @@ export function StepPhotos({
     <div className="stack">
       <div className="section-card stack">
         <h2>Current job photos</h2>
+        <p className="hint">Photos of this specific job — before, during, or after the work.</p>
         {currentJobMedia.length === 0 ? (
           <p className="hint">No photos of the current job yet.</p>
         ) : (
@@ -54,9 +55,9 @@ export function StepPhotos({
                   <form action={detachProposalMediaAction} className="photo-card-actions">
                     <input type="hidden" name="proposalMediaId" value={m.id} />
                     <input type="hidden" name="proposalId" value={proposalId} />
-                    <button type="submit" className="button-secondary">
+                    <SubmitButton pendingText="Removing…" className="button-secondary">
                       Remove
-                    </button>
+                    </SubmitButton>
                   </form>
                 ) : null}
               </figure>
@@ -89,6 +90,7 @@ export function StepPhotos({
 
       <div className="section-card stack">
         <h2>Previous work</h2>
+        <p className="hint">Show examples of similar work you&apos;ve completed, pulled from your Portfolio.</p>
         {previousWorkMedia.length === 0 ? (
           <p className="hint">No previous-work photos selected yet.</p>
         ) : (
@@ -106,9 +108,9 @@ export function StepPhotos({
                   <form action={detachProposalMediaAction} className="photo-card-actions">
                     <input type="hidden" name="proposalMediaId" value={m.id} />
                     <input type="hidden" name="proposalId" value={proposalId} />
-                    <button type="submit" className="button-secondary">
+                    <SubmitButton pendingText="Removing…" className="button-secondary">
                       Remove from proposal
-                    </button>
+                    </SubmitButton>
                   </form>
                 ) : null}
               </figure>

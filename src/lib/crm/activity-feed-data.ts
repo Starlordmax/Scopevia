@@ -54,6 +54,6 @@ export async function getActivityFeed(params: {
     activityType: r.activity_type,
     metadata: (r.metadata ?? {}) as Record<string, unknown>,
     createdAt: r.created_at,
-    actorName: r.actor_user_id ? (nameByActorId.get(r.actor_user_id) ?? "Unnamed member") : null,
+    actorName: r.actor_user_id ? (nameByActorId.get(r.actor_user_id) ?? "Team member") : null,
   }));
 }

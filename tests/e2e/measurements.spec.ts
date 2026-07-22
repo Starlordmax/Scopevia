@@ -30,8 +30,8 @@ test.describe("Measurements / Takeoff builder", () => {
     await page.getByLabel("Proposal title").fill(proposalTitle);
     await page.getByLabel("Service type").selectOption("flooring");
     await page.getByRole("button", { name: "Save and continue" }).click();
-    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=scope/);
-    const proposalUrl = page.url().replace(/\/edit\?step=scope$/, "");
+    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=measurements/);
+    const proposalUrl = page.url().replace(/\/edit\?step=measurements$/, "");
 
     // --- Measurements step: manual room entry ---
     await page.goto(`${proposalUrl}/edit?step=measurements`);
@@ -139,8 +139,8 @@ test.describe("Measurements / Takeoff builder", () => {
     await page.getByLabel("Proposal title").fill(proposalTitle);
     await page.getByLabel("Service type").selectOption("flooring");
     await page.getByRole("button", { name: "Save and continue" }).click();
-    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=scope/);
-    const proposalUrl = page.url().replace(/\/edit\?step=scope$/, "");
+    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=measurements/);
+    const proposalUrl = page.url().replace(/\/edit\?step=measurements$/, "");
 
     // --- Measurements step: freehand draw ---
     await page.goto(`${proposalUrl}/edit?step=measurements`);

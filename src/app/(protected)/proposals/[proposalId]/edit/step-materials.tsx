@@ -11,7 +11,7 @@ import {
 import type { ActionResult } from "../../../../../actions/auth";
 import { SubmitButton } from "../../../../../components/submit-button";
 import { computeLineItemTotalCents } from "../../../../../lib/proposals/calculations";
-import { formatCents } from "../../../../../lib/proposals/format";
+import { formatCents, formatLabel } from "../../../../../lib/proposals/format";
 import type { MaterialCatalogSearchResult } from "../../../../../lib/proposals/materials";
 import type { Database } from "../../../../../../types/database";
 
@@ -119,7 +119,7 @@ function CatalogResultRow({
         {result.name}
         {result.description ? <div className="hint">{result.description}</div> : null}
       </td>
-      <td data-label="Unit">{result.default_unit.replace(/_/g, " ")}</td>
+      <td data-label="Unit">{formatLabel(result.default_unit)}</td>
       <td data-label="Supplier">{result.price_supplier_name ?? result.supplier_name ?? "—"}</td>
       <td data-label="Price">
         {hasPrice ? (
@@ -183,6 +183,10 @@ function MaterialPricingPanel({
   catalogResults,
   catalogSearch,
   catalogCategory,
+  catalogTotalCount,
+  catalogHasMore,
+  catalogLimit,
+  catalogPageSize,
 }: {
   proposalId: string;
   proposalVersionId: string;
@@ -193,6 +197,10 @@ function MaterialPricingPanel({
   catalogResults: MaterialCatalogSearchResult[];
   catalogSearch: string;
   catalogCategory: string;
+  catalogTotalCount: number;
+  catalogHasMore: boolean;
+  catalogLimit: number;
+  catalogPageSize: number;
 }) {
   const hasResults = catalogResults.length > 0;
   const hasAnyPrice = catalogResults.some((r) => r.unit_price_cents !== null);
@@ -220,12 +228,17 @@ function MaterialPricingPanel({
       <CatalogSearchForm proposalId={proposalId} catalogSearch={catalogSearch} catalogCategory={catalogCategory} />
 
       <h3 style={{ marginBottom: 0 }}>{resultsHeading}</h3>
+      {hasResults ? (
+        <p className="hint">
+          Showing {catalogResults.length} of {catalogTotalCount} {catalogTotalCount === 1 ? "material" : "materials"}.
+        </p>
+      ) : null}
 
       {!hasResults ? (
         !pricingZipCode ? (
           <p className="hint">Enter a ZIP code to load material pricing.</p>
         ) : (
-          <p className="hint">No materials match your search for this ZIP code. Try a different keyword or category.</p>
+          <p className="hint">No materials match your search for this ZIP code. Try a different keyword, category, or add a custom cost below.</p>
         )
       ) : (
         <>
@@ -258,6 +271,17 @@ function MaterialPricingPanel({
               </tbody>
             </table>
           </div>
+          {catalogHasMore ? (
+            <form method="get" action={`/proposals/${proposalId}/edit`}>
+              <input type="hidden" name="step" value="materials" />
+              <input type="hidden" name="catalogSearch" value={catalogSearch} />
+              <input type="hidden" name="catalogCategory" value={catalogCategory} />
+              <input type="hidden" name="catalogLimit" value={catalogLimit + catalogPageSize} />
+              <button type="submit" className="button-secondary" style={{ width: "100%" }}>
+                Load more materials
+              </button>
+            </form>
+          ) : null}
         </>
       )}
     </div>
@@ -278,6 +302,10 @@ export function StepMaterials({
   catalogResults,
   catalogSearch,
   catalogCategory,
+  catalogTotalCount,
+  catalogHasMore,
+  catalogLimit,
+  catalogPageSize,
 }: {
   proposalId: string;
   proposalVersionId: string;
@@ -292,6 +320,10 @@ export function StepMaterials({
   catalogResults: MaterialCatalogSearchResult[];
   catalogSearch: string;
   catalogCategory: string;
+  catalogTotalCount: number;
+  catalogHasMore: boolean;
+  catalogLimit: number;
+  catalogPageSize: number;
 }) {
   const [state, formAction] = useActionState(addProposalLineItemAction, initialState);
   const [quantity, setQuantity] = useState("1");
@@ -316,6 +348,10 @@ export function StepMaterials({
           catalogResults={catalogResults}
           catalogSearch={catalogSearch}
           catalogCategory={catalogCategory}
+          catalogTotalCount={catalogTotalCount}
+          catalogHasMore={catalogHasMore}
+          catalogLimit={catalogLimit}
+          catalogPageSize={catalogPageSize}
         />
       ) : null}
 
@@ -464,9 +500,9 @@ export function StepMaterials({
                         <form action={archiveProposalLineItemAction}>
                           <input type="hidden" name="lineItemId" value={item.id} />
                           <input type="hidden" name="proposalId" value={proposalId} />
-                          <button type="submit" className="button-secondary">
+                          <SubmitButton pendingText="Removing…" className="button-secondary">
                             Remove
-                          </button>
+                          </SubmitButton>
                         </form>
                       </td>
                     ) : null}

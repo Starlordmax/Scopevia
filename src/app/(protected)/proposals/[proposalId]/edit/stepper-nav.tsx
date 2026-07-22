@@ -24,6 +24,7 @@ export function StepperNav({ proposalId, currentStep }: { proposalId: string; cu
           className="proposal-stepper-item"
           data-active={step.key === currentStep}
           data-done={index < currentIndex}
+          aria-current={step.key === currentStep ? "step" : undefined}
         >
           <span className="proposal-stepper-number">{index + 1}</span>
           <span className="proposal-stepper-label">{step.label}</span>

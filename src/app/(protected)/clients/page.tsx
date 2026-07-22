@@ -73,7 +73,7 @@ export default async function ClientsPage({
         </Link>
       </div>
 
-      {error ? <p className="error-banner">{error.message}</p> : null}
+      {error ? <p className="error-banner">We couldn&apos;t load this page right now. Please try refreshing.</p> : null}
 
       {!clients || clients.length === 0 ? (
         <div className="section-card">

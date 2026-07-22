@@ -67,7 +67,7 @@ export async function createProposalDirectAction(_prev: ActionResult, formData: 
   if (error) return { error: friendlyRpcErrorMessage(error.message) };
 
   const proposal = data as Proposal;
-  redirect(`/proposals/${proposal.id}/edit?step=scope`);
+  redirect(`/proposals/${proposal.id}/edit?step=measurements`);
 }
 
 export async function createProposalFromOpportunityAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
@@ -101,7 +101,7 @@ export async function createProposalFromOpportunityAction(_prev: ActionResult, f
   if (error) return { error: friendlyRpcErrorMessage(error.message) };
 
   const proposal = data as Proposal;
-  redirect(`/proposals/${proposal.id}/edit?step=scope`);
+  redirect(`/proposals/${proposal.id}/edit?step=measurements`);
 }
 
 export async function updateProposalScopeAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
@@ -447,4 +447,22 @@ export async function restoreProposalAction(formData: FormData): Promise<void> {
   revalidatePath(`/proposals/${proposalId.data}`);
   revalidatePath("/proposals");
   redirect(`/proposals/${proposalId.data}`);
+}
+
+export async function createProposalRevisionAction(formData: FormData): Promise<void> {
+  await requireUser();
+  const proposalId = uuidSchema.safeParse(formData.get("proposalId"));
+  if (!proposalId.success) redirect("/proposals");
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("create_proposal_revision", { p_proposal_id: proposalId.data });
+
+  revalidatePath(`/proposals/${proposalId.data}`);
+  revalidatePath("/proposals");
+  // On failure (e.g. a race with another revision already in progress),
+  // this simply lands back on the detail page showing the current,
+  // unchanged state — same best-effort discipline as archiveProposalAction/
+  // restoreProposalAction above, which this button-only (no form fields)
+  // action otherwise matches exactly.
+  redirect(error ? `/proposals/${proposalId.data}` : `/proposals/${proposalId.data}/edit?step=scope`);
 }

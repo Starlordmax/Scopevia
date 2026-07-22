@@ -92,6 +92,12 @@ calendar integrations, follow-up automation, Good/Better/Best, advanced
 square-footage calculations, and a full per-industry materials catalog.
 None of these were started "just in case."
 
+> **Update (Phase 3A, 2026-07-15):** Client Portal + email OTP access — two
+> of the items explicitly deferred above — are now implemented, in a
+> dedicated view-only foundation phase. Accept/decline, PDF, e-signature,
+> Stripe/payments, and AI remain out of scope. See
+> [52-client-portal-foundation.md](52-client-portal-foundation.md).
+
 ## Documents in this set
 
 - [30-phase-2a-proposal-data-model.md](30-phase-2a-proposal-data-model.md) — schema
@@ -101,3 +107,6 @@ None of these were started "just in case."
 - [34-proposal-builder-ux.md](34-proposal-builder-ux.md) — the builder, preview, dashboard, navigation
 - [35-phase-2a-rls-verification.md](35-phase-2a-rls-verification.md) — security test evidence
 - [36-phase-2a-e2e-verification.md](36-phase-2a-e2e-verification.md) — end-to-end test evidence
+- [52-client-portal-foundation.md](52-client-portal-foundation.md) — Phase 3A: Client Portal with email + OTP access
+- [53-client-portal-security.md](53-client-portal-security.md) — Phase 3A: token/OTP/session security model
+- [54-client-portal-e2e-verification.md](54-client-portal-e2e-verification.md) — Phase 3A: end-to-end test evidence

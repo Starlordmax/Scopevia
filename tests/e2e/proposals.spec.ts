@@ -25,8 +25,12 @@ test.describe("Proposals — full builder flow", () => {
     await page.getByLabel("Proposal title").fill(proposalTitle);
     await page.getByLabel("Service type").selectOption("interior_painting");
     await page.getByRole("button", { name: "Save and continue" }).click();
-    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=scope/);
-    const proposalUrl = page.url().replace(/\/edit\?step=scope$/, "");
+    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=measurements/);
+    const proposalUrl = page.url().replace(/\/edit\?step=measurements$/, "");
+
+    // Step 1: Measurements is the landing step for a new proposal -- move on to Scope.
+    await page.getByRole("link", { name: "Continue to Scope of Work" }).click();
+    await page.waitForURL(/step=scope/);
 
     // Step 2: Scope
     await page.getByLabel("Custom section title").fill("Surface preparation");
@@ -225,9 +229,9 @@ test.describe("Proposals — full builder flow", () => {
     await page.getByLabel("Proposal title").fill(`E2E Portfolio Reuse ${suffix}`);
     await page.getByLabel("Service type").selectOption("bathroom_remodeling");
     await page.getByRole("button", { name: "Save and continue" }).click();
-    await page.waitForURL(/step=scope/);
+    await page.waitForURL(/step=measurements/);
 
-    await page.goto(page.url().replace("step=scope", "step=photos"));
+    await page.goto(page.url().replace("step=measurements", "step=photos"));
     await page.getByText("Select from Portfolio").click();
     await page.getByRole("button", { name: "+ Add" }).first().click();
     await expect(page.getByText("Added")).toBeVisible({ timeout: 10_000 });
@@ -252,7 +256,9 @@ test.describe("Job summary (update_proposal_scope)", () => {
     await page.getByLabel("Proposal title").fill(`E2E Scope Partial ${suffix}`);
     await page.getByLabel("Service type").selectOption("custom");
     await page.getByRole("button", { name: "Save and continue" }).click();
-    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=scope/);
+    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=measurements/);
+    await page.getByRole("link", { name: "Continue to Scope of Work" }).click();
+    await page.waitForURL(/step=scope/);
 
     // The exact reported bug: only Short summary + Estimated start date are
     // filled; Scope introduction and Estimated duration are left empty.
@@ -294,7 +300,9 @@ test.describe("Job summary (update_proposal_scope)", () => {
     await page.getByLabel("Proposal title").fill(`E2E Scope Empty ${suffix}`);
     await page.getByLabel("Service type").selectOption("custom");
     await page.getByRole("button", { name: "Save and continue" }).click();
-    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=scope/);
+    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=measurements/);
+    await page.getByRole("link", { name: "Continue to Scope of Work" }).click();
+    await page.waitForURL(/step=scope/);
 
     // Every optional field left blank — no error of any kind.
     await page.getByRole("button", { name: "Save and continue" }).click();
@@ -321,7 +329,7 @@ test.describe("Labor pricing method", () => {
     await page.getByLabel("Proposal title").fill(`E2E Fixed Labor ${suffix}`);
     await page.getByLabel("Service type").selectOption("bathroom_remodeling");
     await page.getByRole("button", { name: "Save and continue" }).click();
-    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=scope/);
+    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=measurements/);
 
     // Jump straight to Labor via the stepper (not the sequential "Continue"
     // link) — the reported bug's steps weren't specific about navigation,
@@ -387,7 +395,7 @@ test.describe("Labor pricing method", () => {
     await page.getByLabel("Proposal title").fill(`E2E Hourly Labor ${suffix}`);
     await page.getByLabel("Service type").selectOption("custom");
     await page.getByRole("button", { name: "Save and continue" }).click();
-    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=scope/);
+    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=measurements/);
 
     await page.getByRole("link", { name: /3.*Labor/i }).click();
     await page.waitForURL(/step=labor/);
@@ -425,7 +433,7 @@ test.describe("Labor pricing method", () => {
     await page.getByLabel("Proposal title").fill(`E2E Preview Vs Saved ${suffix}`);
     await page.getByLabel("Service type").selectOption("custom");
     await page.getByRole("button", { name: "Save and continue" }).click();
-    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=scope/);
+    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=measurements/);
 
     await page.getByRole("link", { name: /3.*Labor/i }).click();
     await page.waitForURL(/step=labor/);
@@ -504,7 +512,7 @@ test.describe("Proposals — Viewer permissions", () => {
     await ownerPage.getByLabel("Proposal title").fill(`E2E Viewer Proposal ${suffix}`);
     await ownerPage.getByLabel("Service type").selectOption("custom");
     await ownerPage.getByRole("button", { name: "Save and continue" }).click();
-    await ownerPage.waitForURL(/step=scope/);
+    await ownerPage.waitForURL(/step=measurements/);
     await ownerContext.close();
 
     await page.goto("/proposals");
@@ -531,6 +539,8 @@ test.describe("Proposals — Sales permissions", () => {
     await page.getByLabel("Proposal title").fill(`E2E Sales Proposal ${suffix}`);
     await page.getByLabel("Service type").selectOption("custom");
     await page.getByRole("button", { name: "Save and continue" }).click();
+    await page.waitForURL(/step=measurements/);
+    await page.getByRole("link", { name: "Continue to Scope of Work" }).click();
     await page.waitForURL(/step=scope/);
 
     await page.getByRole("link", { name: "Continue to Labor" }).click();
@@ -559,8 +569,8 @@ test.describe("Proposals — tenant isolation", () => {
     await page.getByLabel("Proposal title").fill(proposalTitle);
     await page.getByLabel("Service type").selectOption("custom");
     await page.getByRole("button", { name: "Save and continue" }).click();
-    await page.waitForURL(/step=scope/);
-    const proposalUrl = page.url().replace(/\/edit\?step=scope$/, "");
+    await page.waitForURL(/step=measurements/);
+    const proposalUrl = page.url().replace(/\/edit\?step=measurements$/, "");
 
     await page.goto("/");
     const switcher = page.getByLabel("Switch business");

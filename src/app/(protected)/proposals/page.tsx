@@ -4,7 +4,7 @@ import { requireActiveTenant } from "../../../lib/auth/tenant";
 import { hasPermission, PERMISSIONS } from "../../../lib/auth/permissions";
 import { createClient } from "../../../lib/supabase/server";
 import { containsPattern, rangeFor, DEFAULT_PAGE_SIZE } from "../../../lib/search";
-import { formatCents } from "../../../lib/proposals/format";
+import { formatCents, formatLabel } from "../../../lib/proposals/format";
 import { proposalBadgeClass } from "../../../lib/crm/status-badge";
 import { SearchForm } from "../../../components/search-form";
 import { Pagination } from "../../../components/pagination";
@@ -87,7 +87,7 @@ export default async function ProposalsPage({
         </Link>
       </nav>
 
-      {error ? <p className="error-banner">{error.message}</p> : null}
+      {error ? <p className="error-banner">We couldn&apos;t load this page right now. Please try refreshing.</p> : null}
 
       {!proposals || proposals.length === 0 ? (
         <div className="section-card">
@@ -135,7 +135,7 @@ export default async function ProposalsPage({
                     <td data-label="Client">{p.clients?.display_name ?? "—"}</td>
                     <td data-label="Total">{version ? formatCents(version.total_cents) : "—"}</td>
                     <td data-label="Status">
-                      <span className={`badge ${proposalBadgeClass(p.status)}`.trim()}>{p.status}</span>
+                      <span className={`badge ${proposalBadgeClass(p.status)}`.trim()}>{formatLabel(p.status)}</span>
                     </td>
                     <td data-label="Updated">{new Date(p.updated_at).toLocaleDateString()}</td>
                   </tr>

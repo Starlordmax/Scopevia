@@ -8,6 +8,7 @@ import { SearchForm } from "../../../components/search-form";
 import { Pagination } from "../../../components/pagination";
 import { PageHeader } from "../../../components/page-header";
 import { EmptyState } from "../../../components/empty-state";
+import { formatLabel } from "../../../lib/proposals/format";
 
 export const dynamic = "force-dynamic";
 
@@ -68,7 +69,7 @@ export default async function PortfolioPage({
         </Link>
       </div>
 
-      {error ? <p className="error-banner">{error.message}</p> : null}
+      {error ? <p className="error-banner">We couldn&apos;t load this page right now. Please try refreshing.</p> : null}
 
       {!projects || projects.length === 0 ? (
         <div className="section-card">
@@ -96,9 +97,11 @@ export default async function PortfolioPage({
           {projects.map((p) => (
             <Link key={p.id} href={`/portfolio/${p.id}`} className="card" style={{ maxWidth: "none" }}>
               <strong>{p.title}</strong>
-              <p className="hint">{p.service_type.replace(/_/g, " ")}</p>
+              <p className="hint">{formatLabel(p.service_type)}</p>
               {p.location_label ? <p className="hint">{p.location_label}</p> : null}
-              <span className="badge">{p.portfolio_project_media?.length ?? 0} photo(s)</span>
+              <span className="badge">
+                {p.portfolio_project_media?.length ?? 0} {p.portfolio_project_media?.length === 1 ? "photo" : "photos"}
+              </span>
             </Link>
           ))}
         </div>

@@ -4,6 +4,452 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Phase 3D.1 — Render Staging Deployment Prep
+
+Prepares Scopevia to run as a Render **Web Service** (not a Static Site —
+it needs Next.js SSR, Server Actions, httpOnly cookies, and the Supabase
+service role, none of which a static host can run) for a closed beta.
+No product features were added; this is deployment/infrastructure
+preparation only.
+
+**Added:** `/api/health` — a shallow, public health-check route (no
+Supabase call, no secrets, no user data) for Render's health checker,
+added to `proxy.ts`'s always-allowed paths so it's reachable without a
+session; `src/lib/env-validation.ts` + `src/instrumentation.ts` — a
+"fail fast, not fail quiet" startup check that refuses to boot a
+production/staging server with a misconfigured email provider or missing
+Supabase/`APP_BASE_URL` config, verified live against a real `next start`
+process; `render.yaml` (a Blueprint with every secret marked `sync: false`
+— no real values anywhere in the repo); `engines.node` and a
+`predeploy:staging` script (typecheck + lint + unit tests + build).
+
+**Reviewed and confirmed already correct, nothing weakened to "make it
+deploy":** portal/tenant session cookies (`secure: true` already keys off
+`NODE_ENV=production`, which `next start` sets automatically — Render's
+HTTPS domains just work); no hardcoded `localhost` in any real code path;
+no `next/image` usage anywhere, so no image-domain config was needed or
+added; every email-related error message already excludes secrets
+(confirmed by the same audit Phase 3D's delivery-security review already
+did).
+
+15 new unit tests (env validation — every required-variable and
+dev-provider-in-production rule, individually and aggregated, plus a
+check that error messages never echo a secret value; the health route's
+response shape and non-leakage), 2 new E2E smoke tests
+(`tests/e2e/health.spec.ts`, pure HTTP checks against a real running
+server). Three new docs (`docs/64`–`66`): the deployment guide, the
+environment-variable reference (names and where to get them, never
+values), and a manual post-deploy smoke-test checklist covering the
+internal, portal, and revision flows against real Resend email. No
+Stripe/payments/deposits/e-signature/AI — 247/247 unit + existing
+RLS/E2E suites unchanged (no product code touched). See
+[docs/64](docs/64-render-staging-deployment.md),
+[docs/65](docs/65-render-environment-variables.md), and
+[docs/66](docs/66-staging-smoke-test-checklist.md).
+
+### Phase 3D — Email Notifications for Client Portal Events
+
+The contractor's team now gets a real email when a client views, accepts,
+or declines a proposal — not just an in-app activity/audit trail. Sent to
+every active Owner/Admin/Estimator/Sales member of the tenant (Viewer and
+Field Worker excluded); a short confirmation is also sent to the client
+themselves on accept/decline. A "viewed" email fires only on a session's
+first view — a reload never spams a second one. Every send is deduplicated
+by a hard database constraint (`unique(dedupe_key)` on the new
+`proposal_notification_deliveries` table), not a best-effort check, and a
+delivery failure of any kind (misconfigured provider, network error) is
+caught, logged, and recorded — it never reverts the client's response or
+blocks their flow.
+
+**Added:** `proposal_notification_deliveries` (RLS: `audit.view`-gated
+read, no write policy at all — every insert/update goes through the
+service-role admin client); `get_proposal_notification_recipients()`
+(new SECURITY DEFINER function, portal-facing discipline); a generic email
+sender (`src/lib/email/send.ts`) deliberately separate from the existing
+OTP-specific path, reusing `resolveEmailProvider()`/`validateResendConfig()`
+unchanged; five email templates (viewed/accepted/declined + two client
+confirmations); `APP_BASE_URL` env var for building the "Open in Scopevia"
+link (never blocks a send if unset); one line of contractor-facing copy
+on the Client Portal panel.
+
+**Extended two existing RPCs' return shapes** (forward-fixed, `DROP` +
+`CREATE`, no validation logic touched) so the TypeScript call sites could
+build a notification without an extra query: `portal_get_session_context()`
+now also returns `is_first_view`/`client_email`; `submit_proposal_client_response()`
+now also returns `tenant_id`/`proposal_id`/`proposal_version_id`/
+`client_email`/`responded_at`.
+
+16 new unit tests (dedupe-key generation, `APP_BASE_URL` link generation
+and its missing-value behavior, error sanitization, and every email
+template — including an explicit "never leaks a token/session/storage
+path/raw UUID" regression guard), 16 new RLS/integration tests (recipient
+selection excluding Viewer/Field Worker/suspended/removed/invited-only/
+cross-tenant, the dedupe constraint itself, full RLS coverage, and the two
+RPCs' new fields), 4 new E2E scenarios (viewed notification + no-spam-on-
+reload, accepted notification to both team and client, declined
+notification with the reason, and a mobile accept flow with no horizontal
+overflow) — all against `EMAIL_PROVIDER=dev`'s local capture, never a real
+provider. No PDF attachments, Stripe, payments, deposits, e-signature, or
+retry queue — 232/232 unit + 377/377 RLS + 100/100 E2E, zero regressions.
+See [docs/62](docs/62-proposal-email-notifications.md) and
+[docs/63](docs/63-notification-delivery-security.md) for the full writeup.
+
+### Phase 3C — Proposal PDF / Print Export
+
+A professional, printable version of a proposal, exportable from both the
+contractor app and the Client Portal — via print-to-PDF (the browser's
+own "Print → Save as PDF"), not a server-generated PDF file. `ProposalDocument`
+(already control-free and internal-ID-free since Phase 2A) is reused
+verbatim; two new dedicated, bare-layout routes —
+`/proposals/[id]/print` (contractor, plus `?version=<id>` for a historical
+version via a new "Print" link on each Version History row) and
+`/p/[token]/print` (Client Portal) — render it alongside a "Print / Save
+as PDF" button, with zero app-shell/portal chrome. A new print stylesheet
+(`@media print` in `globals.css`) handles page breaks, table/photo sizing,
+and hides every on-screen-only control.
+
+**Added:** `getFullProposal()` gained an optional `versionId` parameter
+(defaults to current — every existing caller unaffected), validated
+against `proposal_id` before use, never trusted blindly; a Client Response
+section on `ProposalDocument` (accepted/declined, with a footnote that
+explicitly does not claim legal e-signature validity); a photo-unavailable
+fallback for any signed URL that fails to generate (benefits every
+existing caller of `ProposalDocument`, not just the new export routes);
+`src/lib/proposals/export-copy.ts` (unit-testable export document copy);
+`PrintButton` (`src/components/print-button.tsx`).
+
+**Version safety, the point of this phase**: an export always shows the
+exact version it's bound to, never "whatever is current." This required
+zero new SQL — the portal export reuses `portal_get_session_context()`
+completely unmodified, inheriting Phase 3B.1's historical-version fix for
+free; the contractor export's only new logic (the `versionId` parameter
+above) is covered by a dedicated cross-proposal-id-confusion test.
+Verified end-to-end: decline → contractor creates a revision → edits →
+marks ready → creates a new link — the OLD link's export still shows the
+OLD declined content, the NEW link's export shows the revised content with
+no response yet recorded.
+
+11 new unit tests (`export-copy.test.ts`), 11 new RLS/integration tests
+(`phase3c-proposal-export.test.ts` — ownership, cross-tenant isolation,
+cross-proposal version-id confusion, revoked/expired/archived rejection,
+old-link/new-link version resolution across a revision, response-to-exact-
+version attachment), 6 new E2E scenarios (contractor export content +
+control-free + no internal IDs, printing a specific historical version
+from Version History, portal export before/after accepting, the old-link/
+new-link revision-safety flow, and two mobile checks for the export button
+and no horizontal overflow). No PDF file generation, Stripe, payments,
+deposits, e-signature, or email notifications — 203/203 unit + 361/361 RLS
++ 96/96 E2E, zero regressions. See
+[docs/60](docs/60-proposal-pdf-print-export.md) and
+[docs/61](docs/61-export-version-safety.md) for the full writeup.
+
+### Phase 3B.1 — Proposal Revision / New Version Flow
+
+Closes the loop Phase 3B deliberately left open: once a client accepts or
+declines, that exact `proposal_version` is locked forever — correct, but
+until now there was no way forward. A contractor can now click "Create
+revised version" (declined) or "Create new revision" (accepted, behind an
+explicit strong-warning confirmation dialog) on the proposal detail page.
+`create_proposal_revision()` copies the locked version's sections, labor
+(every pricing method — hourly/fixed/area/linear), materials (including
+full catalog-snapshot provenance), measurements/shapes/generated-materials,
+photos, and terms into a brand-new editable draft version; the old version
+moves from `locked` to `superseded` and stays exactly as the client left
+it, forever, with their response still attached to it. `proposals.status`
+returns to `draft` — no new status literal was invented; the UI shows
+"— Revision in progress" whenever `version_number > 1`. The old portal
+link keeps resolving the old, superseded version's content; the contractor
+must mark the new version ready and create a fresh link before sending it
+again. A new "Version history" section on the proposal detail page lists
+every version, its response (if any), and its portal link status.
+
+**Added:** `create_proposal_revision(p_proposal_id)` (SECURITY DEFINER,
+`proposals.create_revision` permission — Owner/Admin/Estimator/Sales, not
+Viewer/Field Worker); a "Version history" table
+(`getProposalVersionHistory()`, `VersionHistoryPanel`); declined/accepted
+revision cards on the proposal detail page; a locked-version banner in the
+builder when navigating directly to a responded-to proposal's edit page;
+`src/lib/proposals/revision-copy.ts` (unit-testable UI copy); one new audit
+action (`proposal.revision_created`) and one new CRM activity
+(`proposal_revision_created`).
+
+**Fixed two real gaps found while designing this phase, before either ever
+reached a test run:** (1) `prevent_locked_proposal_version_mutation()`/
+`prevent_locked_version_child_mutation()` (Phase 2A) only ever protected a
+version while `version_status = 'locked'` — the instant a row became
+`'superseded'` (never reachable from the UI before this phase), its
+trigger-level immutability silently disappeared. Forward-fixed to treat
+`locked` and `superseded` identically. (2) `portal_get_link_info()`/
+`portal_request_otp()`/`portal_get_session_context()` all gated on the
+proposal's *current* status — the instant a revision moved
+`proposals.status` back to `draft`, an OLD portal link (still bound to the
+old, superseded, perfectly-intact version) would have become unreachable,
+breaking "old links keep showing old content" entirely. Forward-fixed to
+validate the link's own bound version instead of always the proposal's
+current status.
+
+19 new RLS/integration tests (`phase3b1-proposal-revision.test.ts` — full
+content-copy correctness across every table/pricing-method, old-version-
+superseded, old-response-stays-with-old-version, new-version-has-no-
+response, old-link-still-resolves-old-content, new-link-points-at-new-
+version, state gating, cross-tenant isolation, permission matrix, audit/
+activity trail), 6 new unit tests (`revision-copy.test.ts` plus additions
+to `status-badge.test.ts`), 3 new E2E scenarios (full desktop decline →
+revise → edit → mark ready → new link → old link still shows old,
+accepted-revision confirmation dialog, and a mobile version verifying no
+horizontal overflow in the builder and version history). No PDF, Stripe,
+payments, deposits, e-signature, or contractor/client email notifications —
+200/200 unit + 350/350 RLS + 90/90 E2E, zero regressions. See
+[docs/58](docs/58-proposal-revision-flow.md) and
+[docs/59](docs/59-proposal-version-history.md) for the full writeup.
+
+### Phase 3B — Client Portal Accept/Decline
+
+The first real client action inside the Client Portal: a client viewing a
+proposal at `/p/[token]/view` can now **accept** (typed name + a
+confirmation checkbox + a confirm dialog) or **decline** (an optional
+reason + a confirm dialog) it, right there. The response is recorded
+permanently, the proposal's status updates to `accepted`/`declined`
+(reserved-but-unreachable since Phase 2A), and the exact version the
+client responded to is **locked** — an immutable historical record,
+using the version-locking mechanism that has existed since Phase 2A but
+had never been exercised in real usage until now. The contractor sees the
+decision (who, when, and any decline reason) immediately, in a prominent
+"Client response" card on the proposal detail page. This completes the
+core Scopevia loop: create proposal → send portal link → client verifies
+email → client views → client accepts/declines → contractor sees the
+result.
+
+**Added:** `proposal_client_responses` (one row per `proposal_version_id`,
+ever — `unique(proposal_version_id)` is the entire duplicate-response
+guard: no accept-after-decline, no decline-after-accept, no double accept,
+no second link/session responding after a final decision, all from one
+constraint plus a friendly pre-check); `submit_proposal_client_response()`
+(SECURITY DEFINER, service-role only, re-validates the session/link/
+proposal on every call exactly like every portal function since Phase
+3A); `acceptProposalAction`/`declineProposalAction` Server Actions; a
+`PortalResponseSection` on the portal view page (buttons → confirm forms →
+a final "Proposal accepted"/"Proposal declined" state that survives
+reloads); a "Client response" card on the contractor's proposal detail
+page; two new audit actions (`proposal.accepted_by_client`/
+`proposal.declined_by_client`) and two new CRM activities
+(`proposal_accepted_by_client`/`proposal_declined_by_client`).
+
+**Fixed a real gap found by this phase's own E2E testing**: broadening
+`portal_get_session_context()` alone wasn't enough — a visitor without an
+already-valid session cookie (a different device, or a lapsed cookie)
+couldn't even reach the OTP step for an already-answered proposal, since
+`portal_get_link_info()`/`portal_request_otp()` still gated on
+`ready`/`sent` only. Forward-fixed (originals never edited) to also accept
+`accepted`/`declined`, matching the view function exactly — archived-
+proposal and revoked-link rejection are unaffected, since both are
+independent `or` conditions, not folded into the status list. Also fixed:
+a contractor-UX bug where the "Client portal" panel kept suggesting "Mark
+this proposal ready..." for a proposal that had already been responded
+to; and a real, pre-existing, app-wide CSS bug where every checkbox
+(including the Materials step's "Taxable" toggle) inherited block-level
+input styling meant for text fields, rendering as a huge, disconnected
+square — found via this phase's own screenshot review, fixed with one
+global `input[type="checkbox"]`/`input[type="radio"]` rule.
+
+12 new unit tests (`portal-response-validation.test.ts`,
+`status-badge.test.ts`), 28 new RLS/integration tests
+(`phase3b-client-response.test.ts` — accept/decline happy paths, every
+duplicate/conflict combination, revoked/expired/archived rejection,
+cross-tenant isolation, RLS visibility, locked-version immutability, the
+full audit/activity trail with a metadata-content assertion that no
+secret ever leaks into it), 5 new E2E scenarios (accept, decline with a
+reason, decline with no reason, a second session blocked after a final
+response, and a mobile accept flow with no horizontal overflow). No PDF,
+Stripe, payments, deposits, e-signature, questions/comments, or AI —
+187/187 unit + 331/331 RLS + 87/87 E2E, zero regressions. See
+[docs/56](docs/56-client-portal-accept-decline.md) and
+[docs/57](docs/57-client-response-security.md) for the full writeup.
+
+### Phase 3A.1 — Real email provider + Client Portal delivery hardening
+
+Replaces the Client Portal's dev-only email path with a provider
+abstraction: `EMAIL_PROVIDER=dev` (default, unchanged local/test capture
+behavior) or `resend` (a real HTTP send via the Resend API, with a shared
+HTML+text template); `sendgrid`/`smtp` are recognized names that fail
+loudly as "not implemented yet" rather than silently no-op-ing.
+`sendPortalCodeEmail()` remains the single public entry point every OTP
+request goes through.
+
+**Hardened:** a real production deployment can no longer silently fall
+back to logging codes to a server console — `dev` is refused whenever
+`NODE_ENV=production` unless the deliberately dangerous
+`EMAIL_ALLOW_DEV_PROVIDER_IN_PRODUCTION="true"` is explicitly set (a
+variable that only ever belongs in a gitignored `.env.local`/CI secret,
+never a real deployment). A provider send failure for an authorized
+request is now caught and logged server-side only — never surfaced as a
+browser-visible outcome different from normal, preserving the "no revelar
+si el email existe" guarantee (a naive try/catch that showed the error
+would have leaked authorization status). `EMAIL_FROM`/`EMAIL_REPLY_TO`/
+`RESEND_API_KEY` are validated before any send is attempted, with a clear
+error naming exactly which variable is missing (never its value).
+
+**Added:** `src/lib/email/provider-selection.ts` and `src/lib/email/
+providers/resend-config.ts` — the provider-choice and Resend-config
+validation logic, deliberately pure (no `server-only`, no `process.env`
+access) so they're directly unit-tested; `src/lib/email/templates/
+portal-code.ts` — the shared subject/text/HTML email template
+(HTML-escaped business name/proposal title, no internal ids/tokens/tenant
+data ever included). A discreet, contractor-only notice ("Email provider
+is in development mode...") now appears on the proposal detail page's
+"Client portal" section whenever the dev provider is active — never on
+the public portal.
+
+22 new unit tests (`tests/unit/email-provider-selection.test.ts`,
+`tests/unit/email-template.test.ts` — provider resolution including the
+full production/dev-override matrix, Resend config validation, secret
+non-leakage, template completeness and HTML-escaping); two new E2E
+assertions confirming the dev-mode notice's contractor-only visibility.
+No RLS/integration test changes needed — the email abstraction is
+entirely TypeScript/application-layer, never called from SQL, so the
+existing 46 `phase3a-client-portal.test.ts` tests (unchanged) already
+cover every database-layer guarantee this phase didn't touch. 175/175
+unit + 303/303 RLS + 82/82 E2E (same test count, two existing tests
+gained an extra assertion each), zero regressions. No real Resend send was
+executed by any automated test (per the brief, to avoid calling a real
+email API in CI) — manual verification with a real API key is still
+required before enabling the Client Portal for real customers; see
+[docs/55](docs/55-client-portal-email-delivery.md).
+
+### Phase 3A — Client Portal with email + OTP access
+
+A secure, view-only Client Portal: a contractor can generate a revocable
+link for a **ready** proposal; the client opens it, verifies their own
+email with a one-time 6-digit code (no Supabase Auth account, no
+password), and views a read-only version of the proposal at `/p/[token]/
+view` — the exact same `ProposalDocument` component the internal Preview
+uses. Accept/decline, PDF, e-signature, Stripe/payments, and AI remain
+explicitly out of scope for this phase.
+
+**Added:** four new tables (`proposal_portal_links`, `proposal_portal_otps`,
+`proposal_portal_sessions`, `proposal_view_events`), none of which ever
+change `proposals.status` (see
+[docs/31](docs/31-proposal-state-machines.md)); six SECURITY DEFINER
+functions (`create_proposal_portal_link`/`revoke_proposal_portal_link` for
+contractors, `portal_get_link_info`/`portal_request_otp`/
+`portal_verify_otp`/`portal_get_session_context` for anonymous visitors,
+called exclusively via the service-role admin client since a portal
+visitor has no Supabase Auth session at all); three new permissions
+(`proposal_portal_links.create/.view/.revoke` — Owner/Admin/Estimator/Sales
+get all three, Viewer gets `.view` only); a "Client portal" section on the
+proposal detail page (create/copy-once/revoke, a status/expiry/last-viewed
+table); three public routes outside the app shell
+(`/p/[token]` → `/p/[token]/verify` → `/p/[token]/view`); rate limiting (8
+requests/link/15min, 3/link+email/15min, 5 verify attempts/code) enforced
+in Postgres; a pluggable email abstraction
+(`sendPortalCodeEmail()`, `src/lib/email/portal.ts`) with a dev/test
+capture mode standing in for a real provider (not yet implemented — see
+docs/52, "Email strategy").
+
+**Security:** the raw link token/OTP code/session token are generated in
+TypeScript and hashed (SHA-256) before ever reaching Postgres — the
+plaintext never appears in a query, plan, or log line. `proposal_portal_otps`/
+`proposal_portal_sessions` have RLS enabled with **zero** policies — not
+even a tenant's own Owner can select them directly; they're reachable only
+through the four portal-facing functions. The session cookie is httpOnly,
+scoped to `/p/<token>`, and named per-link, so multiple portal sessions
+never collide. A real rate-limiting gap was found and fixed during
+test-writing (a non-matching email never got rate-limited, since no row
+was inserted for it) — see
+[docs/53](docs/53-client-portal-security.md).
+
+46 new RLS/integration tests (`tests/rls/phase3a-client-portal.test.ts`,
+46/46 passing) and 9 new E2E scenarios (8 desktop + 1 mobile, including a
+full happy-path flow with real OTP-capture retrieval and 5 negative cases:
+invalid token, revoked link, archived proposal, wrong code, too many
+attempts, non-matching email); 153/153 unit + 303/303 RLS + 82/82 E2E, zero
+regressions. Two real bugs found and fixed during verification (a wrong
+env-var gate on the email abstraction, and a test-only synchronization
+race) — see [docs/54](docs/54-client-portal-e2e-verification.md) for the
+full writeup.
+
+### Phase 2D.1 — Material catalog pagination & mobile search UX
+
+The Materials & Costs step's catalog search had no pagination:
+`search_material_catalog()` returned up to 200 unwindowed rows, and
+`MaterialPricingPanel` rendered every one as a full add-to-proposal
+card — at the ~26-item seed-catalog scale this alone produced
+30,000px+ of scroll on a 390px mobile viewport.
+
+**Added:** server-side pagination — `search_material_catalog()` now
+takes `p_limit` (default 20, clamped 1–100) / `p_offset` (default 0,
+clamped ≥0) and returns a `total_count` column via `count(*) over()`
+(the true total match count in one query, no second round-trip).
+`searchMaterialCatalog()` returns `{ items, totalCount, hasMore }`
+instead of a bare array. The UI shows "Showing X of Y materials." and
+a "Load more materials" button (not numbered pagination, per an
+explicit product preference) that grows a `catalogLimit` query param
+by 20 per click, fully server-rendered/GET-form-driven like the
+existing search/category params — no Client Component fetch state.
+Two indexes added in a forward migration
+(`20260711100000_material_catalog_pagination.sql`):
+`material_catalog_items_service_type_idx` (btree) and
+`material_catalog_items_name_trgm_idx` (GIN trigram), following the
+existing pg_trgm convention used for clients/opportunities/projects.
+
+Search (name/description/brand/supplier_name), category filtering, ZIP
+pricing/fallback, snapshot pricing, and proposal totals are all
+unchanged — pagination only changes how many rows of an
+already-computed result are returned per call.
+
+4 pre-existing RLS tests updated (they implicitly relied on the old
+unlimited default to see the full seeded catalog; now pass an explicit
+`p_limit: 100`); 10 new RLS/pagination tests added
+(`tests/rls/phase2b-materials.test.ts`, 45/45 passing); new desktop and
+mobile E2E scenarios cover the full Load-more flow, including a
+regression guard asserting mobile `scrollHeight < 15,000` (down from
+the original 30,000px+ bug). No Client Portal, external APIs,
+scraping, AI, PDF, Stripe, payments, or global-catalog admin UI —
+out of scope for this phase. See
+[docs/51](docs/51-material-catalog-pagination.md) and
+[docs/42](docs/42-material-catalog-by-zip.md#pagination-phase-2d1).
+
+### Phase 2D — Visual review & UX polish before the Client Portal
+
+A visual/microcopy polish pass across the whole app (Dashboard, Proposals
+list, every Proposal Builder step, Preview, Portfolio, mobile) — no new
+backend functionality, except one real bug found and fixed along the way.
+
+**Bug fixed:** creating a new proposal redirected to `?step=scope`
+instead of `?step=measurements` — a leftover from before the
+Measurements step existed, reported directly by a user testing the
+flow. Fixed in `createProposalDirectAction`/
+`createProposalFromOpportunityAction`; ~15 existing E2E assertions
+across 7 spec files updated to match (all still pass, no coverage
+lost).
+
+**Visual/microcopy changes:** distinct icons per Dashboard stat tile
+(previously all six used the same document icon); explanatory hint
+text added to Measurements (Manual entry vs. Draw layout, reference-length
+examples, friendlier Freehand/Rectangle mode descriptions), Labor
+(Hourly vs. Fixed guidance, a "Generate labor from measurement"
+explainer), and Photos (Current job vs. Previous work distinction);
+three internal-phase/vendor-name leaks removed from user-facing text
+("Phase 2A supports USD only" → "Only USD is supported right now",
+"Phase 0 can only add someone..." → "You can only invite someone...",
+"Managed by Supabase Auth ... in Phase 0" → a plain sentence); five
+list pages (Members, Portfolio, Proposals, Clients, Opportunities) that
+rendered a raw Postgres/Postgrest error message now show a generic
+friendly one instead; the Materials empty-search message now suggests
+adding a custom cost; six "Remove" buttons across the builder steps
+(Scope, Labor, Materials, Measurements, Photos ×2) that were plain
+unwrapped `<button>`s with no pending-state feedback now use
+`SubmitButton`; the active step in the builder's stepper now carries
+`aria-current="step"`.
+
+No RLS, calculation formulas, storage policies, proposal versioning,
+Client Portal, payments, PDF, AI, or scraping work touched. Verified:
+typecheck/lint clean, 153/153 unit, 247/247 RLS, 70/70 E2E (+2 temporary
+screenshot-capture specs, deleted after use), clean build. See
+[docs/49](docs/49-phase-2d-ux-polish.md) and
+[docs/50](docs/50-visual-review-notes.md) for the full writeup and
+before/after screenshots (local only, gitignored).
+
 ### Phase 2C.1 — Freehand/brush drawing for the Measurements Draw layout
 
 Replaces the Draw layout tab's rectangle-only sketching with

@@ -27,7 +27,7 @@ export function ProfileForm({
       <div className="field">
         <label htmlFor="email">Email</label>
         <input id="email" type="email" value={email} disabled />
-        <span className="hint">Managed by Supabase Auth — not editable here in Phase 0.</span>
+        <span className="hint">Your email is used to sign in and can&apos;t be changed here.</span>
       </div>
 
       <div className="field">

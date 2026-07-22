@@ -1,5 +1,7 @@
-import { formatCents } from "../../../../lib/proposals/format";
+import { formatCents, formatLabel } from "../../../../lib/proposals/format";
+import { acceptanceRecordFootnote, imageUnavailableLabel } from "../../../../lib/proposals/export-copy";
 import type { FullProposal } from "../../../../lib/proposals/data";
+import type { ProposalClientResponse } from "../../../../lib/portal/data";
 
 const SERVICE_TYPE_LABELS: Record<string, string> = {
   interior_painting: "Interior painting",
@@ -14,10 +16,22 @@ const SERVICE_TYPE_LABELS: Record<string, string> = {
  * The proposal as a professional commercial document — order fixed per
  * docs/34-proposal-builder-ux.md. No internal IDs, storage paths, or
  * technical metadata are ever rendered here. Shared by the builder's Review
- * step and the standalone /preview route so both always show identical
- * content.
+ * step, the standalone /preview route, the Phase 3C print/export routes, and
+ * the Client Portal so every surface always shows identical content for a
+ * given proposal_version — see docs/60-proposal-pdf-print-export.md.
+ *
+ * `clientResponse` is optional and omitted entirely when there is none —
+ * see docs/60, "Client response section."
  */
-export function ProposalDocument({ businessName, data }: { businessName: string; data: FullProposal }) {
+export function ProposalDocument({
+  businessName,
+  data,
+  clientResponse,
+}: {
+  businessName: string;
+  data: FullProposal;
+  clientResponse?: ProposalClientResponse | null;
+}) {
   const { proposal, version, sections, laborItems, lineItems, currentJobMedia, previousWorkMedia, measurements, measurementMaterials, measurementGroups } = data;
   const preparedFor = proposal.clients?.display_name ?? "Client";
   const contactName = proposal.client_contacts ? [proposal.client_contacts.first_name, proposal.client_contacts.last_name].filter(Boolean).join(" ") : null;
@@ -28,6 +42,7 @@ export function ProposalDocument({ businessName, data }: { businessName: string;
         <div>
           <div className="proposal-document-business">{businessName}</div>
           <div className="hint">Proposal #{proposal.proposal_number}</div>
+          <div className="hint">Prepared {new Date(version.created_at).toLocaleDateString()}</div>
         </div>
         <div className="proposal-document-total">
           <div className="metric-tile-label">Total</div>
@@ -106,7 +121,7 @@ export function ProposalDocument({ businessName, data }: { businessName: string;
                           </div>
                         ) : null}
                       </td>
-                      <td data-label="Type">{m.measurement_type.replace(/_/g, " ")}</td>
+                      <td data-label="Type">{formatLabel(m.measurement_type)}</td>
                       <td data-label="Dimensions">{dimensions}</td>
                       <td data-label="Area">{m.area != null ? `${m.area} sq ${m.unit}` : "—"}</td>
                       <td data-label="Perimeter">{m.perimeter != null ? `${m.perimeter} ${m.unit}` : "—"}</td>
@@ -190,14 +205,16 @@ export function ProposalDocument({ businessName, data }: { businessName: string;
           <p className="hint">No photos added yet.</p>
         ) : (
           <div className="photo-grid">
-            {currentJobMedia.map((m) =>
-              m.signedUrl ? (
-                <figure key={m.id} className="photo-card">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- signed URL, short-lived, per-request */}
+            {currentJobMedia.map((m) => (
+              <figure key={m.id} className="photo-card">
+                {m.signedUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- signed URL, short-lived, per-request
                   <img src={m.signedUrl} alt={m.caption || "Current job photo"} className="photo-thumb photo-thumb-lg" />
-                </figure>
-              ) : null
-            )}
+                ) : (
+                  <div className="photo-thumb photo-thumb-lg photo-unavailable">{imageUnavailableLabel()}</div>
+                )}
+              </figure>
+            ))}
           </div>
         )}
       </section>
@@ -208,14 +225,16 @@ export function ProposalDocument({ businessName, data }: { businessName: string;
           <p className="hint">No previous work selected.</p>
         ) : (
           <div className="photo-grid">
-            {previousWorkMedia.map((m) =>
-              m.signedUrl ? (
-                <figure key={m.id} className="photo-card">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- signed URL, short-lived, per-request */}
+            {previousWorkMedia.map((m) => (
+              <figure key={m.id} className="photo-card">
+                {m.signedUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- signed URL, short-lived, per-request
                   <img src={m.signedUrl} alt={m.caption || "Previous work"} className="photo-thumb photo-thumb-lg" />
-                </figure>
-              ) : null
-            )}
+                ) : (
+                  <div className="photo-thumb photo-thumb-lg photo-unavailable">{imageUnavailableLabel()}</div>
+                )}
+              </figure>
+            ))}
           </div>
         )}
       </section>
@@ -260,6 +279,41 @@ export function ProposalDocument({ businessName, data }: { businessName: string;
           <span>{formatCents(version.total_cents)}</span>
         </div>
       </section>
+
+      {clientResponse ? (
+        <section className="proposal-document-response">
+          <h3>Client response</h3>
+          {clientResponse.responseType === "accepted" ? (
+            <>
+              <p>
+                <strong>Accepted</strong> by {clientResponse.clientName ?? "the client"}
+                <br />
+                {clientResponse.clientEmail}
+                <br />
+                {new Date(clientResponse.respondedAt).toLocaleString()}
+              </p>
+              <p className="hint">{acceptanceRecordFootnote()}</p>
+            </>
+          ) : (
+            <>
+              <p>
+                <strong>Declined</strong> by {clientResponse.clientEmail}
+                <br />
+                {new Date(clientResponse.respondedAt).toLocaleString()}
+              </p>
+              {clientResponse.declineReason ? (
+                <p>
+                  Reason:
+                  <br />
+                  {clientResponse.declineReason}
+                </p>
+              ) : null}
+            </>
+          )}
+        </section>
+      ) : null}
+
+      <footer className="proposal-document-footer hint">Proposal #{proposal.proposal_number}</footer>
     </article>
   );
 }

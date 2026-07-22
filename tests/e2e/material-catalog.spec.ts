@@ -32,8 +32,8 @@ test.describe("Material catalog by ZIP", () => {
     await page.getByLabel("Proposal title").fill(proposalTitle);
     await page.getByLabel("Service type").selectOption("interior_painting");
     await page.getByRole("button", { name: "Save and continue" }).click();
-    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=scope/);
-    const proposalUrl = page.url().replace(/\/edit\?step=scope$/, "");
+    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=measurements/);
+    const proposalUrl = page.url().replace(/\/edit\?step=measurements$/, "");
 
     await page.goto(`${proposalUrl}/edit?step=materials`);
 
@@ -160,8 +160,8 @@ test.describe("Material catalog by ZIP", () => {
     await page.getByLabel("Proposal title").fill(`E2E No Price ${suffix}`);
     await page.getByLabel("Service type").selectOption("flooring");
     await page.getByRole("button", { name: "Save and continue" }).click();
-    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=scope/);
-    const proposalUrl = page.url().replace(/\/edit\?step=scope$/, "");
+    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=measurements/);
+    const proposalUrl = page.url().replace(/\/edit\?step=measurements$/, "");
 
     await page.goto(`${proposalUrl}/edit?step=materials`);
     await page.getByLabel("ZIP code").fill("33101");
@@ -193,8 +193,8 @@ test.describe("Material catalog by ZIP", () => {
     await page.getByLabel("Proposal title").fill(`E2E Category Filter ${suffix}`);
     await page.getByLabel("Service type").selectOption("bathroom_remodeling");
     await page.getByRole("button", { name: "Save and continue" }).click();
-    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=scope/);
-    const proposalUrl = page.url().replace(/\/edit\?step=scope$/, "");
+    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=measurements/);
+    const proposalUrl = page.url().replace(/\/edit\?step=measurements$/, "");
 
     await page.goto(`${proposalUrl}/edit?step=materials`);
     const catalogTable = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Material pricing" }) });
@@ -235,8 +235,8 @@ test.describe("Material catalog by ZIP", () => {
     await page.getByLabel("Proposal title").fill(`E2E Empty States ${suffix}`);
     await page.getByLabel("Service type").selectOption("custom");
     await page.getByRole("button", { name: "Save and continue" }).click();
-    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=scope/);
-    const proposalUrl = page.url().replace(/\/edit\?step=scope$/, "");
+    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=measurements/);
+    const proposalUrl = page.url().replace(/\/edit\?step=measurements$/, "");
 
     // Case A: no ZIP saved yet, no filters -> the base catalog still has
     // rows (price-less), so this only shows the "enter a ZIP" hint when a
@@ -254,7 +254,7 @@ test.describe("Material catalog by ZIP", () => {
     await catalogTable.getByLabel("Search the material catalog").fill("zzz-no-such-material-zzz");
     await catalogTable.getByRole("button", { name: "Search" }).click();
     await page.waitForURL(/catalogSearch=/);
-    await expect(catalogTable.getByText("No materials match your search for this ZIP code. Try a different keyword or category.")).toBeVisible();
+    await expect(catalogTable.getByText("No materials match your search for this ZIP code. Try a different keyword, category, or add a custom cost below.")).toBeVisible();
 
     // Case C: ZIP set to one with no coverage at all for any material
     // (outside the 4 seeded demo ZIPs and not the global-default items) —
@@ -266,5 +266,62 @@ test.describe("Material catalog by ZIP", () => {
     await page.waitForURL(/catalogSearch=Bathtub/);
     await expect(catalogTable.getByText("No price is available for these materials in this ZIP code. Try another ZIP code or add a custom cost.")).toBeVisible();
     await expect(catalogTable.getByRole("cell", { name: "Bathtub, Standard" })).toBeVisible();
+  });
+
+  test("catalog results are paginated: first page caps at 20, 'Load more' reveals the rest, add-to-proposal still works after loading more", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const clientName = `E2E Pagination Client ${suffix}`;
+
+    await page.goto("/clients/new");
+    await page.getByLabel("Display name").fill(clientName);
+    await page.getByRole("button", { name: "Create client" }).click();
+    await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
+
+    await page.goto("/proposals/new");
+    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.waitForURL(/clientId=/);
+    await page.getByLabel("Proposal title").fill(`E2E Pagination ${suffix}`);
+    await page.getByLabel("Service type").selectOption("custom");
+    await page.getByRole("button", { name: "Save and continue" }).click();
+    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=measurements/);
+    const proposalUrl = page.url().replace(/\/edit\?step=measurements$/, "");
+
+    await page.goto(`${proposalUrl}/edit?step=materials`);
+    const catalogTable = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Material pricing" }) });
+
+    // No search/category filter -> the full seeded catalog (26+ items)
+    // matches, but only the first page should ever render.
+    await page.getByLabel("ZIP code").fill("33101");
+    await page.getByRole("button", { name: "Save ZIP" }).click();
+    await expect(catalogTable.getByRole("heading", { name: "Results for ZIP 33101" })).toBeVisible();
+
+    const rows = catalogTable.locator("tbody tr");
+    await expect(rows).toHaveCount(20);
+    await expect(catalogTable.getByText(/^Showing 20 of \d+ materials\.$/)).toBeVisible();
+    const loadMoreButton = catalogTable.getByRole("button", { name: "Load more materials" });
+    await expect(loadMoreButton).toBeVisible();
+
+    await loadMoreButton.click();
+    await page.waitForURL(/catalogLimit=40/);
+
+    // The full catalog is under 40, so the second page shows everything
+    // and "Load more" disappears (hasMore is now false).
+    const rowCountAfterLoadMore = await rows.count();
+    expect(rowCountAfterLoadMore).toBeGreaterThan(20);
+    await expect(catalogTable.getByText(new RegExp(`^Showing ${rowCountAfterLoadMore} of ${rowCountAfterLoadMore} materials\\.$`))).toBeVisible();
+    await expect(catalogTable.getByRole("button", { name: "Load more materials" })).toHaveCount(0);
+
+    // Add-to-proposal still works on a row only visible after "Load more"
+    // — owner-a has manage_pricing, so an explicit override price makes
+    // this deterministic regardless of whether the last alphabetical
+    // item happens to already have a resolved ZIP price.
+    const lastRow = rows.last();
+    await lastRow.getByLabel(/^Quantity/).fill("2");
+    await lastRow.getByPlaceholder("Override price ($)").fill("10.00");
+    await lastRow.getByRole("button", { name: "Add to proposal" }).click();
+    const savedCosts = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Saved costs" }) });
+    await expect(savedCosts.locator("tbody tr")).toHaveCount(1);
   });
 });

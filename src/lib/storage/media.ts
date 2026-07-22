@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "../supabase/server";
+import { createAdminClient } from "../supabase/admin";
 import { friendlyRpcErrorMessage } from "../errors/friendly-message";
 
 export const ALLOWED_MEDIA_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
@@ -85,6 +86,29 @@ export async function getSignedMediaUrl(storagePath: string, expiresInSeconds = 
 export async function getSignedMediaUrls(storagePaths: string[], expiresInSeconds = 300): Promise<Record<string, string>> {
   if (storagePaths.length === 0) return {};
   const supabase = await createClient();
+  const { data, error } = await supabase.storage.from("scopevia-media").createSignedUrls(storagePaths, expiresInSeconds);
+  if (error || !data) return {};
+  const result: Record<string, string> = {};
+  for (const entry of data) {
+    if (entry.signedUrl && entry.path) result[entry.path] = entry.signedUrl;
+  }
+  return result;
+}
+
+/**
+ * Portal-only variant of getSignedMediaUrls(): uses the service-role admin
+ * client instead of the caller's own session, because a client portal
+ * visitor has no Supabase Auth session at all — scopevia_media_select
+ * (`to authenticated`, gated on media.view) can never be satisfied by an
+ * anonymous visitor, so the ordinary signing path would silently return no
+ * URLs for every photo. Safe here specifically because the only caller
+ * (src/lib/portal/data.ts) only ever passes paths already scoped to a
+ * tenant/proposal/version that portal_get_session_context() has just
+ * authoritatively validated — never a path chosen by the visitor.
+ */
+export async function getSignedMediaUrlsForPortal(storagePaths: string[], expiresInSeconds = 300): Promise<Record<string, string>> {
+  if (storagePaths.length === 0) return {};
+  const supabase = createAdminClient();
   const { data, error } = await supabase.storage.from("scopevia-media").createSignedUrls(storagePaths, expiresInSeconds);
   if (error || !data) return {};
   const result: Record<string, string> = {};

@@ -48,9 +48,42 @@ export function describeActivity(activityType: string, metadata: Record<string, 
       return from && to ? `Status changed from ${from} to ${to}` : "Status changed";
     case "note_added":
       return "Note added";
+    case "proposal_created":
+      return "Proposal created";
+    case "proposal_marked_ready":
+      return "Proposal marked ready";
+    case "proposal_returned_to_draft":
+      return "Proposal returned to draft";
+    case "proposal_archived":
+      return "Proposal archived";
+    case "proposal_restored":
+      return "Proposal restored";
+    case "proposal_media_attached":
+      return "Photo added to proposal";
+    case "portfolio_project_attached":
+      return "Portfolio photo added to proposal";
+    case "client_portal_link_created":
+      return "Client portal link created";
+    case "client_portal_link_revoked":
+      return "Client portal link revoked";
+    case "proposal_viewed_by_client":
+      return "Proposal viewed by client";
+    case "proposal_accepted_by_client":
+      return "Proposal accepted by client";
+    case "proposal_declined_by_client":
+      return "Proposal declined by client";
+    case "proposal_revision_created":
+      return "New revision created";
     default:
-      return activityType.replace(/_/g, " ");
+      // Defensive fallback for any activity_type added to the database
+      // without a matching case above -- still human-readable (spaced,
+      // capitalized) rather than a raw lowercase snake_case string.
+      return capitalize(activityType.replace(/_/g, " "));
   }
+}
+
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 function humanizeStatus(status: string): string {

@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { FileText, Users, Plus } from "lucide-react";
+import { FileText, FileEdit, Send, CircleCheck, ThumbsUp, DollarSign, Clock, Users, Plus } from "lucide-react";
 import { requireUser } from "../../lib/auth/session";
 import { requireActiveTenant } from "../../lib/auth/tenant";
 import { hasPermission, PERMISSIONS } from "../../lib/auth/permissions";
 import { createClient } from "../../lib/supabase/server";
 import { getActivityFeed } from "../../lib/crm/activity-feed-data";
-import { formatCents } from "../../lib/proposals/format";
+import { formatCents, formatLabel } from "../../lib/proposals/format";
 import { proposalBadgeClass } from "../../lib/crm/status-badge";
 import { ActivityFeed } from "../../components/activity-feed";
 import { PageHeader } from "../../components/page-header";
@@ -95,12 +95,12 @@ export default async function HomePage() {
       {canViewProposals ? (
         <>
           <div className="metrics-grid">
-            <MetricTile icon={FileText} label="Draft proposals" value={draftCount} href="/proposals" />
-            <MetricTile icon={FileText} label="Ready proposals" value={readyCount} href="/proposals" />
-            <MetricTile icon={FileText} label="Sent proposals" value={sentCount} href="/proposals" />
-            <MetricTile icon={FileText} label="Accepted proposals" value={acceptedCount} href="/proposals" />
-            <MetricTile icon={FileText} label="Total quoted value" value={formatCents(totalQuotedCents)} />
-            <MetricTile icon={FileText} label="Needs follow-up" value={needsFollowUpCount} href="/proposals?status=ready" />
+            <MetricTile icon={FileEdit} label="Draft proposals" value={draftCount} href="/proposals" />
+            <MetricTile icon={CircleCheck} label="Ready proposals" value={readyCount} href="/proposals" />
+            <MetricTile icon={Send} label="Sent proposals" value={sentCount} href="/proposals" />
+            <MetricTile icon={ThumbsUp} label="Accepted proposals" value={acceptedCount} href="/proposals" />
+            <MetricTile icon={DollarSign} label="Total quoted value" value={formatCents(totalQuotedCents)} />
+            <MetricTile icon={Clock} label="Needs follow-up" value={needsFollowUpCount} href="/proposals?status=ready" />
           </div>
 
           <div className="section-card stack">
@@ -144,7 +144,7 @@ export default async function HomePage() {
                           <td data-label="Client">{p.clients?.display_name ?? "—"}</td>
                           <td data-label="Total">{version ? formatCents(version.total_cents) : "—"}</td>
                           <td data-label="Status">
-                            <span className={`badge ${proposalBadgeClass(p.status)}`.trim()}>{p.status}</span>
+                            <span className={`badge ${proposalBadgeClass(p.status)}`.trim()}>{formatLabel(p.status)}</span>
                           </td>
                           <td data-label="Updated">{new Date(p.updated_at).toLocaleDateString()}</td>
                           <td data-label="">

@@ -153,6 +153,38 @@ any step. Buttons (Undo/Clear/Close shape/Save) use the same
 touch-friendly sizing as the rest of the builder; no gesture more
 complex than "drag, then tap a button" is required.
 
+### Phase 2D fix: sticky topbar swallowing touches at the canvas top
+
+Found while building a screenshot-capture script that scrolled the
+canvas into view: the app shell's `.topbar` is `position: sticky; top:
+0`. Scrolling the canvas to the very top of the viewport — exactly what
+`scrollIntoViewIfNeeded()` does, and what a mobile browser's native
+scroll-into-view-on-focus would also do — tucked the canvas's top
+~50px behind the sticky header. Geometrically the canvas was still
+"there" (`getBoundingClientRect()` reported its real position), but any
+touch/click landing in that top strip actually hit the topbar, not the
+drawing surface, silently dropping the first stroke of a drag. Fixed
+with `scroll-margin-top: calc(var(--topbar-height) + 12px)` on both the
+freehand and rectangle canvases (`draw-layout-canvas.tsx`) — the
+standard CSS-only fix for a sticky/fixed header covering a
+scroll-into-view target. A real user manually scrolling to the Draw
+layout section could have hit the same issue; this fix covers both the
+automated-scroll and manual-scroll cases identically since it's a
+browser-level scroll behavior, not test-specific code.
+
+### Phase 2D microcopy: reference-length examples, friendlier mode names
+
+The reference-length field's label stayed short (form labels need to
+stay compact), but both drawing modes now show a one-line example
+underneath explaining the concept concretely — "Tell Scopevia what the
+[full width of your drawing / width of your rectangle] represents in
+real life. For example, if \[the widest part of your sketch / it's a
+10 ft wide room\], enter 10." The "Drawing mode" dropdown's option text
+was also reworded to name concrete, contractor-relatable spaces
+("bathrooms, kitchens, patios, and other irregular spaces" instead of
+"irregular rooms, L-shapes, patios") — same information, more
+recognizable examples. See [docs/49](49-phase-2d-ux-polish.md).
+
 ## Known limitations
 
 - **One shape per session** — drawing again (or starting a new stroke

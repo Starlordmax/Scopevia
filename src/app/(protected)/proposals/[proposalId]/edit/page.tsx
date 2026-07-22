@@ -1,9 +1,11 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireActiveTenant } from "../../../../../lib/auth/tenant";
 import { hasPermission, PERMISSIONS } from "../../../../../lib/auth/permissions";
 import { getFullProposal } from "../../../../../lib/proposals/data";
 import { getPortfolioMediaOptions } from "../../../../../lib/proposals/portfolio-options";
 import { searchMaterialCatalog } from "../../../../../lib/proposals/materials";
+import { DEFAULT_PAGE_SIZE } from "../../../../../lib/search";
 import { createClient } from "../../../../../lib/supabase/server";
 import { PageHeader } from "../../../../../components/page-header";
 import { FileEdit } from "lucide-react";
@@ -15,6 +17,7 @@ import { StepMaterials } from "./step-materials";
 import { StepPhotos } from "./step-photos";
 import { StepPricing } from "./step-pricing";
 import { StepReview } from "./step-review";
+import { lockedVersionMessage } from "../../../../../lib/proposals/revision-copy";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +26,7 @@ export default async function ProposalEditPage({
   searchParams,
 }: {
   params: Promise<{ proposalId: string }>;
-  searchParams: Promise<{ step?: string; catalogSearch?: string; catalogCategory?: string }>;
+  searchParams: Promise<{ step?: string; catalogSearch?: string; catalogCategory?: string; catalogLimit?: string }>;
 }) {
   const { tenant } = await requireActiveTenant();
   const canView = await hasPermission(tenant.tenant_id, PERMISSIONS.PROPOSALS_VIEW);
@@ -33,8 +36,14 @@ export default async function ProposalEditPage({
   const data = await getFullProposal(tenant.tenant_id, proposalId);
   if (!data) notFound();
 
-  const { step: rawStep, catalogSearch, catalogCategory } = await searchParams;
+  const { step: rawStep, catalogSearch, catalogCategory, catalogLimit: catalogLimitRaw } = await searchParams;
   const step = (BUILDER_STEPS.find((s) => s.key === rawStep)?.key ?? "scope") as BuilderStep;
+  // "Load more" bumps this by DEFAULT_PAGE_SIZE each click -- the visible
+  // list is always "the first N results so far," not a true per-page
+  // offset, so a reload never shifts which rows are showing. Clamped the
+  // same way the RPC itself clamps p_limit server-side (belt and
+  // suspenders against a hand-edited URL).
+  const catalogLimit = Math.min(Math.max(parseInt(catalogLimitRaw ?? "", 10) || DEFAULT_PAGE_SIZE, DEFAULT_PAGE_SIZE), 100);
 
   const [
     canUpdate,
@@ -70,14 +79,16 @@ export default async function ProposalEditPage({
     if (settings) defaultHourlyRateCents = settings.default_customer_hourly_rate_cents;
   }
 
-  const catalogResults =
+  const catalogPage =
     (step === "materials" || step === "measurements") && canViewMaterials
       ? await searchMaterialCatalog(tenant.tenant_id, {
           zipCode: data.version.pricing_zip_code,
           searchText: catalogSearch,
           category: catalogCategory,
+          limit: catalogLimit,
         })
-      : [];
+      : { items: [], totalCount: 0, hasMore: false };
+  const catalogResults = catalogPage.items;
 
   return (
     <div className="stack">
@@ -86,6 +97,11 @@ export default async function ProposalEditPage({
         title={data.proposal.title}
         description={`Proposal #${data.proposal.proposal_number} — ${data.proposal.status}`}
       />
+      {data.proposal.status === "accepted" || data.proposal.status === "declined" ? (
+        <p className="error-banner">
+          {lockedVersionMessage()} <Link href={`/proposals/${proposalId}`}>Create a new revision</Link> to make changes.
+        </p>
+      ) : null}
       <StepperNav proposalId={proposalId} currentStep={step} />
 
       {step === "measurements" ? (
@@ -141,6 +157,10 @@ export default async function ProposalEditPage({
           catalogResults={catalogResults}
           catalogSearch={catalogSearch ?? ""}
           catalogCategory={catalogCategory ?? ""}
+          catalogTotalCount={catalogPage.totalCount}
+          catalogHasMore={catalogPage.hasMore}
+          catalogLimit={catalogLimit}
+          catalogPageSize={DEFAULT_PAGE_SIZE}
         />
       ) : null}
       {step === "photos" ? (

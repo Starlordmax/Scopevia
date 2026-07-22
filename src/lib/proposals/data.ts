@@ -36,12 +36,24 @@ export type FullProposal = {
 };
 
 /**
- * Loads a proposal plus its current version and all editable/previewable
+ * Loads a proposal plus one of its versions and all editable/previewable
  * content, scoped to a tenant (always call with the ACTIVE tenant id, never
  * trust the id alone — see docs/35-phase-2a-rls-verification.md on stale
  * cross-tenant URLs). Returns null if not found in this tenant.
+ *
+ * `versionId` is optional and defaults to the proposal's CURRENT version —
+ * used by the builder/preview/detail pages, which only ever care about
+ * "now." When supplied (Phase 3B.1's Version History "View"/"Print" links,
+ * Phase 3C's contractor export route), it's validated with
+ * `.eq("proposal_id", proposalId)` on the version fetch itself: a version id
+ * that doesn't actually belong to THIS proposal (a stray id, a typo, or a
+ * deliberate cross-proposal probe) simply resolves to no row, and the whole
+ * function returns null exactly like a not-found proposal — never a
+ * different proposal's content. This is on top of (not instead of) RLS,
+ * which already confines `proposal_versions` reads to the caller's own
+ * tenant.
  */
-export async function getFullProposal(tenantId: string, proposalId: string): Promise<FullProposal | null> {
+export async function getFullProposal(tenantId: string, proposalId: string, versionId?: string): Promise<FullProposal | null> {
   const supabase = await createClient();
 
   const { data: proposal } = await supabase
@@ -51,7 +63,10 @@ export async function getFullProposal(tenantId: string, proposalId: string): Pro
     .eq("tenant_id", tenantId)
     .single();
 
-  if (!proposal || !proposal.current_version_id) return null;
+  if (!proposal) return null;
+
+  const targetVersionId = versionId ?? proposal.current_version_id;
+  if (!targetVersionId) return null;
 
   const [
     { data: version },
@@ -64,45 +79,45 @@ export async function getFullProposal(tenantId: string, proposalId: string): Pro
     { data: measurementShapes },
     { data: measurementMaterials },
   ] = await Promise.all([
-    supabase.from("proposal_versions").select("*").eq("id", proposal.current_version_id).single(),
+    supabase.from("proposal_versions").select("*").eq("id", targetVersionId).eq("proposal_id", proposalId).single(),
     supabase
       .from("proposal_sections")
       .select("*")
-      .eq("proposal_version_id", proposal.current_version_id)
+      .eq("proposal_version_id", targetVersionId)
       .is("archived_at", null)
       .order("sort_order", { ascending: true }),
     supabase
       .from("proposal_labor_items")
       .select("*")
-      .eq("proposal_version_id", proposal.current_version_id)
+      .eq("proposal_version_id", targetVersionId)
       .is("archived_at", null)
       .order("sort_order", { ascending: true }),
     supabase
       .from("proposal_line_items")
       .select("*")
-      .eq("proposal_version_id", proposal.current_version_id)
+      .eq("proposal_version_id", targetVersionId)
       .is("archived_at", null)
       .order("sort_order", { ascending: true }),
     supabase
       .from("proposal_media")
       .select("*, media_assets(storage_path, caption)")
-      .eq("proposal_version_id", proposal.current_version_id)
+      .eq("proposal_version_id", targetVersionId)
       .is("archived_at", null)
       .order("sort_order", { ascending: true }),
     supabase
       .from("proposal_measurement_groups")
       .select("*")
-      .eq("proposal_version_id", proposal.current_version_id)
+      .eq("proposal_version_id", targetVersionId)
       .is("archived_at", null)
       .order("created_at", { ascending: true }),
     supabase
       .from("proposal_measurements")
       .select("*")
-      .eq("proposal_version_id", proposal.current_version_id)
+      .eq("proposal_version_id", targetVersionId)
       .is("archived_at", null)
       .order("sort_order", { ascending: true }),
-    supabase.from("proposal_measurement_shapes").select("*").eq("proposal_version_id", proposal.current_version_id),
-    supabase.from("proposal_measurement_materials").select("*").eq("proposal_version_id", proposal.current_version_id),
+    supabase.from("proposal_measurement_shapes").select("*").eq("proposal_version_id", targetVersionId),
+    supabase.from("proposal_measurement_materials").select("*").eq("proposal_version_id", targetVersionId),
   ]);
 
   if (!version) return null;

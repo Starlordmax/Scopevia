@@ -12,7 +12,7 @@ import {
 import type { ActionResult } from "../../../../../actions/auth";
 import { SubmitButton } from "../../../../../components/submit-button";
 import { computeRectangle, computeWallArea } from "../../../../../lib/proposals/measurements";
-import { formatCents } from "../../../../../lib/proposals/format";
+import { formatCents, formatLabel } from "../../../../../lib/proposals/format";
 import { DrawLayoutCanvas } from "./draw-layout-canvas";
 import type { MaterialCatalogSearchResult } from "../../../../../lib/proposals/materials";
 import type { Database } from "../../../../../../types/database";
@@ -285,7 +285,7 @@ function SavedMeasurementsList({
             <tr key={m.id}>
               <td data-label="Group">{groupName(m.measurement_group_id)}</td>
               <td data-label="Name">{m.name}</td>
-              <td data-label="Type">{m.measurement_type.replace(/_/g, " ")}</td>
+              <td data-label="Type">{formatLabel(m.measurement_type)}</td>
               <td data-label="Area">{m.area != null ? `${m.area} sq ${m.unit}` : "—"}</td>
               <td data-label="Perimeter">{m.perimeter != null ? `${m.perimeter} ${m.unit}` : "—"}</td>
               <td data-label="Linear">{m.linear_length != null ? `${m.linear_length} ${m.unit}` : "—"}</td>
@@ -294,9 +294,9 @@ function SavedMeasurementsList({
                   <form action={archiveMeasurementAction}>
                     <input type="hidden" name="measurementId" value={m.id} />
                     <input type="hidden" name="proposalId" value={proposalId} />
-                    <button type="submit" className="button-secondary">
+                    <SubmitButton pendingText="Removing…" className="button-secondary">
                       Remove
-                    </button>
+                    </SubmitButton>
                   </form>
                 </td>
               ) : null}
@@ -379,7 +379,7 @@ function GenerateMaterialForm({
           {catalogResults.length === 0 ? <option value="">No catalog results — search below</option> : null}
           {catalogResults.map((r) => (
             <option key={r.id} value={r.id}>
-              {r.name} {r.unit_price_cents != null ? `— ${formatCents(r.unit_price_cents)}/${r.default_unit}` : "— no price for this ZIP"}
+              {r.name} {r.unit_price_cents != null ? `— ${formatCents(r.unit_price_cents)}/${r.default_unit.replace(/_/g, " ")}` : "— no price for this ZIP"}
             </option>
           ))}
         </select>
@@ -391,7 +391,7 @@ function GenerateMaterialForm({
       <div className="tenant-form" style={{ width: "100%" }}>
         <div className="field" style={{ flex: 1 }}>
           <label htmlFor="coverageRate">
-            Coverage rate {selectedMaterial ? `(${selectedMaterial.default_unit === "gallon" ? "sq ft per gallon" : `per ${selectedMaterial.default_unit}`})` : ""}
+            Coverage rate {selectedMaterial ? `(${selectedMaterial.default_unit === "gallon" ? "sq ft per gallon" : `per ${selectedMaterial.default_unit.replace(/_/g, " ")}`})` : ""}
           </label>
           <input id="coverageRate" name="coverageRate" type="number" min={0.01} step={0.01} required defaultValue="1" />
         </div>
@@ -562,14 +562,21 @@ export function StepMeasurements({
         {isDraft && canCreate ? <GroupForm proposalId={proposalId} proposalVersionId={proposalVersionId} /> : null}
 
         {isDraft && canCreate ? (
-          <div className="tenant-form" role="tablist" aria-label="Measurement entry mode">
-            <button type="button" className={mode === "manual" ? "button-primary" : "button-secondary"} onClick={() => setMode("manual")}>
-              Manual entry
-            </button>
-            <button type="button" className={mode === "draw" ? "button-primary" : "button-secondary"} onClick={() => setMode("draw")}>
-              Draw layout
-            </button>
-          </div>
+          <>
+            <div className="tenant-form" role="tablist" aria-label="Measurement entry mode">
+              <button type="button" className={mode === "manual" ? "button-primary" : "button-secondary"} onClick={() => setMode("manual")}>
+                Manual entry
+              </button>
+              <button type="button" className={mode === "draw" ? "button-primary" : "button-secondary"} onClick={() => setMode("draw")}>
+                Draw layout
+              </button>
+            </div>
+            <p className="hint">
+              {mode === "manual"
+                ? "Measure a room or surface by entering its dimensions."
+                : "Sketch the job area with your mouse or finger, then enter a real-world reference length so Scopevia can estimate its area and perimeter."}
+            </p>
+          </>
         ) : null}
 
         {isDraft && canCreate && mode === "manual" ? (
@@ -634,6 +641,7 @@ export function StepMeasurements({
           />
 
           <h2>Generate labor from measurement</h2>
+          <p className="hint">Price labor by a saved measurement&apos;s area or length — useful for jobs quoted per square foot or linear foot, like flooring or painting.</p>
           <GenerateLaborForm proposalId={proposalId} proposalVersionId={proposalVersionId} measurements={measurements} />
         </div>
       ) : null}

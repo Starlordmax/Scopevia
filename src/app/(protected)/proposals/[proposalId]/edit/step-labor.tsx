@@ -96,6 +96,10 @@ export function StepLabor({
                   Fixed price
                 </button>
               </div>
+              <span className="hint">
+                Use hourly estimate when you know your crew size and how long the job will take. Use fixed price when
+                you already know what you want to charge for labor.
+              </span>
             </div>
 
             <form action={formAction} className="stack">
@@ -233,9 +237,9 @@ export function StepLabor({
                         <form action={archiveProposalLaborItemAction}>
                           <input type="hidden" name="laborItemId" value={item.id} />
                           <input type="hidden" name="proposalId" value={proposalId} />
-                          <button type="submit" className="button-secondary">
+                          <SubmitButton pendingText="Removing…" className="button-secondary">
                             Remove
-                          </button>
+                          </SubmitButton>
                         </form>
                       </td>
                     ) : null}

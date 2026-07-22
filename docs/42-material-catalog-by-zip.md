@@ -1,9 +1,15 @@
 # 42 — Material Catalog by ZIP Code
 
 Status: **Implemented**, verified against real Postgres
-(`tests/rls/phase2b-materials.test.ts`, 35 tests) and end-to-end via
+(`tests/rls/phase2b-materials.test.ts`, 45 tests) and end-to-end via
 Playwright (`tests/e2e/material-catalog.spec.ts` +
 `material-catalog.mobile.spec.ts`).
+
+> **Nota de estado (2026-07-15, Phase 2D.1):** `search_material_catalog()`
+> now paginates server-side instead of returning up to 200 unwindowed
+> rows. See "Pagination (Phase 2D.1)" below and
+> [docs/51-material-catalog-pagination.md](51-material-catalog-pagination.md)
+> for the full writeup.
 
 > **Nota de estado (Phase 2B.1, 2026-07-09):** The ZIP field and the
 > catalog search/results now live in a single unified panel ("Material
@@ -285,9 +291,57 @@ for this ZIP" — it is never blank just because no ZIP has been set yet.
 `name`. It now matches `name`, `description`, `brand`, and
 `supplier_name` (all via case-insensitive `ILIKE '%…%'` partial match)
 — e.g. searching "weather-resistant" now finds Exterior Paint via its
-description, not just its name. Results are capped at 200 rows (a
-defensive bound, not a real constraint against the current ~26-item
-seed catalog).
+description, not just its name.
+
+## Pagination (Phase 2D.1)
+
+`search_material_catalog()` previously had a hardcoded `limit 200` and
+no offset — the TS wrapper and every caller fetched (and rendered)
+"everything," which was fine at the ~26-item seed-catalog scale but
+meant the Materials & Costs step had no actual paging behavior. As the
+catalog grows this doesn't scale, and even at 26 items the UI rendered
+every row as a full add-to-proposal card (name/description, unit,
+supplier, price, quantity, section, override price, submit button),
+producing 30,000px+ of scroll on a 390px mobile viewport.
+
+The function now takes `p_limit` (default 20, clamped server-side to
+1–100) and `p_offset` (default 0, clamped to ≥0), and returns an
+additional `total_count` column computed via `count(*) over()` — a
+window function evaluated over the full matching set before the
+`LIMIT`/`OFFSET` step, so every returned row carries the *true* total
+match count in one query, no second round-trip. `searchMaterialCatalog()`
+(`src/lib/proposals/materials.ts`) returns `{ items, totalCount, hasMore }`
+(`hasMore = items.length < totalCount`) instead of a bare array.
+
+The UI ("Load more materials," not numbered pagination — an RPC-backed
+search makes an exact-count query awkward, and a running numbered
+`<Pagination>` component isn't a good fit for a growing result window)
+tracks a single `catalogLimit` query param that starts at 20 and grows
+by 20 each click (`?catalogLimit=40`, `60`, …), always requesting
+`p_offset=0` with the larger `p_limit` — a "growing cumulative limit,"
+not a true paged offset. This keeps the feature entirely
+server-rendered/GET-form-driven, consistent with the existing
+`catalogSearch`/`catalogCategory` params, with no Client Component
+fetch/accumulation state and no risk of rows shifting between clicks.
+A "Showing X of Y materials." hint and a `has_more`-gated "Load more
+materials" button sit below the results table; both disappear once
+every matching row is showing.
+
+Two indexes were added to keep this fast as the catalog grows:
+`material_catalog_items_service_type_idx` (btree, for the
+`service_type` filter used by material-from-measurement generation) and
+`material_catalog_items_name_trgm_idx` (GIN trigram, for the `ILIKE`
+name search), in
+`supabase/migrations/20260711100000_material_catalog_pagination.sql` —
+a forward migration; the already-applied
+`search_material_catalog` migration was never edited, since changing a
+`RETURNS TABLE(...)` shape requires `DROP FUNCTION` + `CREATE OR
+REPLACE`, not just `CREATE OR REPLACE` alone.
+
+Search still matches `name`/`description`/`brand`/`supplier_name`,
+category filtering still combines with search, ZIP pricing/fallback and
+snapshot pricing are untouched — pagination only changes how many rows
+of an already-computed result set are returned per call.
 
 ## The empty-string bug (found and fixed)
 

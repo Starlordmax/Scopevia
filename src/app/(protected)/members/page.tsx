@@ -55,7 +55,7 @@ export default async function MembersPage() {
   return (
     <div className="stack">
       <PageHeader icon={UserCog} title="Members" />
-      {error ? <p className="error-banner">{error.message}</p> : null}
+      {error ? <p className="error-banner">We couldn&apos;t load this page right now. Please try refreshing.</p> : null}
 
       <div className="table-card">
         <table>
@@ -71,7 +71,7 @@ export default async function MembersPage() {
             {rows.map((m) => (
               <tr key={m.id}>
                 <td data-label="Name">
-                  {profileById.get(m.user_id) || "Unnamed member"}
+                  {profileById.get(m.user_id) || "No name set"}
                   {m.user_id === user.id ? <span className="hint"> (you)</span> : null}
                 </td>
                 <td data-label="Role">{m.roles?.name ?? "—"}</td>
@@ -100,7 +100,7 @@ export default async function MembersPage() {
         <div className="section-card stack">
           <h2>Invite a member</h2>
           <p className="hint">
-            Phase 0 can only add someone who already has a Scopevia account — ask them to sign up first. They
+            You can only invite someone who already has a Scopevia account — ask them to sign up first. They
             won&apos;t have access until they sign in and accept the invitation themselves.
           </p>
           <InviteMemberForm tenantId={tenant.tenant_id} />

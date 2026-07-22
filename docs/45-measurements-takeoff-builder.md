@@ -29,14 +29,20 @@ lists exactly like any manually-added item, and the Pricing Summary and
 proposal total recalculate through the same
 `recalculate_proposal_version()` every other mutation in this app uses.
 
-> **Scope note:** creating a new proposal still redirects to the Scope
-> step (unchanged from Phase 2A), not Measurements — Measurements is
-> reachable as the stepper's first tab, but is not forced on every new
-> proposal. This was a deliberate call to avoid rewriting the large
-> number of existing E2E assertions that expect the post-creation
-> redirect target, for a requirement the brief's acceptance criteria
-> didn't explicitly demand ("Existe Step Measurements", not "es el
-> primer paso obligatorio al crear").
+> **Scope note (Phase 2D fix):** creating a new proposal now redirects
+> straight to Measurements, the stepper's actual first step — Phase 2A/2C
+> originally redirected to Scope instead, a leftover from before
+> Measurements existed as a step at all. Reported as a UX bug ("después de
+> crear la propuesta debería empezar en Measurements, no en Scope of
+> Work") and fixed in `createProposalDirectAction`/
+> `createProposalFromOpportunityAction` (`src/actions/proposals.ts`); the
+> ~15 existing E2E assertions across `proposals.spec.ts`,
+> `proposals.mobile.spec.ts`, `measurements.spec.ts`,
+> `measurements.mobile.spec.ts`, `material-catalog.spec.ts`,
+> `material-catalog.mobile.spec.ts`, and `permissions.spec.ts` that
+> expected the old `step=scope` redirect were updated to expect
+> `step=measurements` (and to navigate on to Scope explicitly where a test
+> actually exercises the Scope form).
 
 ## Data model
 

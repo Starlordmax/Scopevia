@@ -6,7 +6,9 @@ import { PERMISSIONS } from "../../src/lib/auth/permission-keys";
 // supabase/migrations/20260702131100_seed_crm_permissions.sql (Phase 1),
 // supabase/migrations/20260706141600_seed_proposal_permissions.sql (Phase 2A),
 // supabase/migrations/20260708120200_seed_material_catalog_permissions.sql (Phase 2B), and
-// supabase/migrations/20260709140300_measurements_rls_and_permissions.sql (Phase 2C).
+// supabase/migrations/20260709140300_measurements_rls_and_permissions.sql (Phase 2C), and
+// supabase/migrations/20260715100200_client_portal_rls_and_permissions.sql (Phase 3A), and
+// supabase/migrations/20260720100200_seed_proposal_revision_permission.sql (Phase 3B.1).
 // There is no automated cross-check against the live database in a unit test
 // (that belongs to the RLS/integration suite), so this test exists to catch a
 // TypeScript-side typo or rename that would otherwise silently desync from
@@ -86,6 +88,12 @@ const EXPECTED_PERMISSION_KEYS = [
   "measurements.update",
   "measurements.archive",
   "measurements.generate_materials",
+  // Phase 3A
+  "proposal_portal_links.create",
+  "proposal_portal_links.view",
+  "proposal_portal_links.revoke",
+  // Phase 3B.1
+  "proposals.create_revision",
 ].sort();
 
 describe("PERMISSIONS", () => {

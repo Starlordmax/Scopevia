@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "../supabase/server";
+import { DEFAULT_PAGE_SIZE } from "../search";
 import type { Database } from "../../../types/database";
 
 export type MaterialCatalogSearchResult = Database["public"]["Functions"]["search_material_catalog"]["Returns"][number];
@@ -25,10 +26,27 @@ function emptyToNull(value: string | null | undefined): string | null {
   return value ? value : null;
 }
 
+export type MaterialCatalogPage = {
+  items: MaterialCatalogSearchResult[];
+  /** True total matching row count (via the RPC's count(*) over()), not just this page's length. */
+  totalCount: number;
+  /** items.length < totalCount -- whether a "Load more" click would return additional rows. */
+  hasMore: boolean;
+};
+
+/**
+ * Paginated: defaults to the first DEFAULT_PAGE_SIZE (20) rows. The
+ * Materials & Costs step's "Load more" button re-requests with a larger
+ * `limit` (not a true incremental offset) so the visible list is always
+ * "the first N results so far" -- simple, stateless, no client-side
+ * accumulation needed, and avoids any row-shifting risk if the
+ * underlying data changes between clicks. See
+ * docs/51-material-catalog-pagination.md.
+ */
 export async function searchMaterialCatalog(
   tenantId: string,
-  filters: { zipCode?: string | null; searchText?: string; category?: string }
-): Promise<MaterialCatalogSearchResult[]> {
+  filters: { zipCode?: string | null; searchText?: string; category?: string; limit?: number; offset?: number }
+): Promise<MaterialCatalogPage> {
   // `as string` casts for the same reason as update_proposal_scope
   // (docs/37): these params have SQL DEFAULT NULL, Postgres accepts null,
   // but the generated arg types come out non-nullable.
@@ -38,7 +56,11 @@ export async function searchMaterialCatalog(
     p_zip_code: emptyToNull(filters.zipCode) as string,
     p_search_text: emptyToNull(filters.searchText) as string,
     p_category: emptyToNull(filters.category) as string,
+    p_limit: filters.limit ?? DEFAULT_PAGE_SIZE,
+    p_offset: filters.offset ?? 0,
   });
   if (error) throw error;
-  return data ?? [];
+  const items = data ?? [];
+  const totalCount = items[0]?.total_count ?? 0;
+  return { items, totalCount, hasMore: items.length < totalCount };
 }

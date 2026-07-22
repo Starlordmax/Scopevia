@@ -27,6 +27,6 @@ export async function getAssignableMembers(tenantId: string): Promise<Assignable
   const nameByUserId = new Map((profiles ?? []).map((p) => [p.id, p.full_name]));
 
   return rows
-    .map((r) => ({ membershipId: r.id, name: nameByUserId.get(r.user_id) || "Unnamed member" }))
+    .map((r) => ({ membershipId: r.id, name: nameByUserId.get(r.user_id) || "Team member" }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }

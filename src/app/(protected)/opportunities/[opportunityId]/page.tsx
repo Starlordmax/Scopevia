@@ -10,7 +10,7 @@ import { NotesSection } from "../../../../components/notes-section";
 import { OpportunityStatusActions } from "./status-actions";
 import { archiveOpportunityAction, restoreOpportunityAction } from "../../../../actions/opportunities";
 import { opportunityBadgeClass, proposalBadgeClass } from "../../../../lib/crm/status-badge";
-import { formatCents } from "../../../../lib/proposals/format";
+import { formatCents, formatLabel } from "../../../../lib/proposals/format";
 import type { OpportunityStatus } from "../../../../../types/enums";
 
 export const dynamic = "force-dynamic";
@@ -77,7 +77,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
             {opportunity.clients ? <Link href={`/clients/${opportunity.clients.id}`}>{opportunity.clients.display_name}</Link> : "—"}
           </span>
         </div>
-        <span className={`badge ${opportunityBadgeClass(opportunity.status)}`.trim()}>{opportunity.status.replace(/_/g, " ")}</span>
+        <span className={`badge ${opportunityBadgeClass(opportunity.status)}`.trim()}>{formatLabel(opportunity.status)}</span>
       </div>
 
       <div className="section-card stack">
@@ -108,7 +108,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
               return (
                 <div className="page-header-heading">
                   <div>
-                    <span className={`badge ${proposalBadgeClass(activeProposal.status)}`.trim()}>{activeProposal.status}</span>{" "}
+                    <span className={`badge ${proposalBadgeClass(activeProposal.status)}`.trim()}>{formatLabel(activeProposal.status)}</span>{" "}
                     <span className="hint">
                       #{activeProposal.proposal_number} · {version ? formatCents(version.total_cents) : "—"} · updated{" "}
                       {new Date(activeProposal.updated_at).toLocaleDateString()}

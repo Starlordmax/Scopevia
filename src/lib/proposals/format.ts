@@ -18,3 +18,18 @@
 export function formatCents(cents: number): string {
   return (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
+
+/**
+ * Turns a raw snake_case/lowercase enum value (a status, section type, or
+ * measurement type straight from the database) into a human-readable label
+ * -- e.g. "floor_area" -> "Floor area", "inspection_scheduled" -> "Inspection
+ * scheduled". Sentence case (only the first letter capitalized), not Title
+ * Case, since these are short status phrases read as a sentence fragment,
+ * not standalone titles. Purely a display transform -- the raw value remains
+ * the source of truth everywhere else (permission checks, RPC calls, badge-
+ * color mapping in status-badge.ts all still switch on the original string).
+ */
+export function formatLabel(value: string): string {
+  const spaced = value.replace(/_/g, " ");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}

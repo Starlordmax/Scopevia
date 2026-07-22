@@ -985,6 +985,96 @@ export type Database = {
           },
         ]
       }
+      proposal_client_responses: {
+        Row: {
+          accepted_terms: boolean
+          client_email: string
+          client_name: string | null
+          created_at: string
+          decline_reason: string | null
+          id: string
+          ip_hash: string | null
+          portal_link_id: string
+          portal_session_id: string
+          proposal_id: string
+          proposal_version_id: string
+          responded_at: string
+          response_type: string
+          tenant_id: string
+          user_agent_hash: string | null
+        }
+        Insert: {
+          accepted_terms?: boolean
+          client_email: string
+          client_name?: string | null
+          created_at?: string
+          decline_reason?: string | null
+          id?: string
+          ip_hash?: string | null
+          portal_link_id: string
+          portal_session_id: string
+          proposal_id: string
+          proposal_version_id: string
+          responded_at?: string
+          response_type: string
+          tenant_id: string
+          user_agent_hash?: string | null
+        }
+        Update: {
+          accepted_terms?: boolean
+          client_email?: string
+          client_name?: string | null
+          created_at?: string
+          decline_reason?: string | null
+          id?: string
+          ip_hash?: string | null
+          portal_link_id?: string
+          portal_session_id?: string
+          proposal_id?: string
+          proposal_version_id?: string
+          responded_at?: string
+          response_type?: string
+          tenant_id?: string
+          user_agent_hash?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_client_responses_portal_link_id_tenant_id_fkey"
+            columns: ["portal_link_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_portal_links"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_client_responses_portal_session_id_tenant_id_fkey"
+            columns: ["portal_session_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_portal_sessions"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_client_responses_proposal_id_tenant_id_fkey"
+            columns: ["proposal_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_client_responses_proposal_version_id_tenant_id_fkey"
+            columns: ["proposal_version_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_versions"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_client_responses_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       proposal_creation_requests: {
         Row: {
           created_at: string
@@ -1596,6 +1686,274 @@ export type Database = {
           },
         ]
       }
+      proposal_notification_deliveries: {
+        Row: {
+          created_at: string
+          dedupe_key: string
+          error_code: string | null
+          event_type: string
+          failed_at: string | null
+          id: string
+          proposal_id: string
+          proposal_version_id: string
+          provider: string
+          recipient_email: string
+          sent_at: string | null
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          dedupe_key: string
+          error_code?: string | null
+          event_type: string
+          failed_at?: string | null
+          id?: string
+          proposal_id: string
+          proposal_version_id: string
+          provider: string
+          recipient_email: string
+          sent_at?: string | null
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          dedupe_key?: string
+          error_code?: string | null
+          event_type?: string
+          failed_at?: string | null
+          id?: string
+          proposal_id?: string
+          proposal_version_id?: string
+          provider?: string
+          recipient_email?: string
+          sent_at?: string | null
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_notification_deliver_proposal_version_id_tenant_i_fkey"
+            columns: ["proposal_version_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_versions"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_notification_deliveries_proposal_id_tenant_id_fkey"
+            columns: ["proposal_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_notification_deliveries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_portal_links: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          last_viewed_at: string | null
+          proposal_id: string
+          proposal_version_id: string
+          revoked_at: string | null
+          revoked_by: string | null
+          status: string
+          tenant_id: string
+          token_hash: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at: string
+          id?: string
+          last_viewed_at?: string | null
+          proposal_id: string
+          proposal_version_id: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          status?: string
+          tenant_id: string
+          token_hash: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          last_viewed_at?: string | null
+          proposal_id?: string
+          proposal_version_id?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          status?: string
+          tenant_id?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_portal_links_proposal_id_tenant_id_fkey"
+            columns: ["proposal_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_portal_links_proposal_version_id_tenant_id_fkey"
+            columns: ["proposal_version_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_versions"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_portal_links_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_portal_otps: {
+        Row: {
+          attempt_count: number
+          client_email: string
+          code_hash: string
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          ip_hash: string | null
+          max_attempts: number
+          portal_link_id: string
+          proposal_id: string
+          tenant_id: string
+          user_agent_hash: string | null
+        }
+        Insert: {
+          attempt_count?: number
+          client_email: string
+          code_hash: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          ip_hash?: string | null
+          max_attempts?: number
+          portal_link_id: string
+          proposal_id: string
+          tenant_id: string
+          user_agent_hash?: string | null
+        }
+        Update: {
+          attempt_count?: number
+          client_email?: string
+          code_hash?: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          ip_hash?: string | null
+          max_attempts?: number
+          portal_link_id?: string
+          proposal_id?: string
+          tenant_id?: string
+          user_agent_hash?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_portal_otps_portal_link_id_tenant_id_fkey"
+            columns: ["portal_link_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_portal_links"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_portal_otps_proposal_id_tenant_id_fkey"
+            columns: ["proposal_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_portal_otps_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_portal_sessions: {
+        Row: {
+          client_email: string
+          created_at: string
+          expires_at: string
+          id: string
+          last_seen_at: string
+          portal_link_id: string
+          proposal_id: string
+          revoked_at: string | null
+          session_token_hash: string
+          tenant_id: string
+        }
+        Insert: {
+          client_email: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          last_seen_at?: string
+          portal_link_id: string
+          proposal_id: string
+          revoked_at?: string | null
+          session_token_hash: string
+          tenant_id: string
+        }
+        Update: {
+          client_email?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          last_seen_at?: string
+          portal_link_id?: string
+          proposal_id?: string
+          revoked_at?: string | null
+          session_token_hash?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_portal_sessions_portal_link_id_tenant_id_fkey"
+            columns: ["portal_link_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_portal_links"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_portal_sessions_proposal_id_tenant_id_fkey"
+            columns: ["proposal_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_portal_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       proposal_sections: {
         Row: {
           archived_at: string | null
@@ -1760,6 +2118,71 @@ export type Database = {
           },
           {
             foreignKeyName: "proposal_versions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_view_events: {
+        Row: {
+          client_email: string
+          id: string
+          ip_hash: string | null
+          portal_link_id: string
+          proposal_id: string
+          proposal_version_id: string
+          tenant_id: string
+          user_agent_hash: string | null
+          viewed_at: string
+        }
+        Insert: {
+          client_email: string
+          id?: string
+          ip_hash?: string | null
+          portal_link_id: string
+          proposal_id: string
+          proposal_version_id: string
+          tenant_id: string
+          user_agent_hash?: string | null
+          viewed_at?: string
+        }
+        Update: {
+          client_email?: string
+          id?: string
+          ip_hash?: string | null
+          portal_link_id?: string
+          proposal_id?: string
+          proposal_version_id?: string
+          tenant_id?: string
+          user_agent_hash?: string | null
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_view_events_portal_link_id_tenant_id_fkey"
+            columns: ["portal_link_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_portal_links"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_view_events_proposal_id_tenant_id_fkey"
+            columns: ["proposal_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_view_events_proposal_version_id_tenant_id_fkey"
+            columns: ["proposal_version_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_versions"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "proposal_view_events_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -3342,6 +3765,76 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_proposal_portal_link: {
+        Args: {
+          p_expires_at: string
+          p_proposal_id: string
+          p_tenant_id: string
+          p_token_hash: string
+        }
+        Returns: {
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          last_viewed_at: string | null
+          proposal_id: string
+          proposal_version_id: string
+          revoked_at: string | null
+          revoked_by: string | null
+          status: string
+          tenant_id: string
+          token_hash: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_portal_links"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_proposal_revision: {
+        Args: { p_proposal_id: string }
+        Returns: {
+          calculation_version: number
+          created_at: string
+          created_by: string
+          default_hours_per_day: number | null
+          discount_cents: number
+          discount_type: string
+          discount_value: number
+          estimated_duration_days: number | null
+          estimated_start_date: string | null
+          exclusions: string
+          id: string
+          labor_total_cents: number
+          line_items_subtotal_cents: number
+          locked_at: string | null
+          notes_for_client: string
+          pricing_city: string | null
+          pricing_state_code: string | null
+          pricing_zip_code: string | null
+          proposal_id: string
+          scope_intro: string | null
+          subtotal_cents: number
+          summary: string | null
+          tax_cents: number
+          tax_rate_bps: number
+          taxable_subtotal_cents: number
+          tenant_id: string
+          terms: string
+          total_cents: number
+          updated_at: string
+          version_number: number
+          version_status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_versions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_tenant_material: {
         Args: {
           p_brand?: string
@@ -3546,6 +4039,13 @@ export type Database = {
           tenant_name: string
         }[]
       }
+      get_proposal_notification_recipients: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          email: string
+          user_id: string
+        }[]
+      }
       get_tenant_proposal_settings: {
         Args: { p_tenant_id: string }
         Returns: {
@@ -3657,6 +4157,61 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      portal_get_link_info: {
+        Args: { p_token_hash: string }
+        Returns: {
+          business_name: string
+          is_valid: boolean
+          link_id: string
+          proposal_id: string
+          proposal_title: string
+          status_reason: string
+          tenant_id: string
+        }[]
+      }
+      portal_get_session_context: {
+        Args: {
+          p_ip_hash: string
+          p_session_token_hash: string
+          p_user_agent_hash: string
+        }
+        Returns: {
+          client_email: string
+          is_first_view: boolean
+          outcome: string
+          proposal_id: string
+          proposal_version_id: string
+          tenant_id: string
+        }[]
+      }
+      portal_request_otp: {
+        Args: {
+          p_code_hash: string
+          p_email: string
+          p_expires_at: string
+          p_ip_hash: string
+          p_token_hash: string
+          p_user_agent_hash: string
+        }
+        Returns: {
+          email_matched: boolean
+          outcome: string
+        }[]
+      }
+      portal_verify_otp: {
+        Args: {
+          p_code_hash: string
+          p_email: string
+          p_session_expires_at: string
+          p_session_token_hash: string
+          p_token_hash: string
+        }
+        Returns: {
+          outcome: string
+          proposal_id: string
+          tenant_id: string
+        }[]
       }
       recalculate_proposal_version: {
         Args: { p_proposal_version_id: string }
@@ -3964,6 +4519,29 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      revoke_proposal_portal_link: {
+        Args: { p_portal_link_id: string }
+        Returns: {
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          last_viewed_at: string | null
+          proposal_id: string
+          proposal_version_id: string
+          revoked_at: string | null
+          revoked_by: string | null
+          status: string
+          tenant_id: string
+          token_hash: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposal_portal_links"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       save_measurement_polygon_shape: {
         Args: {
           p_closed: boolean
@@ -4059,6 +4637,8 @@ export type Database = {
       search_material_catalog: {
         Args: {
           p_category?: string
+          p_limit?: number
+          p_offset?: number
           p_search_text?: string
           p_service_type?: string
           p_tenant_id: string
@@ -4081,6 +4661,7 @@ export type Database = {
           sku: string
           supplier_name: string
           tenant_id: string
+          total_count: number
           unit_price_cents: number
         }[]
       }
@@ -4139,6 +4720,26 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      submit_proposal_client_response: {
+        Args: {
+          p_accepted_terms: boolean
+          p_client_name: string
+          p_decline_reason: string
+          p_ip_hash: string
+          p_response_type: string
+          p_session_token_hash: string
+          p_user_agent_hash: string
+        }
+        Returns: {
+          client_email: string
+          outcome: string
+          proposal_id: string
+          proposal_version_id: string
+          responded_at: string
+          response_type: string
+          tenant_id: string
+        }[]
       }
       sync_opportunity_to_proposal_in_progress: {
         Args: { p_opportunity_id: string; p_tenant_id: string }

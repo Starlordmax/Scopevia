@@ -5,6 +5,7 @@ import Link from "next/link";
 import { updateProposalScopeAction, addProposalSectionAction, archiveProposalSectionAction } from "../../../../../actions/proposals";
 import type { ActionResult } from "../../../../../actions/auth";
 import { SubmitButton } from "../../../../../components/submit-button";
+import { formatLabel } from "../../../../../lib/proposals/format";
 import type { Database } from "../../../../../../types/database";
 
 type ProposalVersion = Database["public"]["Tables"]["proposal_versions"]["Row"];
@@ -114,16 +115,16 @@ export function StepScope({
               <li key={s.id} className="card" style={{ maxWidth: "none" }}>
                 <div className="page-header-heading">
                   <strong>{s.title}</strong>
-                  <span className="badge">{s.section_type.replace(/_/g, " ")}</span>
+                  <span className="badge">{formatLabel(s.section_type)}</span>
                 </div>
                 {s.description ? <p className="hint">{s.description}</p> : null}
                 {canEdit ? (
                   <form action={archiveProposalSectionAction}>
                     <input type="hidden" name="sectionId" value={s.id} />
                     <input type="hidden" name="proposalId" value={proposalId} />
-                    <button type="submit" className="button-secondary">
+                    <SubmitButton pendingText="Removing…" className="button-secondary">
                       Remove
-                    </button>
+                    </SubmitButton>
                   </form>
                 ) : null}
               </li>

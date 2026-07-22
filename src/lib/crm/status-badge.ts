@@ -53,3 +53,26 @@ export function proposalBadgeClass(status: string): string {
       return "";
   }
 }
+
+export function portalLinkBadgeClass(status: string): string {
+  switch (status) {
+    case "active":
+      return "badge-success";
+    case "revoked":
+      return "badge-neutral";
+    default:
+      return "";
+  }
+}
+
+export function versionStatusBadgeClass(status: string): string {
+  switch (status) {
+    case "draft":
+      return "badge-warning";
+    case "locked":
+    case "superseded":
+      return "badge-neutral";
+    default:
+      return "";
+  }
+}

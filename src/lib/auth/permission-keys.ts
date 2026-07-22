@@ -11,8 +11,10 @@
  * (Phase 0), supabase/migrations/20260702131100_seed_crm_permissions.sql
  * (Phase 1), supabase/migrations/20260706141600_seed_proposal_permissions.sql
  * (Phase 2A), supabase/migrations/20260708120200_seed_material_catalog_permissions.sql
- * (Phase 2B), and supabase/migrations/20260709140300_measurements_rls_and_permissions.sql
- * (Phase 2C).
+ * (Phase 2B), supabase/migrations/20260709140300_measurements_rls_and_permissions.sql
+ * (Phase 2C), supabase/migrations/20260715100200_client_portal_rls_and_permissions.sql
+ * (Phase 3A), and supabase/migrations/20260720100200_seed_proposal_revision_permission.sql
+ * (Phase 3B.1).
  */
 export const PERMISSIONS = {
   TENANT_VIEW: "tenant.view",
@@ -70,6 +72,7 @@ export const PERMISSIONS = {
 
   PROPOSAL_VERSIONS_CREATE: "proposal_versions.create",
   PROPOSAL_VERSIONS_VIEW: "proposal_versions.view",
+  PROPOSALS_CREATE_REVISION: "proposals.create_revision",
 
   PORTFOLIO_VIEW: "portfolio.view",
   PORTFOLIO_CREATE: "portfolio.create",
@@ -102,6 +105,11 @@ export const PERMISSIONS = {
   MEASUREMENTS_UPDATE: "measurements.update",
   MEASUREMENTS_ARCHIVE: "measurements.archive",
   MEASUREMENTS_GENERATE_MATERIALS: "measurements.generate_materials",
+
+  // Phase 3A: Client Portal
+  PORTAL_LINKS_CREATE: "proposal_portal_links.create",
+  PORTAL_LINKS_VIEW: "proposal_portal_links.view",
+  PORTAL_LINKS_REVOKE: "proposal_portal_links.revoke",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

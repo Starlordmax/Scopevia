@@ -23,7 +23,7 @@ test.describe("Proposal Builder (mobile, 390x844)", () => {
     await page.getByLabel("Proposal title").fill(`E2E Mobile Proposal ${suffix}`);
     await page.getByLabel("Service type").selectOption("interior_painting");
     await page.getByRole("button", { name: "Save and continue" }).click();
-    await page.waitForURL(/step=scope/);
+    await page.waitForURL(/step=measurements/);
 
     const viewportWidth = page.viewportSize()!.width;
     let scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
@@ -32,6 +32,11 @@ test.describe("Proposal Builder (mobile, 390x844)", () => {
     // The stepper must scroll horizontally within its own container (not the
     // page) and every step must remain reachable by tapping.
     await expect(page.locator(".proposal-stepper")).toBeVisible();
+
+    await page.getByRole("link", { name: "Continue to Scope of Work" }).click();
+    await page.waitForURL(/step=scope/);
+    scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(scrollWidth).toBeLessThanOrEqual(viewportWidth + 1);
 
     await page.getByRole("link", { name: "Continue to Labor" }).click();
     await page.waitForURL(/step=labor/);
@@ -145,9 +150,9 @@ test.describe("Proposal Builder (mobile, 390x844)", () => {
     await page.getByLabel("Proposal title").fill(`E2E Mobile Preview ${suffix}`);
     await page.getByLabel("Service type").selectOption("custom");
     await page.getByRole("button", { name: "Save and continue" }).click();
-    await page.waitForURL(/step=scope/);
+    await page.waitForURL(/step=measurements/);
 
-    const proposalUrl = page.url().replace(/\/edit\?step=scope$/, "");
+    const proposalUrl = page.url().replace(/\/edit\?step=measurements$/, "");
     await page.goto(`${proposalUrl}/preview`);
 
     const viewportWidth = page.viewportSize()!.width;

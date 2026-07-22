@@ -35,6 +35,6 @@ export async function getNotes(params: {
     id: r.id,
     body: r.body,
     createdAt: r.created_at,
-    authorName: nameByAuthorId.get(r.created_by) ?? "Unnamed member",
+    authorName: nameByAuthorId.get(r.created_by) ?? "Team member",
   }));
 }

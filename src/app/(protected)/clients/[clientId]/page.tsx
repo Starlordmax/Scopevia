@@ -10,7 +10,7 @@ import { NotesSection } from "../../../../components/notes-section";
 import { ContactsSection } from "./contacts-section";
 import { archiveClientAction, restoreClientAction } from "../../../../actions/clients";
 import { proposalBadgeClass } from "../../../../lib/crm/status-badge";
-import { formatCents } from "../../../../lib/proposals/format";
+import { formatCents, formatLabel } from "../../../../lib/proposals/format";
 
 export const dynamic = "force-dynamic";
 
@@ -167,7 +167,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
                     <Link href={`/proposals/${p.id}`}>
                       #{p.proposal_number} · {p.title}
                     </Link>{" "}
-                    <span className={`badge ${proposalBadgeClass(p.status)}`.trim()}>{p.status}</span>{" "}
+                    <span className={`badge ${proposalBadgeClass(p.status)}`.trim()}>{formatLabel(p.status)}</span>{" "}
                     <span className="hint">{version ? formatCents(version.total_cents) : "—"}</span>
                   </li>
                 );

@@ -6,6 +6,7 @@ import { createClient } from "../../../../lib/supabase/server";
 import { getSignedMediaUrls } from "../../../../lib/storage/media";
 import { PageHeader } from "../../../../components/page-header";
 import { archivePortfolioProjectAction, restorePortfolioProjectAction } from "../../../../actions/portfolio";
+import { ConfirmSubmitButton } from "../../../../components/confirm-submit-button";
 import { UploadPhotoForm } from "./upload-photo-form";
 
 export const dynamic = "force-dynamic";
@@ -86,9 +87,13 @@ export default async function PortfolioProjectDetailPage({ params }: { params: P
         {!project.archived_at && canArchive ? (
           <form action={archivePortfolioProjectAction}>
             <input type="hidden" name="portfolioProjectId" value={portfolioId} />
-            <button type="submit" className="button-danger">
+            <ConfirmSubmitButton
+              confirmMessage="Archive this portfolio item? It will no longer be available to reuse in proposals until restored."
+              pendingText="Archiving…"
+              className="button-danger"
+            >
               Archive
-            </button>
+            </ConfirmSubmitButton>
           </form>
         ) : null}
         {project.archived_at && canRestore ? (

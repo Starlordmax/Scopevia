@@ -10,8 +10,14 @@ const GUEST_ONLY_PATHS = ["/sign-in", "/sign-up", "/forgot-password"];
 // arriving from a password-recovery email link IS authenticated (via a
 // short-lived recovery session established by /auth/callback), so the
 // guest-only redirect rule would otherwise bounce them straight to "/"
-// before they can set a new password.
-const ALWAYS_ALLOWED_PATHS = ["/auth/callback", "/reset-password"];
+// before they can set a new password. "/p" (Client Portal, Phase 3A) is here
+// because a portal visitor is never a Supabase Auth user at all — every
+// /p/[token]* page validates access itself (link/OTP/session hashes against
+// the database), so it must never be redirected to /sign-in. See
+// docs/53-client-portal-security.md. "/api/health" (Phase 3D.1) is here so
+// Render's health checker — which never holds a session cookie — is never
+// redirected to /sign-in either; see docs/64-render-staging-deployment.md.
+const ALWAYS_ALLOWED_PATHS = ["/auth/callback", "/reset-password", "/p", "/api/health"];
 
 function matches(paths: string[], pathname: string): boolean {
   return paths.some((p) => pathname === p || pathname.startsWith(`${p}/`));
