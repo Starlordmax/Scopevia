@@ -4,6 +4,29 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fix — Auth confirmation/reset emails linking to localhost on Render
+
+Signup confirmation and password-reset emails sent from the deployed
+Render app were linking to `http://localhost:3000` instead of
+`https://scopevia.onrender.com`. Root cause was two-fold: Supabase Auth's
+own Dashboard "Site URL" had never been updated from its default
+`localhost` value (Supabase silently falls back to it whenever the app's
+requested `emailRedirectTo` isn't on the Dashboard's Redirect URLs
+allow-list — a config gap, not a code bug on its own); and a stale manual
+edit to this repo's gitignored `.env.local` (which never reaches Render at
+all) had set `NEXT_PUBLIC_SITE_URL` to the Render URL, silently breaking
+local dev instead of fixing anything.
+
+**Fixed:** `.env.local` reverted to `http://localhost:3000`. Extracted
+`resolveSiteOrigin()` (`src/lib/auth/site-origin.ts`, new, unit-tested) so
+`NEXT_PUBLIC_SITE_URL` is checked before the request's `Origin` header
+(previously the reverse — less deterministic for something baked into an
+outbound email), used by both `signUpAction()` and
+`forgotPasswordAction()` (`src/actions/auth.ts`). 6 new unit tests,
+253/253 total. See [docs/67](docs/67-auth-confirmation-url-fix.md) for
+the full root-cause writeup and the exact Supabase Dashboard values to
+set.
+
 ### Phase 3D.1 — Render Staging Deployment Prep
 
 Prepares Scopevia to run as a Render **Web Service** (not a Static Site —

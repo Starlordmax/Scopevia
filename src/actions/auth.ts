@@ -5,12 +5,20 @@ import { headers } from "next/headers";
 import { createClient } from "../lib/supabase/server";
 import { signUpSchema, signInSchema, forgotPasswordSchema, resetPasswordSchema } from "../lib/validation/schemas";
 import { logAuditEvent } from "../lib/audit/log";
+import { resolveSiteOrigin } from "../lib/auth/site-origin";
 
 export type ActionResult = { error?: string };
 
+/**
+ * `NEXT_PUBLIC_SITE_URL` wins whenever it's set (Render/staging/production)
+ * — see src/lib/auth/site-origin.ts for why this must NOT be the request's
+ * `Origin` header first. Previously this fell back to `Origin` before the
+ * env var, which risked building an auth redirect URL that didn't match
+ * what's actually configured in the Supabase Dashboard.
+ */
 async function siteOrigin(): Promise<string> {
   const originHeader = (await headers()).get("origin");
-  return originHeader ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  return resolveSiteOrigin(process.env.NEXT_PUBLIC_SITE_URL, originHeader);
 }
 
 export async function signUpAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {

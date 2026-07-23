@@ -72,6 +72,7 @@ Full walkthrough (installing, running migrations, creating a test user, verifyin
 | [docs/64-render-staging-deployment.md](docs/64-render-staging-deployment.md) | Phase 3D.1: Render Web Service setup, build/start commands, the fail-fast startup check, cookies/images review |
 | [docs/65-render-environment-variables.md](docs/65-render-environment-variables.md) | Phase 3D.1: every env var Render needs, public vs. secret, where to get each one (no values) |
 | [docs/66-staging-smoke-test-checklist.md](docs/66-staging-smoke-test-checklist.md) | Phase 3D.1: manual post-deploy checklist — internal, portal, and revision flows against real Resend email |
+| [docs/67-auth-confirmation-url-fix.md](docs/67-auth-confirmation-url-fix.md) | Fix: signup/reset confirmation emails linking to localhost from Render — root cause, code fix, exact Supabase Dashboard config |
 | [docs/14-phase-0-foundations.md](docs/14-phase-0-foundations.md) | What Phase 0 implements and why, including deviations from the original design |
 | [docs/15-local-development.md](docs/15-local-development.md) | Local setup, commands, troubleshooting |
 | [docs/16-environments-and-deployment.md](docs/16-environments-and-deployment.md) | Dev/staging/production separation, migrations, secrets |

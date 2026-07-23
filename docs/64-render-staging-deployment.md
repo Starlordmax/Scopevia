@@ -183,15 +183,30 @@ anything, and `scopevia-test` itself was never modified.
 
 ## Supabase Auth URLs
 
-Supabase Auth's own **Site URL** and **Redirect URLs** (Dashboard →
-Authentication → URL Configuration) must include the Render staging URL
-once known, alongside the existing `http://localhost:3000` used for local
-dev — needed for `src/app/auth/callback/route.ts` (email confirmation,
-password reset) to redirect back to the right host. This is a **Supabase
-dashboard setting**, not something in this repo, and not something this
-phase can configure without knowing the final Render URL in advance — see
-"Render manual setup steps" in the final report for the exact
-add-this-URL step.
+**Now that the Render URL is known (`https://scopevia.onrender.com`), set
+this exactly** — Dashboard → Authentication → URL Configuration:
+
+```text
+Site URL:
+https://scopevia.onrender.com
+
+Redirect URLs:
+https://scopevia.onrender.com/**
+http://localhost:3000/**
+```
+
+This is a **Supabase dashboard setting** — nothing in this repo can
+configure it. It's the single most important step for email confirmation/
+password-reset links to work correctly: Supabase validates whatever
+`emailRedirectTo`/`redirectTo` the app requests (see
+`src/actions/auth.ts`) against this **Redirect URLs** allow-list; if the
+requested URL isn't on the list, Supabase silently falls back to **Site
+URL** instead. A Site URL still set to `http://localhost:3000` (the
+default on every new Supabase project, never updated until now) is
+exactly why confirmation emails from the deployed app were linking to
+localhost — see [docs/67-auth-confirmation-url-fix.md](67-auth-confirmation-url-fix.md)
+for the full root-cause writeup and the code-side fix that shipped
+alongside this dashboard change.
 
 ## Known limitations
 
