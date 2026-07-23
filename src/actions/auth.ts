@@ -10,15 +10,17 @@ import { resolveSiteOrigin } from "../lib/auth/site-origin";
 export type ActionResult = { error?: string };
 
 /**
- * `NEXT_PUBLIC_SITE_URL` wins whenever it's set (Render/staging/production)
- * — see src/lib/auth/site-origin.ts for why this must NOT be the request's
- * `Origin` header first. Previously this fell back to `Origin` before the
- * env var, which risked building an auth redirect URL that didn't match
- * what's actually configured in the Supabase Dashboard.
+ * `NEXT_PUBLIC_SITE_URL` wins whenever it's set (Render/staging/production),
+ * `APP_BASE_URL` (Phase 3D's notification-link env var — already required
+ * on any real deployment, see docs/64) is a secondary fallback, then the
+ * request's `Origin` header, then localhost — see src/lib/auth/site-origin.ts
+ * for why the env vars must come before the header. This is the SAME
+ * canonical-URL resolution /auth/callback/route.ts uses for the final
+ * post-confirmation redirect — see docs/68-auth-callback-localhost-redirect-fix.md.
  */
 async function siteOrigin(): Promise<string> {
   const originHeader = (await headers()).get("origin");
-  return resolveSiteOrigin(process.env.NEXT_PUBLIC_SITE_URL, originHeader);
+  return resolveSiteOrigin(process.env.NEXT_PUBLIC_SITE_URL || process.env.APP_BASE_URL, originHeader);
 }
 
 export async function signUpAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
@@ -38,7 +40,10 @@ export async function signUpAction(_prev: ActionResult, formData: FormData): Pro
     password: parsed.data.password,
     options: {
       data: parsed.data.fullName ? { full_name: parsed.data.fullName } : undefined,
-      emailRedirectTo: `${origin}/auth/callback`,
+      // After confirming, land the user on /sign-in (not straight into the
+      // app) — a deliberate product choice, not a bug: see
+      // docs/68-auth-callback-localhost-redirect-fix.md.
+      emailRedirectTo: `${origin}/auth/callback?next=/sign-in`,
     },
   });
 

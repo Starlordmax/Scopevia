@@ -4,6 +4,12 @@ Status: **Fixed.** Reported symptom: Supabase Auth confirmation emails
 sent from the deployed Render app linked to `http://localhost:3000`
 instead of `https://scopevia.onrender.com`.
 
+> **Follow-up:** once this fix made the confirmation *link itself* correct,
+> a second, distinct bug surfaced — the app's own `/auth/callback` route
+> still redirected to `localhost` on the FINAL hop, after a successful
+> confirmation. See
+> [docs/68-auth-callback-localhost-redirect-fix.md](68-auth-callback-localhost-redirect-fix.md).
+
 ## Root cause
 
 Two independent problems, both traced back to the same underlying gap:

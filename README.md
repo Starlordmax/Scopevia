@@ -73,6 +73,7 @@ Full walkthrough (installing, running migrations, creating a test user, verifyin
 | [docs/65-render-environment-variables.md](docs/65-render-environment-variables.md) | Phase 3D.1: every env var Render needs, public vs. secret, where to get each one (no values) |
 | [docs/66-staging-smoke-test-checklist.md](docs/66-staging-smoke-test-checklist.md) | Phase 3D.1: manual post-deploy checklist — internal, portal, and revision flows against real Resend email |
 | [docs/67-auth-confirmation-url-fix.md](docs/67-auth-confirmation-url-fix.md) | Fix: signup/reset confirmation emails linking to localhost from Render — root cause, code fix, exact Supabase Dashboard config |
+| [docs/68-auth-callback-localhost-redirect-fix.md](docs/68-auth-callback-localhost-redirect-fix.md) | Fix: `/auth/callback`'s own final redirect landing on localhost after a successful confirmation — canonical-URL + open-redirect guard |
 | [docs/14-phase-0-foundations.md](docs/14-phase-0-foundations.md) | What Phase 0 implements and why, including deviations from the original design |
 | [docs/15-local-development.md](docs/15-local-development.md) | Local setup, commands, troubleshooting |
 | [docs/16-environments-and-deployment.md](docs/16-environments-and-deployment.md) | Dev/staging/production separation, migrations, secrets |

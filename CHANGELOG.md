@@ -4,6 +4,33 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fix — /auth/callback's own redirect still landed on localhost after confirmation
+
+Follow-up to the fix below: once Supabase's confirmation email correctly
+carried `redirect_to=https://scopevia.onrender.com/auth/callback`, a
+second, distinct bug appeared — this app's own callback route redirected
+to `localhost` on its *final* hop, after a successful `exchangeCodeForSession()`.
+Root cause: `src/app/auth/callback/route.ts` built that redirect from
+`new URL(request.url).origin`, which behind Render's proxy is not
+guaranteed to reflect the public-facing host.
+
+**Fixed:** the callback route now resolves its redirect target via the
+same canonical-URL helper the confirmation link itself uses
+(`resolveSiteOrigin()` — `NEXT_PUBLIC_SITE_URL` → `APP_BASE_URL` →
+`Origin` header → localhost), never from `request.url`. Added
+`sanitizeNextPath()` (new, unit-tested) so the `next` query param can only
+ever be a same-origin relative path — closes an open-redirect that a raw
+`${origin}${next}` string concatenation would otherwise have allowed via
+a `next=//evil.com`-style value. `signUpAction()`'s `emailRedirectTo` now
+explicitly requests `next=/sign-in`, matching the product requirement
+that a confirmed signup lands on the sign-in page.
+
+7 new unit tests for `sanitizeNextPath()`, 3 new E2E smoke tests
+(`tests/e2e/auth-callback.spec.ts` — no-code, attempted open-redirect, and
+malformed-code paths, all confirming the response always redirects to
+this server's own origin). 260/260 unit tests total. See
+[docs/68](docs/68-auth-callback-localhost-redirect-fix.md).
+
 ### Fix — Auth confirmation/reset emails linking to localhost on Render
 
 Signup confirmation and password-reset emails sent from the deployed
