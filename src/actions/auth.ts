@@ -7,7 +7,7 @@ import { signUpSchema, signInSchema, forgotPasswordSchema, resetPasswordSchema }
 import { logAuditEvent } from "../lib/audit/log";
 import { resolveSiteOrigin } from "../lib/auth/site-origin";
 
-export type ActionResult = { error?: string };
+export type ActionResult = { error?: string; message?: string };
 
 /**
  * `NEXT_PUBLIC_SITE_URL` wins whenever it's set (Render/staging/production),

@@ -4,6 +4,31 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fix — Logo upload crashed the Profile page ("This page couldn't load")
+
+Uploading a real-world-size logo (over 1 MB — a completely normal photo
+size) from Profile → Business branding crashed the whole page with
+Next.js's generic production error boundary. Root cause: `next.config.ts`
+never raised Next.js's own default Server Action body size limit (1 MB),
+so the request was rejected by Next.js's request parser itself, as an
+uncaught 413, before `uploadBusinessLogoAction()` ever ran — no
+application-level error handling could have caught it. The same latent gap
+already existed for portfolio/current-job photo uploads (advertised up to
+10 MB), just never hit by a file that large before.
+
+**Fixed:** `experimental.serverActions.bodySizeLimit` raised to `"10mb"`
+(matching the app's own largest already-documented upload limit). Also
+added defense-in-depth: `uploadBusinessLogoAction()`/
+`removeBusinessLogoAction()` now wrap their bodies in `try/catch` so any
+other unexpected failure degrades to a friendly message instead of
+crashing, a branding-specific permission-denied message, and a visible
+"Logo uploaded successfully."/"Logo removed." success state.
+
+New regression test (`tests/e2e/business-branding.spec.ts`) uploads a
+realistic 1.5 MB file — the existing 67-byte fixture image could never
+have caught this class of bug. See
+[docs/71](docs/71-logo-upload-crash-fix.md).
+
 ### Feature — Business logo upload for portal and PDF branding (Phase 3D.2)
 
 The business owner (or an Admin) can upload a company logo from **Profile

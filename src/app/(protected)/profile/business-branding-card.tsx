@@ -52,6 +52,7 @@ export function BusinessBrandingCard({
         <>
           <form action={uploadAction} className="stack">
             {uploadState.error ? <p className="error-banner">{uploadState.error}</p> : null}
+            {uploadState.message ? <p className="success-banner">{uploadState.message}</p> : null}
             <input type="hidden" name="tenantId" value={tenantId} />
             <div className="field">
               <label htmlFor="logoFile">{logoUrl ? "Replace logo" : "Upload logo"}</label>
@@ -66,6 +67,7 @@ export function BusinessBrandingCard({
           {logoUrl ? (
             <form action={removeAction}>
               {removeState.error ? <p className="error-banner">{removeState.error}</p> : null}
+              {removeState.message ? <p className="success-banner">{removeState.message}</p> : null}
               <input type="hidden" name="tenantId" value={tenantId} />
               <SubmitButton pendingText="Removing…" className="button-danger">
                 Remove logo

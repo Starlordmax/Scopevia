@@ -31,9 +31,8 @@ test.describe.serial("Business branding — Profile (Owner/Admin)", () => {
       .getByRole("button", { name: /Upload logo|Replace logo/ })
       .and(page.locator("button"))
       .click();
-    await expect(page.locator(".form-card").filter({ hasText: "Business branding" }).locator("img.photo-thumb")).toBeVisible({
-      timeout: 15_000,
-    });
+    await expect(page.getByText("Logo uploaded successfully.")).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(".form-card").filter({ hasText: "Business branding" }).locator("img.photo-thumb")).toBeVisible();
     await expect(page.getByRole("button", { name: "Replace logo" }).and(page.locator("button"))).toBeVisible();
     await expect(page.getByRole("button", { name: "Remove logo" })).toBeVisible();
 
@@ -75,6 +74,32 @@ test.describe.serial("Business branding — Profile (Owner/Admin)", () => {
     await page.goto(`/proposals/${proposalId}/preview`);
     await expect(page.locator(".proposal-document-logo")).toHaveCount(0);
     await expect(page.locator(".proposal-document-business")).toBeVisible();
+  });
+
+  /**
+   * Regression test for docs/71-logo-upload-crash-fix.md: a realistic-size
+   * logo (well over 1 MB) used to crash the whole page with "This page
+   * couldn't load" — Next.js's own default Server Action body size limit
+   * (1 MB) rejected the request before uploadBusinessLogoAction() ever ran.
+   * fixtures/one-pixel.png (67 bytes, used by the other tests here) is far
+   * too small to ever have caught this — this test exists specifically to
+   * exercise a file size a real user would actually upload.
+   */
+  test("a realistic-size logo (1.5 MB) uploads successfully without crashing the page", async ({ page }) => {
+    await page.goto("/profile");
+    await page.getByLabel(/Upload logo|Replace logo/).setInputFiles({
+      name: "realistic-logo.png",
+      mimeType: "image/png",
+      buffer: Buffer.alloc(1.5 * 1024 * 1024, 7),
+    });
+    await page
+      .getByRole("button", { name: /Upload logo|Replace logo/ })
+      .and(page.locator("button"))
+      .click();
+
+    await expect(page.getByText("Logo uploaded successfully.")).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(".form-card").filter({ hasText: "Business branding" }).locator("img.photo-thumb")).toBeVisible();
+    await expect(page.getByText("This page couldn't load")).toHaveCount(0);
   });
 
   test("uploading a non-image file is rejected with a friendly error", async ({ page }) => {

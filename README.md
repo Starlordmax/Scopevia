@@ -76,6 +76,7 @@ Full walkthrough (installing, running migrations, creating a test user, verifyin
 | [docs/68-auth-callback-localhost-redirect-fix.md](docs/68-auth-callback-localhost-redirect-fix.md) | Fix: `/auth/callback`'s own final redirect landing on localhost after a successful confirmation — canonical-URL + open-redirect guard |
 | [docs/69-business-branding-logo-upload.md](docs/69-business-branding-logo-upload.md) | Phase 3D.2: business (tenant, not user) logo upload, data model, Profile UX, rendering across proposal/portal/print |
 | [docs/70-logo-storage-security.md](docs/70-logo-storage-security.md) | Phase 3D.2: the `tenant-branding` bucket, RLS policies, why SVG is blocked, the portal signed-URL threat model |
+| [docs/71-logo-upload-crash-fix.md](docs/71-logo-upload-crash-fix.md) | Fix: logo upload crashing the Profile page — Next.js's default 1 MB Server Action body limit rejecting real-size files before the action ever ran |
 | [docs/14-phase-0-foundations.md](docs/14-phase-0-foundations.md) | What Phase 0 implements and why, including deviations from the original design |
 | [docs/15-local-development.md](docs/15-local-development.md) | Local setup, commands, troubleshooting |
 | [docs/16-environments-and-deployment.md](docs/16-environments-and-deployment.md) | Dev/staging/production separation, migrations, secrets |

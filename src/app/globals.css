@@ -314,6 +314,17 @@ button:disabled {
   font-size: var(--text-small);
 }
 
+.success-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-success-soft);
+  color: var(--color-success);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: var(--text-small);
+}
+
 /* =============================================================================
    Application shell — Sidebar (desktop nav) + TopBar (context) + BottomNav
    (mobile nav). Separating these three is the core structural fix: nav,
