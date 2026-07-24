@@ -2470,6 +2470,11 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           id: string
+          logo_content_type: string | null
+          logo_original_filename: string | null
+          logo_size_bytes: number | null
+          logo_storage_path: string | null
+          logo_updated_at: string | null
           name: string
           slug: string
           status: string
@@ -2480,6 +2485,11 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           id?: string
+          logo_content_type?: string | null
+          logo_original_filename?: string | null
+          logo_size_bytes?: number | null
+          logo_storage_path?: string | null
+          logo_updated_at?: string | null
           name: string
           slug: string
           status?: string
@@ -2490,6 +2500,11 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           id?: string
+          logo_content_type?: string | null
+          logo_original_filename?: string | null
+          logo_size_bytes?: number | null
+          logo_storage_path?: string | null
+          logo_updated_at?: string | null
           name?: string
           slug?: string
           status?: string
@@ -4046,6 +4061,30 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_tenant_branding: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          logo_content_type: string | null
+          logo_original_filename: string | null
+          logo_size_bytes: number | null
+          logo_storage_path: string | null
+          logo_updated_at: string | null
+          name: string
+          slug: string
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tenants"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       get_tenant_proposal_settings: {
         Args: { p_tenant_id: string }
         Returns: {
@@ -4288,6 +4327,30 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "media_assets"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      remove_tenant_branding: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          logo_content_type: string | null
+          logo_original_filename: string | null
+          logo_size_bytes: number | null
+          logo_storage_path: string | null
+          logo_updated_at: string | null
+          name: string
+          slug: string
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tenants"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -5305,6 +5368,36 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "proposal_sections"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_tenant_branding: {
+        Args: {
+          p_logo_content_type: string
+          p_logo_original_filename: string
+          p_logo_size_bytes: number
+          p_logo_storage_path: string
+          p_tenant_id: string
+        }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          logo_content_type: string | null
+          logo_original_filename: string | null
+          logo_size_bytes: number | null
+          logo_storage_path: string | null
+          logo_updated_at: string | null
+          name: string
+          slug: string
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tenants"
           isOneToOne: true
           isSetofReturn: false
         }

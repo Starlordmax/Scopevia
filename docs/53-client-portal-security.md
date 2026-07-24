@@ -12,6 +12,14 @@ verification (below).
 > guard, version locking, and a real post-response access gap found by
 > E2E testing. Everything below is unchanged and still accurate.
 >
+> **Phase 3D.2 adds one more admin-client signed-URL case** — the
+> business logo shown on the portal, signed the same way portal photos
+> already were (Phase 2A/3A's `getSignedMediaUrlsForPortal()` pattern,
+> now mirrored by `getSignedBrandingUrlForPortal()`), safe for the same
+> reason: the visitor never chooses which tenant's asset gets signed —
+> `portal_get_session_context()` already resolved that. See
+> [docs/70-logo-storage-security.md](70-logo-storage-security.md).
+>
 > **Phase 3D (email notifications) extends the trust model to zero new
 > decisions** — see
 > [docs/63-notification-delivery-security.md](63-notification-delivery-security.md):

@@ -4,6 +4,30 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Feature — Business logo upload for portal and PDF branding (Phase 3D.2)
+
+The business owner (or an Admin) can upload a company logo from **Profile
+→ Business branding**. The logo belongs to the tenant/business, never to
+an individual user's profile — every user on the same tenant, and every
+proposal from that tenant, shows the same logo. Appears in the internal
+proposal preview, the client portal (`/p/[token]/view` and
+`/p/[token]/print`), and the contractor's own print/export route, falling
+back to business-name text (as before this phase) when no logo exists.
+
+Stored as a private Storage object (new `tenant-branding` bucket, 2 MB
+limit, PNG/JPEG/WEBP only — SVG blocked to avoid script-injection risk)
+referenced by a path on `tenants` — never base64 data, never a public or
+permanent signed URL. Reuses the existing `tenant.view`/`tenant.update`
+permissions (Owner/Admin can change it, every other role sees it
+read-only) rather than adding new permission keys.
+
+20 new RLS/integration tests (cross-tenant access, role matrix, storage
+path spoofing, oversized/wrong-type rejection — all against a real
+Supabase project), 17 new unit tests, 3 new E2E specs (desktop, portal,
+mobile). 277/277 unit tests total. See
+[docs/69](docs/69-business-branding-logo-upload.md) and
+[docs/70](docs/70-logo-storage-security.md).
+
 ### Fix — /auth/callback's own redirect still landed on localhost after confirmation
 
 Follow-up to the fix below: once Supabase's confirmation email correctly

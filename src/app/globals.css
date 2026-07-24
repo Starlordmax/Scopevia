@@ -1077,9 +1077,22 @@ tbody tr:hover {
   padding-bottom: 16px;
 }
 
+.proposal-document-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .proposal-document-business {
   font-size: var(--text-section-title);
   font-weight: 700;
+}
+
+.proposal-document-logo {
+  max-height: 64px;
+  max-width: 180px;
+  object-fit: contain;
 }
 
 .proposal-document-total {

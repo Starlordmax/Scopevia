@@ -4,6 +4,7 @@ import { requireActiveTenant } from "../../../../../lib/auth/tenant";
 import { hasPermission, PERMISSIONS } from "../../../../../lib/auth/permissions";
 import { getFullProposal } from "../../../../../lib/proposals/data";
 import { getPortfolioMediaOptions } from "../../../../../lib/proposals/portfolio-options";
+import { getBusinessBranding } from "../../../../../lib/branding/data";
 import { searchMaterialCatalog } from "../../../../../lib/proposals/materials";
 import { DEFAULT_PAGE_SIZE } from "../../../../../lib/search";
 import { createClient } from "../../../../../lib/supabase/server";
@@ -177,7 +178,13 @@ export default async function ProposalEditPage({
       ) : null}
       {step === "pricing" ? <StepPricing proposalId={proposalId} version={data.version} canEdit={canManagePricing && isDraft} /> : null}
       {step === "review" ? (
-        <StepReview proposalId={proposalId} businessName={tenant.tenant_name} data={data} canMarkReady={canMarkReady && isDraft} />
+        <StepReview
+          proposalId={proposalId}
+          businessName={tenant.tenant_name}
+          logoUrl={(await getBusinessBranding(tenant.tenant_id)).logoUrl}
+          data={data}
+          canMarkReady={canMarkReady && isDraft}
+        />
       ) : null}
     </div>
   );

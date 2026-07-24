@@ -1,5 +1,6 @@
 import { formatCents, formatLabel } from "../../../../lib/proposals/format";
 import { acceptanceRecordFootnote, imageUnavailableLabel } from "../../../../lib/proposals/export-copy";
+import { resolveLogoDisplay } from "../../../../lib/branding/logo-display";
 import type { FullProposal } from "../../../../lib/proposals/data";
 import type { ProposalClientResponse } from "../../../../lib/portal/data";
 
@@ -25,22 +26,31 @@ const SERVICE_TYPE_LABELS: Record<string, string> = {
  */
 export function ProposalDocument({
   businessName,
+  logoUrl,
   data,
   clientResponse,
 }: {
   businessName: string;
+  logoUrl?: string | null;
   data: FullProposal;
   clientResponse?: ProposalClientResponse | null;
 }) {
   const { proposal, version, sections, laborItems, lineItems, currentJobMedia, previousWorkMedia, measurements, measurementMaterials, measurementGroups } = data;
   const preparedFor = proposal.clients?.display_name ?? "Client";
   const contactName = proposal.client_contacts ? [proposal.client_contacts.first_name, proposal.client_contacts.last_name].filter(Boolean).join(" ") : null;
+  const logo = resolveLogoDisplay(logoUrl, businessName);
 
   return (
     <article className="proposal-document">
       <header className="proposal-document-header">
         <div>
-          <div className="proposal-document-business">{businessName}</div>
+          <div className="proposal-document-brand">
+            {logo ? (
+              // eslint-disable-next-line @next/next/no-img-element -- signed URL is short-lived and per-request, not a good fit for next/image's remote-pattern allowlist.
+              <img src={logo.src} alt={logo.alt} className="proposal-document-logo" />
+            ) : null}
+            <div className="proposal-document-business">{businessName}</div>
+          </div>
           <div className="hint">Proposal #{proposal.proposal_number}</div>
           <div className="hint">Prepared {new Date(version.created_at).toLocaleDateString()}</div>
         </div>

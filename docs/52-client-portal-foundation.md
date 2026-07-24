@@ -10,6 +10,11 @@ Playwright (`tests/e2e/client-portal.spec.ts` +
 > Phase 3B** — see
 > [docs/56-client-portal-accept-decline.md](56-client-portal-accept-decline.md)
 > and [docs/57-client-response-security.md](57-client-response-security.md).
+> **Phase 3D.2 adds an optional business logo** to the portal header
+> (`/p/[token]/view` and `/p/[token]/print`), falling back to the business
+> name as text when none is set — see
+> [docs/69-business-branding-logo-upload.md](69-business-branding-logo-upload.md).
+>
 > Questions/comments, PDF, e-signature, Stripe, deposits/payments, and AI
 > remain explicitly out of scope; see "Known limitations" below and
 > [docs/53-client-portal-security.md](53-client-portal-security.md) for the

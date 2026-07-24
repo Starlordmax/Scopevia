@@ -6,18 +6,20 @@ import type { FullProposal } from "../../../../../lib/proposals/data";
 export function StepReview({
   proposalId,
   businessName,
+  logoUrl,
   data,
   canMarkReady,
 }: {
   proposalId: string;
   businessName: string;
+  logoUrl?: string | null;
   data: FullProposal;
   canMarkReady: boolean;
 }) {
   return (
     <div className="stack">
       <div className="section-card">
-        <ProposalDocument businessName={businessName} data={data} />
+        <ProposalDocument businessName={businessName} logoUrl={logoUrl} data={data} />
       </div>
 
       <div className="tenant-form" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>

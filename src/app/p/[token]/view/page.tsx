@@ -4,6 +4,7 @@ import { cookies, headers } from "next/headers";
 import { createAdminClient } from "../../../../lib/supabase/admin";
 import { hashPortalSecret, hashIdentifier, portalSessionCookieName } from "../../../../lib/portal/tokens";
 import { getFullProposalForPortal, getPortalResponse } from "../../../../lib/portal/data";
+import { getSignedBrandingUrlForPortal } from "../../../../lib/storage/branding";
 import { ProposalDocument } from "../../../(protected)/proposals/[proposalId]/proposal-document";
 import { PortalResponseSection } from "./portal-response-section";
 import { notifyProposalViewed } from "../../../../lib/notifications/proposals";
@@ -40,13 +41,20 @@ export default async function PortalViewPage({ params }: { params: Promise<{ tok
 
   const [proposalData, { data: tenant }, existingResponse] = await Promise.all([
     getFullProposalForPortal(session.proposal_id, session.proposal_version_id),
-    supabase.from("tenants").select("name").eq("id", session.tenant_id).single(),
+    supabase.from("tenants").select("name, logo_storage_path").eq("id", session.tenant_id).single(),
     getPortalResponse(session.proposal_version_id),
   ]);
 
   if (!proposalData) {
     redirect(`/p/${token}`);
   }
+
+  // Admin-client signed URL: this visitor has no Supabase Auth session, so
+  // the ordinary tenant.view-gated Storage policy can never apply — safe
+  // here only because `session.tenant_id` was just authoritatively
+  // resolved by portal_get_session_context() for THIS token, never
+  // supplied by the visitor. See src/lib/storage/branding.ts.
+  const logoUrl = tenant?.logo_storage_path ? await getSignedBrandingUrlForPortal(tenant.logo_storage_path) : null;
 
   if (session.is_first_view && session.client_email) {
     await notifyProposalViewed({
@@ -68,7 +76,7 @@ export default async function PortalViewPage({ params }: { params: Promise<{ tok
         </Link>
       </div>
       <div className="section-card">
-        <ProposalDocument businessName={tenant?.name ?? "Your contractor"} data={proposalData} />
+        <ProposalDocument businessName={tenant?.name ?? "Your contractor"} logoUrl={logoUrl} data={proposalData} />
       </div>
       <PortalResponseSection token={token} existingResponse={existingResponse ? { responseType: existingResponse.responseType } : null} />
     </div>

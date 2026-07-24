@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { requireActiveTenant } from "../../../../lib/auth/tenant";
 import { hasPermission, PERMISSIONS } from "../../../../lib/auth/permissions";
 import { getFullProposal } from "../../../../lib/proposals/data";
+import { getBusinessBranding } from "../../../../lib/branding/data";
 import { getProposalClientResponse } from "../../../../lib/portal/data";
 import { uuidSchema } from "../../../../lib/validation/schemas";
 import { ProposalDocument } from "../../../(protected)/proposals/[proposalId]/proposal-document";
@@ -41,6 +42,7 @@ export default async function ProposalPrintPage({
   if (!data) notFound();
 
   const clientResponse = await getProposalClientResponse(data.version.id);
+  const branding = await getBusinessBranding(tenant.tenant_id);
 
   return (
     <div className="print-page-content">
@@ -54,7 +56,7 @@ export default async function ProposalPrintPage({
         Create a clean printable version of this proposal. Use your browser&apos;s Save as PDF option to download it.
       </p>
       <div className="section-card">
-        <ProposalDocument businessName={tenant.tenant_name} data={data} clientResponse={clientResponse} />
+        <ProposalDocument businessName={tenant.tenant_name} logoUrl={branding.logoUrl} data={data} clientResponse={clientResponse} />
       </div>
     </div>
   );

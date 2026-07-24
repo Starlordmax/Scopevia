@@ -4,6 +4,7 @@ import { cookies, headers } from "next/headers";
 import { createAdminClient } from "../../../../lib/supabase/admin";
 import { hashPortalSecret, hashIdentifier, portalSessionCookieName } from "../../../../lib/portal/tokens";
 import { getFullProposalForPortal, getPortalResponse } from "../../../../lib/portal/data";
+import { getSignedBrandingUrlForPortal } from "../../../../lib/storage/branding";
 import { ProposalDocument } from "../../../(protected)/proposals/[proposalId]/proposal-document";
 import { PrintButton } from "../../../../components/print-button";
 import { notifyProposalViewed } from "../../../../lib/notifications/proposals";
@@ -53,13 +54,15 @@ export default async function PortalPrintPage({ params }: { params: Promise<{ to
 
   const [proposalData, { data: tenant }, existingResponse] = await Promise.all([
     getFullProposalForPortal(session.proposal_id, session.proposal_version_id),
-    supabase.from("tenants").select("name").eq("id", session.tenant_id).single(),
+    supabase.from("tenants").select("name, logo_storage_path").eq("id", session.tenant_id).single(),
     getPortalResponse(session.proposal_version_id),
   ]);
 
   if (!proposalData) {
     redirect(`/p/${token}`);
   }
+
+  const logoUrl = tenant?.logo_storage_path ? await getSignedBrandingUrlForPortal(tenant.logo_storage_path) : null;
 
   if (session.is_first_view && session.client_email) {
     await notifyProposalViewed({
@@ -85,7 +88,7 @@ export default async function PortalPrintPage({ params }: { params: Promise<{ to
         Create a clean printable version of this proposal. Use your browser&apos;s Save as PDF option to download it.
       </p>
       <div className="section-card">
-        <ProposalDocument businessName={tenant?.name ?? "Your contractor"} data={proposalData} clientResponse={existingResponse} />
+        <ProposalDocument businessName={tenant?.name ?? "Your contractor"} logoUrl={logoUrl} data={proposalData} clientResponse={existingResponse} />
       </div>
     </div>
   );

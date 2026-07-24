@@ -10,6 +10,12 @@ Status: **Implemented and verified** — 11 new unit tests
 > still always a separate, manual "Print / Save as PDF" action — see
 > [docs/62-proposal-email-notifications.md](62-proposal-email-notifications.md).
 >
+> **Phase 3D.2 adds an optional business logo** to the printed document's
+> header, next to the business name — see
+> [docs/69-business-branding-logo-upload.md](69-business-branding-logo-upload.md).
+> Everything below about the export routes, document layout, and print
+> stylesheet is otherwise unchanged.
+>
 > No PDF is generated on a server. This phase implements **print-to-PDF**:
 > a clean, control-free HTML document plus a print stylesheet, exported via
 > the browser's own "Print → Save as PDF." See "Export approach" below for
