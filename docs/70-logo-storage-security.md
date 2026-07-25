@@ -13,16 +13,21 @@ defend against — the same review depth as
 `supabase/migrations/20260723100100_tenant_branding_storage.sql`:
 
 - **Private** (`public = false`). Never toggled public.
-- **2 MB file size limit**, enforced by Supabase Storage itself (not just
-  application code) — `file_size_limit = 2097152`.
+- **10 MB file size limit**, enforced by Supabase Storage itself (not just
+  application code) — `file_size_limit = 10485760`. Raised from an initial
+  2 MB (migration `20260724100600_tenant_branding_10mb_limit.sql`) to
+  match this app's other already-shipped upload limit
+  (`scopevia-media`'s 10 MB job/portfolio photos) — see
+  [docs/71](71-logo-upload-crash-fix.md).
 - **Allowed MIME types**: `image/png`, `image/jpeg`, `image/webp` only,
   also enforced at the bucket level via `allowed_mime_types`.
 
 This is a *separate* bucket from `scopevia-media` (Phase 2A's photo
 gallery bucket), deliberately: a logo is a single tenant-identity asset
-with its own (stricter) size limit and its own permission model
-(`tenant.view`/`tenant.update`, not `media.view`/`media.upload`), not
-another item in the proposal-photos gallery.
+with its own permission model (`tenant.view`/`tenant.update`, not
+`media.view`/`media.upload`), not another item in the proposal-photos
+gallery — the size limit now happens to match `scopevia-media`'s, but the
+buckets remain otherwise independent.
 
 ## Why SVG is blocked, not sanitized
 
@@ -89,7 +94,7 @@ re-validates on the database side before writing:
   rejects a path claiming to belong to a different tenant, even if
   somehow called with a mismatched path.
 - `p_logo_content_type` must be one of the three allowed MIME types.
-- `p_logo_size_bytes` must be in `(0, 2097152]`.
+- `p_logo_size_bytes` must be in `(0, 10485760]`.
 
 This mirrors `register_media_asset()`'s own independent re-check in Phase
 2A — the Storage bucket's own enforcement and the database function's

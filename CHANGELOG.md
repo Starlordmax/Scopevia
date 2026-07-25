@@ -4,6 +4,36 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fix — Logo upload still crashed above 10 MB; limit raised to 10 MB
+
+Follow-up to the fix below: raising the Server Action body size limit
+fixed the *originally reported* file sizes, but by construction could
+never be a complete fix — a Server Action's `bodySizeLimit` is a hard
+ceiling, and Next.js crashes with the exact same uncaught, uncatchable
+`"This page couldn't load"` for anything over WHATEVER the ceiling is set
+to, not just over 1 MB. Confirmed: a 12 MB upload still crashed after the
+previous fix, once the ceiling had been raised to 10 MB.
+
+**Real fix:** business logo upload moved off Server Actions entirely,
+onto a dedicated Route Handler (`POST /api/business-branding/logo`),
+which has no framework-enforced body limit at all — any file size, valid
+or not, now gets a clean typed JSON response instead of a possible crash.
+The old `uploadBusinessLogoAction()` Server Action was deleted;
+`removeBusinessLogoAction()` (no file body, never affected) is unchanged.
+
+Also, as explicitly requested: the logo size limit itself is raised from
+2 MB to **10 MB** — at the app validation layer, the Storage bucket, the
+`tenants.logo_size_bytes` CHECK constraint, and
+`update_tenant_branding()`'s own re-validation (migration
+`20260724100600_tenant_branding_10mb_limit.sql`) — matching this app's
+other already-shipped 10 MB upload limit (job/portfolio photos) rather
+than inventing a new ceiling.
+
+New/updated regression tests cover a 9 MB upload (succeeds), an 11 MB
+upload (friendly rejection, never a crash), and the RLS/unit suites'
+size-boundary assertions, all updated to 10 MB. See
+[docs/71](docs/71-logo-upload-crash-fix.md), "Update."
+
 ### Fix — Logo upload crashed the Profile page ("This page couldn't load")
 
 Uploading a real-world-size logo (over 1 MB — a completely normal photo

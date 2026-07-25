@@ -24,12 +24,12 @@ describe("validateLogoFile (Phase 3D.2)", () => {
     expect(result.ok).toBe(false);
   });
 
-  it("rejects a file over 2 MB", () => {
+  it("rejects a file over 10 MB with a friendly message naming the real limit", () => {
     const result = validateLogoFile({ type: "image/png", size: MAX_LOGO_SIZE_BYTES + 1 });
-    expect(result.ok).toBe(false);
+    expect(result).toEqual({ ok: false, error: "Please upload a PNG, JPG, or WEBP image under 10 MB." });
   });
 
-  it("accepts a file exactly at the 2 MB limit", () => {
+  it("accepts a file exactly at the 10 MB limit", () => {
     expect(validateLogoFile({ type: "image/png", size: MAX_LOGO_SIZE_BYTES }).ok).toBe(true);
   });
 

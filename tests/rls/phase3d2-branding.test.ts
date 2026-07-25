@@ -122,12 +122,12 @@ describe.skipIf(!canRun)("Phase 3D.2 Business branding security (requires real P
     }
   });
 
-  it("the tenant-branding bucket is private with a 2 MB limit", async () => {
+  it("the tenant-branding bucket is private with a 10 MB limit", async () => {
     const { data: buckets } = await admin.storage.listBuckets();
     const bucket = buckets?.find((b) => b.id === "tenant-branding");
     expect(bucket).toBeDefined();
     expect(bucket?.public).toBe(false);
-    expect(bucket?.file_size_limit).toBe(2097152);
+    expect(bucket?.file_size_limit).toBe(10485760);
   });
 
   it("Owner A can upload a valid PNG to their own tenant's branding path", async () => {
@@ -138,7 +138,7 @@ describe.skipIf(!canRun)("Phase 3D.2 Business branding security (requires real P
   });
 
   it("an oversized file is rejected by the bucket's file_size_limit", async () => {
-    const oversized = new Uint8Array(2 * 1024 * 1024 + 1);
+    const oversized = new Uint8Array(10 * 1024 * 1024 + 1);
     const path = `${tenantAId}/logo-${crypto.randomUUID()}.png`;
     const { error } = await ownerAClient.storage.from("tenant-branding").upload(path, oversized, { contentType: "image/png" });
     expect(error).not.toBeNull();

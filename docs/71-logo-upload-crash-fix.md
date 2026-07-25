@@ -1,8 +1,137 @@
 # 71 — Logo Upload Crash Fix
 
-Status: **Fixed.** Reported symptom: uploading a logo from Profile →
-Business branding crashed the whole page with Next.js's generic
-`"This page couldn't load. A server error occurred. Reload to try again."`
+Status: **Fixed** (in two rounds — see "Update" below for the second,
+final fix; the original section below is left intact as a historical
+record of the first attempt, which was a real, verified improvement but
+did not fully close the bug class). Reported symptom: uploading a logo
+from Profile → Business branding crashed the whole page with Next.js's
+generic `"This page couldn't load. A server error occurred. Reload to try
+again."`
+
+## Update — the first fix (raising `bodySizeLimit`) was necessary but not sufficient
+
+The first round (original sections below) raised
+`experimental.serverActions.bodySizeLimit` from Next.js's 1 MB default to
+`"10mb"`. That genuinely fixed the reported crash for the file sizes
+tested at the time (1.5–1.8 MB) — verified then, and still true now.
+
+**But it could never have been a complete fix, for a structural reason**:
+a Server Action's `bodySizeLimit` is a hard ceiling enforced by Next.js's
+own request parser, and *anything over that ceiling* is rejected the exact
+same way — an uncaught exception, before any application code runs, no
+matter what the ceiling is set to. Raising it from 1 MB to 10 MB only
+moved the crash threshold; it could not make a file *over* the new
+ceiling fail gracefully. Confirmed by direct reproduction: a 12 MB upload
+(now above the 10 MB ceiling) crashed with the exact same
+`"This page couldn't load"` / `POST /profile → 500` / `Error: Body
+exceeded 1 MB limit` (Next.js's own message, unchanged text, just firing
+at the new 10 MB threshold) — the acceptance criteria explicitly requires
+a *friendly* message for anything over the limit, which a Server Action's
+`bodySizeLimit` mechanism cannot provide by construction.
+
+### Real fix: move upload off Server Actions entirely, onto a Route Handler
+
+**`POST /api/business-branding/logo`** (`src/app/api/business-branding/logo/route.ts`,
+new) replaces `uploadBusinessLogoAction()`, which has been deleted. A
+Route Handler has no framework-enforced body size ceiling — it receives
+the raw `Request` and validates it with ordinary application code, so
+*any* size, from empty to gigabytes, always gets a clean, typed JSON
+response instead of a framework-level crash:
+
+- A cheap `Content-Length` header pre-check rejects grossly oversized
+  requests (over ~11 MB) with a `413` before the body is ever buffered
+  into memory — defense against someone deliberately posting a huge
+  payload, now that there's no Next.js-provided ceiling to lean on at all.
+- The real size/MIME validation (`validateLogoFile()`, unchanged pure
+  logic) then gives the precise, friendly `"Please upload a PNG, JPG, or
+  WEBP image under 10 MB."` for anything between roughly 10 MB and 11 MB
+  that slips past the cheap pre-check due to multipart overhead.
+- Everything else — auth check, tenant/permission validation (still
+  enforced authoritatively by `update_tenant_branding()`'s own
+  `tenant.update` check, unchanged), Storage upload, DB update, old-file
+  cleanup, `revalidatePath("/profile")` — is the same logic
+  `uploadBusinessLogoAction()` had, just returning `NextResponse.json(...)`
+  instead of an `ActionResult`.
+
+`src/app/(protected)/profile/business-branding-card.tsx` now submits the
+upload form via a plain `onSubmit` handler calling `fetch("/api/business-branding/logo",
+{ method: "POST", body: formData })`, manages its own
+pending/error/success state with `useState` (since `useFormStatus`/
+`useActionState` only work with a real Server Action reference), and calls
+`router.refresh()` on success so the newly-revalidated server data
+(the new `logoUrl`) re-renders. **`removeBusinessLogoAction()` is
+unchanged and stays a Server Action** — removal has no file body, so it
+was never subject to this bug class, and moving it would have been an
+unrelated, unrequested change.
+
+### The logo limit itself is now 10 MB, not 2 MB (explicit ask)
+
+Raised at every layer that previously enforced 2 MB — migration
+`20260724100600_tenant_branding_10mb_limit.sql`:
+
+- `src/lib/branding/logo-validation.ts`'s `MAX_LOGO_SIZE_BYTES`.
+- The `tenant-branding` Storage bucket's `file_size_limit`.
+- `tenants.logo_size_bytes`'s CHECK constraint.
+- `update_tenant_branding()`'s own re-validation of `p_logo_size_bytes`.
+
+10 MB was chosen to match this app's other already-shipped upload limit
+(`src/lib/storage/media.ts`'s job/portfolio photos), not as a new,
+unrelated ceiling — see [docs/69](69-business-branding-logo-upload.md)
+and [docs/70](70-logo-storage-security.md), both updated throughout.
+
+### A side-finding directly relevant to the brief's own `proxy.ts` hypothesis
+
+The brief specifically asked whether `proxy.ts` needed
+`proxyClientMaxBodySize`-style configuration. `proxy.ts` never reads the
+request body (`updateSession()` only touches cookies), so it doesn't
+itself impose a limit — but reproduction surfaced a related, previously
+unknown Next.js 16 behavior: requests to any route matched by the app's
+middleware (which includes `/api/*` routes, per `proxy.ts`'s own matcher)
+trigger a *separate*, framework-level notice —
+`middlewareClientMaxBodySize` (also defaulting to 10 MB) — logged as
+`"Request body exceeded 10MB for /api/business-branding/logo. Only the
+first 10MB will be available unless configured."` for a 15 MB test
+upload. **This is informational, not a crash** — it silently truncates
+rather than throwing — and harmless here specifically because the route
+handler's own `Content-Length` pre-check already rejects anything that
+large before the (possibly-truncated) body would ever be parsed. No
+config change was needed for this; documented for completeness since it
+was the brief's own explicit hypothesis.
+
+### Tests (second round)
+
+- `tests/rls/phase3d2-branding.test.ts`: bucket-limit assertion and
+  oversized-file test updated to 10 MB; 20/20 passing.
+- `tests/unit/logo-validation.test.ts`: size-boundary tests updated to
+  `MAX_LOGO_SIZE_BYTES` (now 10 MB) and now assert the exact new friendly
+  message; still pure/unit-level, no mocking needed.
+- `tests/e2e/business-branding.spec.ts`: the prior 1.5 MB regression test
+  replaced with two — a 9 MB upload (near the real limit, succeeds
+  cleanly) and an 11 MB upload (over the limit, friendly rejection,
+  explicitly asserting `"This page couldn't load"` never appears). Manual
+  reproduction additionally confirmed a 15 MB request (well past both the
+  app's 10 MB limit and the `Content-Length` pre-check threshold) is
+  rejected cleanly with no crash.
+- Full regression pass: `auth.spec.ts`, `proposals.spec.ts` (exercises the
+  still-Server-Action-based portfolio photo upload, confirming that path
+  is unaffected by moving *only* the logo upload to a Route Handler),
+  `business-branding-portal.spec.ts`, `business-branding.mobile.spec.ts`
+  — all passing.
+
+### Files changed (second round)
+
+Created: `src/app/api/business-branding/logo/route.ts`,
+`supabase/migrations/20260724100600_tenant_branding_10mb_limit.sql`.
+Modified: `src/actions/branding.ts` (removed `uploadBusinessLogoAction`),
+`src/app/(protected)/profile/business-branding-card.tsx`,
+`src/lib/branding/logo-validation.ts`, `tests/rls/phase3d2-branding.test.ts`,
+`tests/unit/logo-validation.test.ts`, `tests/e2e/business-branding.spec.ts`,
+`docs/69-business-branding-logo-upload.md`,
+`docs/70-logo-storage-security.md`, `CHANGELOG.md`, `README.md`.
+
+---
+
+## Original fix (first round, kept for history)
 
 ## Root cause
 

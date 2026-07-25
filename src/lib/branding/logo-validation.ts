@@ -2,17 +2,15 @@
  * Pure business-logo file validation and storage-path construction — no
  * "server-only" import, no Supabase/Next.js dependency, so directly
  * unit-testable (see tests/unit/logo-validation.test.ts). Mirrors the
- * scopevia-media bucket's own client-side check in src/lib/storage/media.ts,
- * but with the stricter limits appropriate to a single business-identity
- * asset rather than a photo gallery: 2 MB instead of 10 MB, and SVG
- * deliberately excluded for MVP to avoid script/content-injection risk (see
- * docs/70-logo-storage-security.md) even though Supabase Storage itself
- * would happily store it.
+ * scopevia-media bucket's own client-side check in src/lib/storage/media.ts:
+ * same 10 MB limit, same three image types. SVG deliberately excluded to
+ * avoid script/content-injection risk (see docs/70-logo-storage-security.md)
+ * even though Supabase Storage itself would happily store it.
  */
 export const ALLOWED_LOGO_MIME_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
 export type AllowedLogoMimeType = (typeof ALLOWED_LOGO_MIME_TYPES)[number];
 
-export const MAX_LOGO_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
+export const MAX_LOGO_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 
 export type LogoValidationResult = { ok: true } | { ok: false; error: string };
 
@@ -24,7 +22,7 @@ export function validateLogoFile(file: { type: string; size: number }): LogoVali
     return { ok: false, error: "Choose a logo file to upload." };
   }
   if (file.size > MAX_LOGO_SIZE_BYTES) {
-    return { ok: false, error: "Logo files must be 2 MB or smaller." };
+    return { ok: false, error: "Please upload a PNG, JPG, or WEBP image under 10 MB." };
   }
   return { ok: true };
 }

@@ -77,20 +77,22 @@ test.describe.serial("Business branding — Profile (Owner/Admin)", () => {
   });
 
   /**
-   * Regression test for docs/71-logo-upload-crash-fix.md: a realistic-size
-   * logo (well over 1 MB) used to crash the whole page with "This page
-   * couldn't load" — Next.js's own default Server Action body size limit
-   * (1 MB) rejected the request before uploadBusinessLogoAction() ever ran.
-   * fixtures/one-pixel.png (67 bytes, used by the other tests here) is far
-   * too small to ever have caught this — this test exists specifically to
-   * exercise a file size a real user would actually upload.
+   * Regression test for docs/71-logo-upload-crash-fix.md: any logo over
+   * 1 MB used to crash the whole page with "This page couldn't load" —
+   * Next.js's own default Server Action body size limit (1 MB) rejected
+   * the request before any application code ever ran. fixtures/one-pixel.png
+   * (67 bytes, used by the other tests here) is far too small to ever have
+   * caught this. Upload now goes through POST /api/business-branding/logo
+   * (a Route Handler, not a Server Action), which has no such built-in
+   * ceiling — this test exercises a realistic size well past the old 1 MB
+   * limit and close to the app's real 10 MB limit.
    */
-  test("a realistic-size logo (1.5 MB) uploads successfully without crashing the page", async ({ page }) => {
+  test("a realistic-size logo (9 MB, near the 10 MB limit) uploads successfully without crashing the page", async ({ page }) => {
     await page.goto("/profile");
     await page.getByLabel(/Upload logo|Replace logo/).setInputFiles({
       name: "realistic-logo.png",
       mimeType: "image/png",
-      buffer: Buffer.alloc(1.5 * 1024 * 1024, 7),
+      buffer: Buffer.alloc(9 * 1024 * 1024, 7),
     });
     await page
       .getByRole("button", { name: /Upload logo|Replace logo/ })
@@ -99,6 +101,28 @@ test.describe.serial("Business branding — Profile (Owner/Admin)", () => {
 
     await expect(page.getByText("Logo uploaded successfully.")).toBeVisible({ timeout: 15_000 });
     await expect(page.locator(".form-card").filter({ hasText: "Business branding" }).locator("img.photo-thumb")).toBeVisible();
+    await expect(page.getByText("This page couldn't load")).toHaveCount(0);
+  });
+
+  /**
+   * A file over the app's real 10 MB limit must show a friendly rejection,
+   * never crash — the whole reason upload moved off a Server Action: a
+   * Route Handler can always return a clean JSON error for any size,
+   * unlike a Server Action's hard, uncatchable body-size ceiling.
+   */
+  test("a logo over 10 MB is rejected with a friendly error, never a crash", async ({ page }) => {
+    await page.goto("/profile");
+    await page.getByLabel(/Upload logo|Replace logo/).setInputFiles({
+      name: "too-big-logo.png",
+      mimeType: "image/png",
+      buffer: Buffer.alloc(11 * 1024 * 1024, 8),
+    });
+    await page
+      .getByRole("button", { name: /Upload logo|Replace logo/ })
+      .and(page.locator("button"))
+      .click();
+
+    await expect(page.getByText("Please upload a PNG, JPG, or WEBP image under 10 MB.")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText("This page couldn't load")).toHaveCount(0);
   });
 

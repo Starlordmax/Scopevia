@@ -68,7 +68,7 @@ structure where a correct one already exists.
 | `logo_storage_path` | `text` | Private Storage path, e.g. `<tenant_id>/logo-<uuid>.png`. **Never** a public or signed URL. |
 | `logo_original_filename` | `text` | For display only (e.g. "Replace logo" hint text) — never used to build a path. |
 | `logo_content_type` | `text` | Constrained by CHECK to `image/png`, `image/jpeg`, or `image/webp`. |
-| `logo_size_bytes` | `bigint` | Constrained by CHECK to `1..2097152` (2 MB). |
+| `logo_size_bytes` | `bigint` | Constrained by CHECK to `1..10485760` (10 MB — see [docs/71](71-logo-upload-crash-fix.md), raised from an initial 2 MB). |
 | `logo_updated_at` | `timestamptz` | Set on upload/replace, cleared (null) on remove. |
 
 All five are null together (no logo) or set together (has a logo) — that
@@ -96,7 +96,7 @@ private path — a signed URL is generated on demand, server-side, with a
 - `update_tenant_branding(p_tenant_id, path, filename, content_type,
   size_bytes)` — gated on `tenant.update`. Validates the path actually
   starts with `<tenant_id>/`, the content type is one of the three allowed
-  values, and the size is within `(0, 2097152]`. Sets `logo_updated_at =
+  values, and the size is within `(0, 10485760]`. Sets `logo_updated_at =
   now()`. Logs `tenant.logo_updated` via the existing `log_audit_event()`.
 - `remove_tenant_branding(p_tenant_id)` — gated on `tenant.update`. Nulls
   all five columns. Logs `tenant.logo_removed`.
@@ -130,8 +130,10 @@ visually separate `.form-card` below the personal profile form:
   uploaded yet — proposals show '<business name>' as text instead."
 - If `tenant.update`: an upload form ("Upload logo" / "Replace logo"
   depending on state) with help text ("Recommended: PNG, JPG, or WEBP. Max
-  2 MB.") and, when a logo exists, a separate "Remove logo" form with a
-  confirm dialog.
+  10 MB.") and, when a logo exists, a separate "Remove logo" form with a
+  confirm dialog. Upload posts to `POST /api/business-branding/logo` (a
+  Route Handler) via `fetch()`, not a Server Action — see
+  [docs/71](71-logo-upload-crash-fix.md) for why.
 - If not: "Only an Owner or Admin can change the business logo." — no
   controls rendered at all.
 

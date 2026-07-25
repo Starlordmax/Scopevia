@@ -1,11 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
-import { uploadBusinessLogoAction, removeBusinessLogoAction } from "../../../actions/branding";
+import { useActionState, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { removeBusinessLogoAction } from "../../../actions/branding";
 import type { ActionResult } from "../../../actions/auth";
 import { SubmitButton } from "../../../components/submit-button";
 
 const initialState: ActionResult = {};
+const GENERIC_UPLOAD_ERROR = "We couldn't upload the logo right now. Please try again.";
 
 /**
  * Deliberately its own card, separate from the personal-profile form above
@@ -16,6 +18,14 @@ const initialState: ActionResult = {};
  * controls at all, matching the read-only view every other role already
  * gets on this same tenant.update / tenant.view boundary elsewhere in the
  * app (e.g. Proposal Settings).
+ *
+ * Upload goes through POST /api/business-branding/logo (a Route Handler),
+ * NOT a Server Action — Server Actions have a hard, framework-enforced
+ * body size limit that crashes the whole page with no way to show a
+ * friendly message for anything over it; a plain fetch() to a Route
+ * Handler has no such ceiling, so any file size gets a clean JSON
+ * response. See docs/71-logo-upload-crash-fix.md. Remove has no file body
+ * and is unaffected, so it stays a Server Action.
  */
 export function BusinessBrandingCard({
   tenantId,
@@ -28,8 +38,38 @@ export function BusinessBrandingCard({
   logoUrl: string | null;
   businessName: string;
 }) {
-  const [uploadState, uploadAction] = useActionState(uploadBusinessLogoAction, initialState);
+  const router = useRouter();
+  const uploadFormRef = useRef<HTMLFormElement>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [removeState, removeAction] = useActionState(removeBusinessLogoAction, initialState);
+
+  async function handleUploadSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setUploadError(null);
+    setUploadMessage(null);
+    setIsUploading(true);
+
+    try {
+      const formData = new FormData(event.currentTarget);
+      const response = await fetch("/api/business-branding/logo", { method: "POST", body: formData });
+      const body: ActionResult = await response.json().catch(() => ({ error: GENERIC_UPLOAD_ERROR }));
+
+      if (!response.ok || body.error) {
+        setUploadError(body.error ?? GENERIC_UPLOAD_ERROR);
+        return;
+      }
+
+      setUploadMessage(body.message ?? "Logo uploaded successfully.");
+      uploadFormRef.current?.reset();
+      router.refresh();
+    } catch {
+      setUploadError(GENERIC_UPLOAD_ERROR);
+    } finally {
+      setIsUploading(false);
+    }
+  }
 
   return (
     <div className="form-card">
@@ -50,18 +90,18 @@ export function BusinessBrandingCard({
 
       {canUpdate ? (
         <>
-          <form action={uploadAction} className="stack">
-            {uploadState.error ? <p className="error-banner">{uploadState.error}</p> : null}
-            {uploadState.message ? <p className="success-banner">{uploadState.message}</p> : null}
+          <form ref={uploadFormRef} onSubmit={handleUploadSubmit} className="stack">
+            {uploadError ? <p className="error-banner">{uploadError}</p> : null}
+            {uploadMessage ? <p className="success-banner">{uploadMessage}</p> : null}
             <input type="hidden" name="tenantId" value={tenantId} />
             <div className="field">
               <label htmlFor="logoFile">{logoUrl ? "Replace logo" : "Upload logo"}</label>
               <input id="logoFile" name="file" type="file" accept="image/png,image/jpeg,image/webp" required />
-              <span className="hint">Recommended: PNG, JPG, or WEBP. Max 2 MB.</span>
+              <span className="hint">Recommended: PNG, JPG, or WEBP. Max 10 MB.</span>
             </div>
-            <SubmitButton pendingText="Uploading…" className="button-success">
-              {logoUrl ? "Replace logo" : "Upload logo"}
-            </SubmitButton>
+            <button type="submit" className="button-success" disabled={isUploading} aria-busy={isUploading}>
+              {isUploading ? "Uploading…" : logoUrl ? "Replace logo" : "Upload logo"}
+            </button>
           </form>
 
           {logoUrl ? (
