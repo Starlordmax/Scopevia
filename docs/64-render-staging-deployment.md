@@ -9,6 +9,17 @@ new E2E smoke tests (`tests/e2e/health.spec.ts`).
 > deployment/infrastructure preparation for a **Scopevia Staging** Render
 > service, meant for beta testers — not a final production deployment.
 
+> **Update (`docs/73`, client address + material ZIP defaults):** two new
+> optional client-side env vars exist —
+> `NEXT_PUBLIC_ADDRESS_AUTOCOMPLETE_PROVIDER` and
+> `NEXT_PUBLIC_GOOGLE_PLACES_API_KEY` (see
+> [docs/65](65-render-environment-variables.md)). Both are unread by
+> `validateStagingEnv()` — leaving them unset never fails the startup
+> check or the health check, and address entry works as a plain manual
+> form either way. No autocomplete provider is actually wired up yet;
+> these vars only exist so a future integration doesn't need a new
+> Render env var round-trip.
+
 ## Render deployment strategy
 
 **Web Service, not Static Site.** Scopevia cannot run as a static export:

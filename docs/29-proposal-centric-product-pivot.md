@@ -110,3 +110,5 @@ None of these were started "just in case."
 - [52-client-portal-foundation.md](52-client-portal-foundation.md) — Phase 3A: Client Portal with email + OTP access
 - [53-client-portal-security.md](53-client-portal-security.md) — Phase 3A: token/OTP/session security model
 - [54-client-portal-e2e-verification.md](54-client-portal-e2e-verification.md) — Phase 3A: end-to-end test evidence
+- [72-quick-create-client.md](72-quick-create-client.md) — create a client without leaving the New Proposal form
+- [73-client-address-and-material-zip-defaults.md](73-client-address-and-material-zip-defaults.md) — client street address + ZIP flowing into Materials & Costs as the default pricing ZIP

@@ -19,6 +19,8 @@ the environment being deployed.
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | The Supabase project's anonymous/public API key (RLS-gated, safe to expose by design) | Every Supabase client |
 | `NEXT_PUBLIC_SITE_URL` | Base URL for Supabase Auth redirect flows (email confirmation, password reset) when a request's Origin header is unavailable | `src/actions/auth.ts`, `src/actions/portal-links.ts` |
 | `NEXT_PUBLIC_APP_ENV` | Purely descriptive label shown on `/api/health` (`development`/`staging`/`production`) — never used for a security decision | `src/app/api/health/route.ts` |
+| `NEXT_PUBLIC_ADDRESS_AUTOCOMPLETE_PROVIDER` | Optional. Address autocomplete provider name (only `google_places` is recognized today). Unset or unrecognized → address autocomplete is off; the Street address field is a plain text input — never required, never blocks client creation | `src/lib/address/autocomplete-provider.ts`, `src/components/address-fields.tsx` |
+| `NEXT_PUBLIC_GOOGLE_PLACES_API_KEY` | Optional. Only takes effect when `NEXT_PUBLIC_ADDRESS_AUTOCOMPLETE_PROVIDER=google_places` is also set. **Not currently read by any actual autocomplete widget** — no Google Places SDK is loaded in this phase (see [docs/73](73-client-address-and-material-zip-defaults.md)); this var only flips the resolved provider from `"none"` to `"google_places"` for a future integration. If a real key is ever set here, it must be a **public, browser-restricted** key (HTTP referrer restriction in the Google Cloud Console) — never a server/unrestricted key, since `NEXT_PUBLIC_*` vars are bundled into client-side JavaScript | `src/lib/address/autocomplete-provider.ts` |
 
 ## Server-only secrets
 
@@ -64,3 +66,4 @@ handlers) and never bundled for the browser.
 | `EMAIL_REPLY_TO` | Whatever inbox should receive tester replies (a real, monitored address) |
 | `NEXT_PUBLIC_APP_ENV` | Not fetched from anywhere — just type `staging` |
 | `EMAIL_PROVIDER` | Not fetched from anywhere — just type `resend` |
+| `NEXT_PUBLIC_ADDRESS_AUTOCOMPLETE_PROVIDER` / `NEXT_PUBLIC_GOOGLE_PLACES_API_KEY` | Optional — leave unset for this phase. Address autocomplete works fine with plain manual entry with neither set; see [docs/73](73-client-address-and-material-zip-defaults.md) |

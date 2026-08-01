@@ -27,6 +27,48 @@ export const optionalEmailSchema = z
 
 export const optionalPhoneSchema = optionalText(30);
 
+// Client / job address --------------------------------------------------
+// See docs/73-client-address-and-material-zip-defaults.md. All fields are
+// independently optional -- a client may have partial or no address at
+// all. `postalCode`'s format is only strictly enforced as a 5-digit (or
+// ZIP+4) US ZIP when the country is US (this app's default) -- other
+// countries' postal codes are accepted as free text, deliberately never
+// blocked, since Materials & Costs pricing is US-ZIP-based but a client's
+// own address is not required to be.
+
+export const optionalAddressLineSchema = optionalText(255);
+export const optionalCitySchema = optionalText(120);
+export const optionalStateSchema = optionalText(40);
+export const optionalPostalCodeSchema = optionalText(20);
+
+export const optionalCountryCodeSchema = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .max(2)
+  .optional()
+  .transform((v) => (v === "" ? undefined : v));
+
+const addressFieldsShape = {
+  addressLine1: optionalAddressLineSchema,
+  addressLine2: optionalAddressLineSchema,
+  city: optionalCitySchema,
+  state: optionalStateSchema,
+  postalCode: optionalPostalCodeSchema,
+  countryCode: optionalCountryCodeSchema,
+};
+
+/** US ZIP: "12345" or "12345-6789". */
+const US_ZIP_PATTERN = /^\d{5}(-\d{4})?$/;
+
+function refineAddressPostalCode(data: { countryCode?: string; postalCode?: string }, ctx: z.RefinementCtx) {
+  if (!data.postalCode) return;
+  const country = (data.countryCode ?? "US").toUpperCase();
+  if (country === "US" && !US_ZIP_PATTERN.test(data.postalCode)) {
+    ctx.addIssue({ code: "custom", path: ["postalCode"], message: "Please enter a valid ZIP code." });
+  }
+}
+
 /** Converts a form's dollars-and-cents text input (e.g. "1,234.50") into integer cents. */
 export const dollarsToCentsSchema = z
   .string()
@@ -51,20 +93,52 @@ export const searchQuerySchema = z
 
 // Clients -----------------------------------------------------------------
 
-export const createClientSchema = z.object({
-  clientType: clientTypeSchema,
-  displayName: z.string().trim().min(1, "Display name is required").max(160),
-  legalName: optionalText(160),
-  firstName: optionalText(80),
-  lastName: optionalText(80),
-  email: optionalEmailSchema,
-  phone: optionalPhoneSchema,
-  secondaryPhone: optionalPhoneSchema,
-  website: optionalText(255),
-  taxExempt: z.coerce.boolean().default(false),
-  preferredContactMethod: preferredContactMethodSchema.optional(),
-  source: optionalText(80),
-});
+export const createClientSchema = z
+  .object({
+    clientType: clientTypeSchema,
+    displayName: z.string().trim().min(1, "Display name is required").max(160),
+    legalName: optionalText(160),
+    firstName: optionalText(80),
+    lastName: optionalText(80),
+    email: optionalEmailSchema,
+    phone: optionalPhoneSchema,
+    secondaryPhone: optionalPhoneSchema,
+    website: optionalText(255),
+    taxExempt: z.coerce.boolean().default(false),
+    preferredContactMethod: preferredContactMethodSchema.optional(),
+    source: optionalText(80),
+    ...addressFieldsShape,
+  })
+  .superRefine(refineAddressPostalCode);
+
+/**
+ * Quick Create Client (from the proposal form's Client selector) —
+ * deliberately STRICTER than createClientSchema above: email and phone are
+ * required here even though they're optional on the general client model
+ * (see optionalEmailSchema/optionalPhoneSchema's own "CRM-006, don't block
+ * legitimate contractors over formatting" comment, which still applies —
+ * this schema only makes the FIELDS mandatory, not their format). This is
+ * a deliberate product decision scoped to this one fast-path modal, so a
+ * proposal never ends up pointed at a client with no usable contact
+ * channel — it does not change the general /clients/new form or the
+ * underlying create_client() RPC, both of which remain as lenient as
+ * before. See docs/34-proposal-builder-ux.md, "Quick Create Client."
+ */
+export const quickCreateClientSchema = z
+  .object({
+    clientType: clientTypeSchema,
+    firstName: z.string().trim().min(1, "First name is required").max(80),
+    lastName: z.string().trim().min(1, "Last name is required").max(80),
+    email: z
+      .string()
+      .trim()
+      .min(1, "Email is required")
+      .max(255)
+      .email("Please enter a valid email address."),
+    phone: z.string().trim().min(1, "Phone is required").max(30),
+    ...addressFieldsShape,
+  })
+  .superRefine(refineAddressPostalCode);
 
 // Client contacts -----------------------------------------------------------
 

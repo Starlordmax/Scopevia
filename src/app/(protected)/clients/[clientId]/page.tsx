@@ -11,6 +11,7 @@ import { ContactsSection } from "./contacts-section";
 import { archiveClientAction, restoreClientAction } from "../../../../actions/clients";
 import { proposalBadgeClass } from "../../../../lib/crm/status-badge";
 import { formatCents, formatLabel } from "../../../../lib/proposals/format";
+import { formatClientAddress } from "../../../../lib/crm/address";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,15 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
     .eq("tenant_id", tenant.tenant_id)
     .single();
   if (!client) notFound();
+
+  const clientAddress = formatClientAddress({
+    addressLine1: client.address_line_1,
+    addressLine2: client.address_line_2,
+    city: client.city,
+    state: client.state,
+    postalCode: client.postal_code,
+    countryCode: client.country_code,
+  });
 
   const [
     canUpdate,
@@ -133,6 +143,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
           {client.email ? <div>Email: {client.email}</div> : null}
           {client.phone ? <div>Phone: {client.phone}</div> : null}
           {client.secondary_phone ? <div>Secondary phone: {client.secondary_phone}</div> : null}
+          {clientAddress ? <div>Address: {clientAddress}</div> : null}
           {client.website ? <div>Website: {client.website}</div> : null}
           {client.source ? <div>Source: {client.source}</div> : null}
           {client.tax_exempt ? <div>Tax exempt</div> : null}

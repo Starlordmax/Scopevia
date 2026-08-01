@@ -2,10 +2,12 @@
 
 import { useActionState, useMemo } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { createProposalDirectAction, createProposalFromOpportunityAction } from "../../../../actions/proposals";
 import type { ActionResult } from "../../../../actions/auth";
 import { SubmitButton } from "../../../../components/submit-button";
 import { ClientSelect } from "./client-select";
+import { QuickCreateClientModal } from "./quick-create-client-modal";
 import type { ClientOption } from "../../../../lib/crm/client-options";
 import type { ContactOption } from "../../../../lib/crm/contact-options";
 import type { OpportunityOption } from "../../../../lib/crm/opportunity-options";
@@ -41,6 +43,8 @@ export function NewProposalForm({
     fromOpportunity ? createProposalFromOpportunityAction : createProposalDirectAction,
     initialState
   );
+  const searchParams = useSearchParams();
+  const justCreatedClient = searchParams.get("created") === "1";
   // Stable per page-load — a resubmit (double click, back-button retry)
   // reuses the same key so create_proposal_direct()/create_proposal_from_opportunity()
   // return the already-created proposal instead of a duplicate.
@@ -49,6 +53,7 @@ export function NewProposalForm({
   return (
     <form action={formAction} className="stack">
       {state.error ? <p className="error-banner">{state.error}</p> : null}
+      {justCreatedClient ? <p className="success-banner">Client created and selected.</p> : null}
       <input type="hidden" name="tenantId" value={tenantId} />
       <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 
@@ -58,10 +63,16 @@ export function NewProposalForm({
         <>
           <div className="field">
             <label htmlFor="clientId">Client</label>
-            <ClientSelect clients={clients} defaultClientId={defaultClientId} />
+            <div className="tenant-form" style={{ alignItems: "flex-start" }}>
+              <div style={{ flex: 1 }}>
+                <ClientSelect clients={clients} defaultClientId={defaultClientId} />
+              </div>
+              <QuickCreateClientModal tenantId={tenantId} />
+            </div>
             {clients.length === 0 ? (
               <span className="hint">
-                No clients yet — <Link href="/clients/new">create one first</Link>.
+                No clients yet — <Link href="/clients/new">create one first</Link>, or use{" "}
+                <strong>+ New client</strong> above.
               </span>
             ) : null}
           </div>

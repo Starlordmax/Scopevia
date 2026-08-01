@@ -7,7 +7,8 @@ import { requireUser } from "../lib/auth/session";
 import { requirePermission } from "../lib/auth/permissions";
 import { PERMISSIONS } from "../lib/auth/permission-keys";
 import { uuidSchema } from "../lib/validation/schemas";
-import { createClientSchema, createClientContactSchema, updateClientContactSchema } from "../lib/validation/crm";
+import { createClientSchema, quickCreateClientSchema, createClientContactSchema, updateClientContactSchema } from "../lib/validation/crm";
+import { buildQuickClientDisplayName } from "../lib/crm/quick-client";
 import { friendlyRpcErrorMessage } from "../lib/errors/friendly-message";
 import type { ActionResult } from "./auth";
 import type { Database } from "../../types/database";
@@ -29,6 +30,12 @@ function readClientForm(formData: FormData) {
     taxExempt: formData.get("taxExempt") === "on",
     preferredContactMethod: formData.get("preferredContactMethod") || undefined,
     source: formData.get("source") || undefined,
+    addressLine1: formData.get("addressLine1") || undefined,
+    addressLine2: formData.get("addressLine2") || undefined,
+    city: formData.get("city") || undefined,
+    state: formData.get("state") || undefined,
+    postalCode: formData.get("postalCode") || undefined,
+    countryCode: formData.get("countryCode") || undefined,
   });
 }
 
@@ -63,6 +70,12 @@ export async function createClientAction(_prev: ActionResult, formData: FormData
       p_tax_exempt: parsed.data.taxExempt,
       p_preferred_contact_method: parsed.data.preferredContactMethod,
       p_source: parsed.data.source,
+      p_address_line1: parsed.data.addressLine1,
+      p_address_line2: parsed.data.addressLine2,
+      p_city: parsed.data.city,
+      p_state: parsed.data.state,
+      p_postal_code: parsed.data.postalCode,
+      p_country_code: parsed.data.countryCode,
     })
     .single();
 
@@ -70,6 +83,139 @@ export async function createClientAction(_prev: ActionResult, formData: FormData
 
   const client = data as Client;
   redirect(`/clients/${client.id}`);
+}
+
+export type QuickCreateClientResult = { ok: true; clientId: string; displayName: string } | { ok: false; error: string };
+
+/**
+ * Quick Create Client — invoked directly (not via a bound <form action>)
+ * from the "+ New client" modal on the New Proposal page, so it can return
+ * the created client's id/displayName to the caller instead of redirecting
+ * away from the in-progress proposal form. See
+ * docs/34-proposal-builder-ux.md, "Quick Create Client."
+ *
+ * Reuses create_client() — the exact same RPC and clients.create
+ * permission as the full /clients/new form — rather than inventing new
+ * server-side logic; the only differences are (1) stricter, quick-modal-
+ * specific field requirements (see quickCreateClientSchema) and (2) no
+ * redirect. Everything after the cheap, synchronous validation is wrapped
+ * in try/catch so an unexpected failure degrades to a friendly message
+ * instead of propagating to Next.js's error boundary — see
+ * docs/71-logo-upload-crash-fix.md for why that matters.
+ */
+export async function createQuickClientAction(input: {
+  tenantId: string;
+  clientType: "individual" | "business";
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  countryCode?: string;
+}): Promise<QuickCreateClientResult> {
+  await requireUser();
+
+  const tenantId = uuidSchema.safeParse(input.tenantId);
+  if (!tenantId.success) return { ok: false, error: "Invalid request" };
+
+  const parsed = quickCreateClientSchema.safeParse({
+    clientType: input.clientType,
+    firstName: input.firstName,
+    lastName: input.lastName,
+    email: input.email,
+    phone: input.phone,
+    addressLine1: input.addressLine1,
+    addressLine2: input.addressLine2,
+    city: input.city,
+    state: input.state,
+    postalCode: input.postalCode,
+    countryCode: input.countryCode,
+  });
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+
+  try {
+    await requirePermission(tenantId.data, PERMISSIONS.CLIENTS_CREATE);
+  } catch {
+    return { ok: false, error: "You do not have permission to do that" };
+  }
+
+  try {
+    const supabase = await createClient();
+
+    // Best-effort, tenant-scoped duplicate check via the caller's own
+    // RLS-gated session — not atomic (a genuine race between two
+    // simultaneous quick-creates with the same email could still both
+    // pass this check), but catches the common case: someone quick-adding
+    // a client who already exists. See docs/34, "Known limitations."
+    const { data: existing } = await supabase
+      .from("clients")
+      .select("id")
+      .eq("tenant_id", tenantId.data)
+      .ilike("email", parsed.data.email)
+      .is("archived_at", null)
+      .limit(1);
+    if (existing && existing.length > 0) {
+      return { ok: false, error: "This email is already associated with an existing client." };
+    }
+
+    const displayName = buildQuickClientDisplayName(parsed.data.firstName, parsed.data.lastName);
+
+    const { data, error } = await supabase
+      .rpc("create_client", {
+        p_tenant_id: tenantId.data,
+        p_client_type: parsed.data.clientType,
+        p_display_name: displayName,
+        p_first_name: parsed.data.firstName,
+        p_last_name: parsed.data.lastName,
+        p_email: parsed.data.email,
+        p_phone: parsed.data.phone,
+        p_address_line1: parsed.data.addressLine1,
+        p_address_line2: parsed.data.addressLine2,
+        p_city: parsed.data.city,
+        p_state: parsed.data.state,
+        p_postal_code: parsed.data.postalCode,
+        p_country_code: parsed.data.countryCode,
+      })
+      .single();
+
+    if (error) return { ok: false, error: friendlyRpcErrorMessage(error.message) };
+
+    const client = data as Client;
+
+    // Business clients don't have a dedicated "company name" field on this
+    // model (see docs/34, "Known limitations") — display_name falls back
+    // to the contact person's name above. To still capture that this is a
+    // named PERSON at the business (not the business's own identity), also
+    // register them as its primary client_contacts row. Best-effort: the
+    // client itself is already valid and selectable even if this
+    // secondary contact record fails for some reason.
+    if (parsed.data.clientType === "business") {
+      try {
+        await supabase.rpc("create_client_contact", {
+          p_client_id: client.id,
+          p_first_name: parsed.data.firstName,
+          p_last_name: parsed.data.lastName,
+          p_email: parsed.data.email,
+          p_phone: parsed.data.phone,
+          p_is_primary: true,
+        });
+      } catch {
+        // Best-effort — see comment above.
+      }
+    }
+
+    revalidatePath("/proposals/new");
+    revalidatePath("/clients");
+
+    return { ok: true, clientId: client.id, displayName: client.display_name };
+  } catch (error) {
+    console.error("Quick client creation failed:", error);
+    return { ok: false, error: "We couldn't create the client right now. Please try again." };
+  }
 }
 
 export async function updateClientAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
@@ -96,6 +242,12 @@ export async function updateClientAction(_prev: ActionResult, formData: FormData
     p_tax_exempt: parsed.data.taxExempt,
     p_preferred_contact_method: parsed.data.preferredContactMethod ?? undefined,
     p_source: parsed.data.source ?? undefined,
+    p_address_line1: parsed.data.addressLine1 ?? undefined,
+    p_address_line2: parsed.data.addressLine2 ?? undefined,
+    p_city: parsed.data.city ?? undefined,
+    p_state: parsed.data.state ?? undefined,
+    p_postal_code: parsed.data.postalCode ?? undefined,
+    p_country_code: parsed.data.countryCode ?? undefined,
   });
 
   if (error) return { error: friendlyRpcErrorMessage(error.message) };

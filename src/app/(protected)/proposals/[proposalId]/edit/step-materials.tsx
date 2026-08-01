@@ -54,11 +54,25 @@ function ZipForm({ proposalId, proposalVersionId, pricingZipCode }: { proposalId
         <div className="field" style={{ flex: 1 }}>
           <label htmlFor="zipCode">ZIP code</label>
           <input id="zipCode" name="zipCode" type="text" inputMode="numeric" maxLength={5} defaultValue={pricingZipCode ?? ""} placeholder="e.g. 33101" />
+          <span className="hint">Used to price catalog materials for this proposal.</span>
         </div>
         <SubmitButton pendingText="Saving…" className="button-secondary">
           Save ZIP
         </SubmitButton>
       </form>
+      {/* Set once, at proposal creation, from the client's own address (see
+          create_proposal_direct()) if it looked like a valid 5-digit US
+          ZIP — never re-applied afterward, so a manual change here is
+          never overwritten. This hint can't perfectly distinguish
+          "still the client's ZIP" from "user already changed it to the
+          same value" without extra tracking, so it's phrased generically
+          enough to stay accurate either way — see
+          docs/73-client-address-and-material-zip-defaults.md. */}
+      <p className="hint">
+        {pricingZipCode
+          ? "Using ZIP code from the client address. You can change it for this proposal."
+          : "Enter the job ZIP code to price materials for this area."}
+      </p>
       <p className="hint">
         <strong>Changing ZIP code only affects new materials you add. Existing proposal items keep their saved prices.</strong>
       </p>

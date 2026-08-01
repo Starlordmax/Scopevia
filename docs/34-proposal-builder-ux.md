@@ -146,7 +146,9 @@ proposal id doesn't exist yet at that point.
    opportunity (optional — auto-created if omitted), title, service type.
    `ClientSelect` reloads the page with `?clientId=` on change (a small,
    focused Client Component, same pattern as `tenant-switcher.tsx`) so the
-   server can refetch that client's contacts/open opportunities.
+   server can refetch that client's contacts/open opportunities. A **"+
+   New client"** action next to the selector opens a Quick Create Client
+   modal without leaving this page — see "Quick Create Client" below.
 2. **Measurements** — record room/surface dimensions (manual entry or
    drawn — see [docs/45](45-measurements-takeoff-builder.md)) and
    optionally generate a catalog material or priced labor item directly
@@ -232,6 +234,85 @@ without moving forward), not an invented one, per the brief's explicit
   new primary workflow) always present within the 5-item limit; Portfolio
   stays reachable via the sidebar on desktop and from within the
   Proposal Builder's Photos step on mobile.
+
+## Quick Create Client
+
+**"+ New client"**, next to the Client selector on `/proposals/new`
+(`src/app/(protected)/proposals/new/quick-create-client-modal.tsx`), opens
+a modal so a client can be created without leaving the in-progress
+proposal form.
+
+**Fields**: Client type (Individual / Business — the existing
+`clients.client_type` enum values, `individual`/`business`; the UI labels
+match the general `/clients/new` form's own wording exactly, not the
+brief's looser "Company" suggestion), First name, Last name, Email,
+Phone. All five are required — **stricter than** the general client
+model, where email/phone are optional (see
+`quickCreateClientSchema`, `src/lib/validation/crm.ts`): a client added
+through this fast path should always have a usable contact channel before
+a proposal gets built around them. This does not change the general
+`/clients/new` form or the underlying `create_client()` RPC, both of
+which remain as lenient as before.
+
+**Data model** (see docs/20, "Known limitations" below): `display_name`
+is always `"<First> <Last>"` — for a Business-type client, the model has
+no dedicated "company name" field, and the modal deliberately doesn't add
+one (out of scope for this pass). A Business client's First/Last name is
+additionally registered as its primary `client_contacts` row (best-effort
+— the client itself is already valid and selectable even if this
+secondary step fails).
+
+**Permissions**: reuses `clients.create` — the exact same permission
+(and role grants: Owner/Admin/Estimator/Sales; not Viewer, not Field
+Worker) as the general client-creation form. No new permission key.
+
+**Flow**: on success, the browser navigates to
+`/proposals/new?clientId=<new>&created=1` — the *same* mechanism
+`ClientSelect`'s own `onChange` already uses when a user manually picks a
+different client. This guarantees the new client is a real, server-
+refetched option (never an optimistic client-side guess), it's
+pre-selected, and any proposal title/service-type text already typed
+survives (the same navigation this page already relied on for ordinary
+client switching). `ClientSelect`'s `<select>` carries `key={defaultClientId}`
+specifically so this works — an uncontrolled `<select>`'s `defaultValue`
+is only applied at mount, so without a remount-forcing key, a selection
+change arriving via new props (not a direct user interaction) would never
+visually apply.
+
+**Duplicate email**: best-effort, tenant-scoped (`clients.email` looked
+up via the caller's own RLS-gated session, `WHERE tenant_id = ... AND
+lower(email) = lower(...) AND archived_at IS NULL`) — not atomic. A
+genuine race between two simultaneous quick-creates with the same email
+could both pass this check; accepted as a known limitation rather than
+adding a new unique constraint that would also change the general form's
+already-lenient behavior.
+
+## Client address + Materials & Costs ZIP default
+
+See [docs/73](73-client-address-and-material-zip-defaults.md) for the
+full write-up. Summary as it affects this builder specifically:
+
+- Both the New Client form and the Quick Create Client modal above now
+  render a shared `<AddressFields>` component (Street address, Apt/
+  Suite/Unit, City, State, ZIP code, Country) in place of the old
+  `Website` field, which is hidden from creation (not removed from the
+  data model — still editable on an existing client via Edit).
+- When a proposal is created for a client with a saved US-shaped ZIP,
+  that ZIP is set as the proposal's `pricing_zip_code` immediately —
+  the **Materials & Costs** step (step 4) opens with the ZIP field
+  already filled and the catalog search already using it, with the hint
+  "Using ZIP code from the client address. You can change it for this
+  proposal." If the client has no usable ZIP, the field starts empty
+  with "Enter the job ZIP code to price materials for this area."
+  (unchanged from Phase 2B).
+- A manual ZIP change in Materials & Costs is never silently
+  overwritten — this was already guaranteed by the existing
+  `update_proposal_pricing_zip()` being the sole writer after creation
+  (Phase 2B), and this phase doesn't change that.
+- This uses the **client's** address as the default *job* ZIP for
+  pricing purposes, per an explicit scope decision — a true
+  per-proposal Job Address (distinct from the client's own address) is
+  deferred to a future phase, not built here.
 
 ## Opportunity integration
 

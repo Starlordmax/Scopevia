@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { createClientAction, updateClientAction } from "../../../actions/clients";
 import type { ActionResult } from "../../../actions/auth";
 import { SubmitButton } from "../../../components/submit-button";
+import { AddressFields } from "../../../components/address-fields";
 import type { Database } from "../../../../types/database";
 
 type Client = Database["public"]["Tables"]["clients"]["Row"];
@@ -69,10 +70,28 @@ export function ClientForm({ tenantId, client }: { tenantId: string; client?: Cl
         </div>
       </div>
 
-      <div className="field">
-        <label htmlFor="website">Website</label>
-        <input id="website" name="website" type="text" defaultValue={client?.website ?? ""} />
-      </div>
+      <AddressFields
+        defaultValues={{
+          addressLine1: client?.address_line_1,
+          addressLine2: client?.address_line_2,
+          city: client?.city,
+          state: client?.state,
+          postalCode: client?.postal_code,
+          countryCode: client?.country_code,
+        }}
+      />
+
+      {/* Website was removed from the New Client form (see
+          docs/73-client-address-and-material-zip-defaults.md) — the
+          `website` column itself is untouched, so an existing client that
+          already has a value keeps it editable here rather than silently
+          losing it on their next unrelated edit. */}
+      {isEdit && client?.website ? (
+        <div className="field">
+          <label htmlFor="website">Website</label>
+          <input id="website" name="website" type="text" defaultValue={client.website} />
+        </div>
+      ) : null}
 
       <div className="field">
         <label htmlFor="preferredContactMethod">Preferred contact method</label>

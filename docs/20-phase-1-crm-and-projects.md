@@ -12,6 +12,12 @@ machines, see [22-phase-1-state-machines.md](22-phase-1-state-machines.md).
 For RLS/security test evidence, see
 [23-phase-1-rls-verification.md](23-phase-1-rls-verification.md).
 
+> **Later addition**: a second, stricter-validation entry point into
+> `create_client()` — Quick Create Client, a modal reachable from the
+> proposal-creation flow — was added afterward; see
+> [72-quick-create-client.md](72-quick-create-client.md). It reuses this
+> phase's `clients.create` permission and `create_client()` RPC unchanged.
+
 ## What Phase 1 includes
 
 A five-stage CRM/pipeline flow: **Clients → Contacts → Opportunities →

@@ -5,6 +5,17 @@ Status: **Implemented**, verified against real Postgres
 Playwright (`tests/e2e/material-catalog.spec.ts` +
 `material-catalog.mobile.spec.ts`).
 
+> **Nota de estado (`docs/73`, client address + ZIP defaults):** `proposal_versions.pricing_zip_code`
+> can now be seeded automatically at proposal creation, from the
+> selected client's saved address ZIP (`clients.postal_code`) —
+> `create_proposal_direct()` passes it to
+> `create_initial_proposal_version()`, which normalizes a ZIP+4 to 5
+> digits and silently ignores anything non-US-shaped (never blocks
+> creation). This only affects the *initial* value of the column
+> described below — `update_proposal_pricing_zip()` remains the only
+> writer after creation, so a manual change is still never overwritten.
+> See [docs/73](73-client-address-and-material-zip-defaults.md).
+>
 > **Nota de estado (2026-07-15, Phase 2D.1):** `search_material_catalog()`
 > now paginates server-side instead of returning up to 200 unwindowed
 > rows. See "Pagination (Phase 2D.1)" below and

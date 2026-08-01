@@ -160,9 +160,13 @@ export type Database = {
       }
       clients: {
         Row: {
+          address_line_1: string | null
+          address_line_2: string | null
           archived_at: string | null
           archived_by: string | null
+          city: string | null
           client_type: string
+          country_code: string | null
           created_at: string
           created_by: string
           display_name: string
@@ -172,18 +176,24 @@ export type Database = {
           last_name: string | null
           legal_name: string | null
           phone: string | null
+          postal_code: string | null
           preferred_contact_method: string | null
           secondary_phone: string | null
           source: string | null
+          state: string | null
           tax_exempt: boolean
           tenant_id: string
           updated_at: string
           website: string | null
         }
         Insert: {
+          address_line_1?: string | null
+          address_line_2?: string | null
           archived_at?: string | null
           archived_by?: string | null
+          city?: string | null
           client_type: string
+          country_code?: string | null
           created_at?: string
           created_by: string
           display_name: string
@@ -193,18 +203,24 @@ export type Database = {
           last_name?: string | null
           legal_name?: string | null
           phone?: string | null
+          postal_code?: string | null
           preferred_contact_method?: string | null
           secondary_phone?: string | null
           source?: string | null
+          state?: string | null
           tax_exempt?: boolean
           tenant_id: string
           updated_at?: string
           website?: string | null
         }
         Update: {
+          address_line_1?: string | null
+          address_line_2?: string | null
           archived_at?: string | null
           archived_by?: string | null
+          city?: string | null
           client_type?: string
+          country_code?: string | null
           created_at?: string
           created_by?: string
           display_name?: string
@@ -214,9 +230,11 @@ export type Database = {
           last_name?: string | null
           legal_name?: string | null
           phone?: string | null
+          postal_code?: string | null
           preferred_contact_method?: string | null
           secondary_phone?: string | null
           source?: string | null
+          state?: string | null
           tax_exempt?: boolean
           tenant_id?: string
           updated_at?: string
@@ -3319,24 +3337,34 @@ export type Database = {
       }
       create_client: {
         Args: {
+          p_address_line1?: string
+          p_address_line2?: string
+          p_city?: string
           p_client_type: string
+          p_country_code?: string
           p_display_name: string
           p_email?: string
           p_first_name?: string
           p_last_name?: string
           p_legal_name?: string
           p_phone?: string
+          p_postal_code?: string
           p_preferred_contact_method?: string
           p_secondary_phone?: string
           p_source?: string
+          p_state?: string
           p_tax_exempt?: boolean
           p_tenant_id: string
           p_website?: string
         }
         Returns: {
+          address_line_1: string | null
+          address_line_2: string | null
           archived_at: string | null
           archived_by: string | null
+          city: string | null
           client_type: string
+          country_code: string | null
           created_at: string
           created_by: string
           display_name: string
@@ -3346,9 +3374,11 @@ export type Database = {
           last_name: string | null
           legal_name: string | null
           phone: string | null
+          postal_code: string | null
           preferred_contact_method: string | null
           secondary_phone: string | null
           source: string | null
+          state: string | null
           tax_exempt: boolean
           tenant_id: string
           updated_at: string
@@ -3399,7 +3429,7 @@ export type Database = {
         }
       }
       create_initial_proposal_version: {
-        Args: { p_actor: string; p_proposal_id: string; p_tenant_id: string }
+        Args: { p_actor: string; p_pricing_zip_code?: string; p_proposal_id: string; p_tenant_id: string }
         Returns: {
           calculation_version: number
           created_at: string
@@ -4811,24 +4841,34 @@ export type Database = {
       try_parse_uuid: { Args: { p_text: string }; Returns: string }
       update_client: {
         Args: {
+          p_address_line1?: string
+          p_address_line2?: string
+          p_city?: string
           p_client_id: string
           p_client_type: string
+          p_country_code?: string
           p_display_name: string
           p_email?: string
           p_first_name?: string
           p_last_name?: string
           p_legal_name?: string
           p_phone?: string
+          p_postal_code?: string
           p_preferred_contact_method?: string
           p_secondary_phone?: string
           p_source?: string
+          p_state?: string
           p_tax_exempt?: boolean
           p_website?: string
         }
         Returns: {
+          address_line_1: string | null
+          address_line_2: string | null
           archived_at: string | null
           archived_by: string | null
+          city: string | null
           client_type: string
+          country_code: string | null
           created_at: string
           created_by: string
           display_name: string
@@ -4838,9 +4878,11 @@ export type Database = {
           last_name: string | null
           legal_name: string | null
           phone: string | null
+          postal_code: string | null
           preferred_contact_method: string | null
           secondary_phone: string | null
           source: string | null
+          state: string | null
           tax_exempt: boolean
           tenant_id: string
           updated_at: string

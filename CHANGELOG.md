@@ -4,6 +4,76 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Feature — Client address + material ZIP defaults
+
+The New Client form (and the Quick Create Client modal) now capture a
+real street address — Street address, Apt/Suite/Unit, City, State, ZIP
+code, Country — instead of a free-text `Website` field. `Website` is
+only hidden from the create UI, not dropped: the column and its value
+are untouched, and it's still shown/editable on **edit** for any client
+that already has one. Address fields live directly on `clients` as six
+nullable columns (no new table — a single address per client is in
+scope this phase).
+
+A client's saved ZIP now flows automatically into any new proposal
+created for that client: `create_proposal_direct()` seeds
+`proposal_versions.pricing_zip_code` from the client's `postal_code` at
+creation time, so Materials & Costs opens with the ZIP already filled
+and the catalog search already using it — no separate wiring needed for
+proposals created via Quick Create Client, since it reuses the same
+client-selection path. A manual ZIP change in Materials & Costs is never
+overwritten again — nothing but the user's own edit ever writes that
+column after creation. ZIP format (`12345`/`12345-6789`) is enforced
+only when the client's country is US (or unset); any other country's
+postal code is accepted as free text.
+
+No autocomplete provider is wired up yet — the UI is structurally ready
+(`NEXT_PUBLIC_ADDRESS_AUTOCOMPLETE_PROVIDER` /
+`NEXT_PUBLIC_GOOGLE_PLACES_API_KEY`, both optional, both currently
+unset) behind a pure resolver function; nothing is ever blocked or
+broken by their absence, on Render or anywhere else. No `place_id` or
+any provider-specific data is ever stored — only the normalized address
+fields.
+
+A real display bug was found and fixed during E2E testing: the client
+detail page passed the raw (snake_case) DB row into a formatter typed
+for camelCase fields — `city`/`state` happened to be spelled the same
+in both, masking that `address_line_1`/`postal_code` were silently
+reading as `undefined`. The database/RPC layer was correct the whole
+time, proven independently by a direct RLS test.
+
+14 new unit tests (311/311 total), 9 new RLS/integration tests (417/417
+total, including a re-run of the full suite in isolation to rule out
+this environment's known Supabase Auth rate-limit flakiness), 4 new
+desktop E2E tests, 2 new mobile E2E tests. See
+[docs/73](docs/73-client-address-and-material-zip-defaults.md).
+
+### Feature — Quick Create Client from the Proposal form
+
+A "+ New client" action next to the Client selector on `/proposals/new`
+opens a modal (Client type, First name, Last name, Email, Phone) so a
+missing client can be created without abandoning an in-progress proposal.
+On success the new client is automatically selected and any already-typed
+proposal title/service type survives untouched. Reuses the existing
+`create_client()` RPC and `clients.create` permission unchanged — no new
+permission key, no schema change. Email and phone are required here
+(stricter than the general `/clients/new` form, where both are optional
+by design) so a quick-added client always has a usable contact channel.
+Business-type clients (no dedicated "company name" field in this model)
+use the contact person's name as a temporary display name, additionally
+registered as the client's primary contact — a documented limitation, not
+an oversight.
+
+A real bug was found and fixed during implementation: the Client
+`<select>`'s `defaultValue` (an uncontrolled element) doesn't reactively
+update when a new client arrives via a prop change rather than a direct
+user click — fixed with a `key`-based remount. Caught by the new E2E
+suite, not manual testing, which was misled by loose text matching.
+
+11 new RLS/integration tests, 12 new unit tests, 12 new desktop E2E
+tests, 1 new mobile E2E test — run against both `npm run dev` and a real
+production build. See [docs/72](docs/72-quick-create-client.md).
+
 ### Fix — Logo upload still crashed above 10 MB; limit raised to 10 MB
 
 Follow-up to the fix below: raising the Server Action body size limit
