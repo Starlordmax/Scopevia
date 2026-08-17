@@ -21,6 +21,7 @@ async function createReadyProposal(page: Page, suffix: string): Promise<{ propos
   await page.waitForURL(/clientId=/);
   await page.getByLabel("Proposal title").fill(`E2E Portal Proposal ${suffix}`);
   await page.getByLabel("Service type").selectOption("custom");
+  await page.getByLabel("Custom service name").fill("Custom test service");
   await page.getByRole("button", { name: "Save and continue" }).click();
   await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=measurements/);
   const proposalUrl = page.url().replace(/\/edit\?step=measurements$/, "");
@@ -75,6 +76,7 @@ test.describe("Client portal — contractor side", () => {
     await page.waitForURL(/clientId=/);
     await page.getByLabel("Proposal title").fill(`E2E Portal Draft Proposal ${suffix}`);
     await page.getByLabel("Service type").selectOption("custom");
+    await page.getByLabel("Custom service name").fill("Custom test service");
     await page.getByRole("button", { name: "Save and continue" }).click();
     await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=measurements/);
     const proposalUrl = page.url().replace(/\/edit\?step=measurements$/, "");

@@ -129,6 +129,7 @@ describe.skipIf(!canRun)("Phase 2A Proposal-centric pivot (requires real Postgre
         p_client_id: clientAId,
         p_title: title,
         p_service_type: "custom",
+        p_custom_service_name: "Custom service",
       })
       .single();
     const p = proposal as { id: string; current_version_id: string };
@@ -212,6 +213,7 @@ describe.skipIf(!canRun)("Phase 2A Proposal-centric pivot (requires real Postgre
         p_client_id: clientAId,
         p_title: "Mismatched client/opportunity",
         p_service_type: "custom",
+        p_custom_service_name: "Custom service",
         p_opportunity_id: (opp as { id: string }).id,
       });
       expect(error).not.toBeNull();
@@ -233,6 +235,7 @@ describe.skipIf(!canRun)("Phase 2A Proposal-centric pivot (requires real Postgre
         p_client_id: clientAId,
         p_title: "Mismatched contact",
         p_service_type: "custom",
+        p_custom_service_name: "Custom service",
         p_client_contact_id: (contact as { id: string }).id,
       });
       expect(error).not.toBeNull();
@@ -249,6 +252,7 @@ describe.skipIf(!canRun)("Phase 2A Proposal-centric pivot (requires real Postgre
         p_opportunity_id: oppId,
         p_title: "First",
         p_service_type: "custom",
+        p_custom_service_name: "Custom service",
       });
       expect(firstErr).toBeNull();
 
@@ -257,6 +261,7 @@ describe.skipIf(!canRun)("Phase 2A Proposal-centric pivot (requires real Postgre
         p_opportunity_id: oppId,
         p_title: "Second — should fail",
         p_service_type: "custom",
+        p_custom_service_name: "Custom service",
       });
       expect(secondErr).not.toBeNull();
     });
@@ -268,6 +273,7 @@ describe.skipIf(!canRun)("Phase 2A Proposal-centric pivot (requires real Postgre
         p_client_id: clientAId,
         p_title: "Idempotent create",
         p_service_type: "custom",
+        p_custom_service_name: "Custom service",
         p_idempotency_key: idempotencyKey,
       };
       const { data: first } = await aClient.rpc("create_proposal_direct", args).single();
@@ -284,12 +290,104 @@ describe.skipIf(!canRun)("Phase 2A Proposal-centric pivot (requires real Postgre
               p_client_id: clientAId,
               p_title: `Concurrent ${i}`,
               p_service_type: "custom",
+              p_custom_service_name: "Custom service",
             })
             .single()
         )
       );
       const numbers = results.map((r) => (r.data as { proposal_number: number })?.proposal_number);
       expect(new Set(numbers).size).toBe(5);
+    });
+  });
+
+  // ===========================================================================
+  // Custom service name — see docs/74-custom-service-name-and-multistroke-drawing.md.
+  // service_type='custom' requires a human-readable custom_service_name,
+  // enforced both by an explicit friendly-message raise inside
+  // create_proposal_direct() and, as defense-in-depth, a CHECK constraint
+  // on the proposals table itself.
+  // ===========================================================================
+  describe("Custom service name", () => {
+    it("rejects service_type='custom' with no custom_service_name, with a friendly message", async () => {
+      const { error } = await aClient.rpc("create_proposal_direct", {
+        p_tenant_id: tenantAId,
+        p_client_id: clientAId,
+        p_title: "Missing custom name",
+        p_service_type: "custom",
+      });
+      expect(error).not.toBeNull();
+      expect(error!.message).toBe("Enter a name for this custom service.");
+    });
+
+    it("rejects service_type='custom' with a blank/whitespace-only custom_service_name", async () => {
+      const { error } = await aClient.rpc("create_proposal_direct", {
+        p_tenant_id: tenantAId,
+        p_client_id: clientAId,
+        p_title: "Blank custom name",
+        p_service_type: "custom",
+        p_custom_service_name: "   ",
+      });
+      expect(error).not.toBeNull();
+      expect(error!.message).toBe("Enter a name for this custom service.");
+    });
+
+    it("saves and trims a real custom_service_name", async () => {
+      const { data, error } = await aClient
+        .rpc("create_proposal_direct", {
+          p_tenant_id: tenantAId,
+          p_client_id: clientAId,
+          p_title: "Deck job",
+          p_service_type: "custom",
+          p_custom_service_name: "  Deck repair  ",
+        })
+        .single();
+      expect(error).toBeNull();
+      expect((data as { custom_service_name: string }).custom_service_name).toBe("Deck repair");
+    });
+
+    it("never persists a custom_service_name for a non-custom service type, even if one is sent", async () => {
+      const { data, error } = await aClient
+        .rpc("create_proposal_direct", {
+          p_tenant_id: tenantAId,
+          p_client_id: clientAId,
+          p_title: "Painting job",
+          p_service_type: "interior_painting",
+          p_custom_service_name: "Should be discarded",
+        })
+        .single();
+      expect(error).toBeNull();
+      expect((data as { custom_service_name: string | null }).custom_service_name).toBeNull();
+    });
+
+    it("create_proposal_from_opportunity also requires a custom_service_name for service_type='custom'", async () => {
+      const { data: opp } = await aClient
+        .rpc("create_opportunity", { p_tenant_id: tenantAId, p_client_id: clientAId, p_title: "Custom via opportunity" })
+        .single();
+      const { error } = await aClient.rpc("create_proposal_from_opportunity", {
+        p_tenant_id: tenantAId,
+        p_opportunity_id: (opp as { id: string }).id,
+        p_title: "Custom via opportunity",
+        p_service_type: "custom",
+      });
+      expect(error).not.toBeNull();
+      expect(error!.message).toBe("Enter a name for this custom service.");
+    });
+
+    it("create_proposal_from_opportunity saves a real custom_service_name", async () => {
+      const { data: opp } = await aClient
+        .rpc("create_opportunity", { p_tenant_id: tenantAId, p_client_id: clientAId, p_title: "Custom via opportunity 2" })
+        .single();
+      const { data, error } = await aClient
+        .rpc("create_proposal_from_opportunity", {
+          p_tenant_id: tenantAId,
+          p_opportunity_id: (opp as { id: string }).id,
+          p_title: "Custom via opportunity 2",
+          p_service_type: "custom",
+          p_custom_service_name: "Patio extension",
+        })
+        .single();
+      expect(error).toBeNull();
+      expect((data as { custom_service_name: string }).custom_service_name).toBe("Patio extension");
     });
   });
 
@@ -1161,6 +1259,7 @@ describe.skipIf(!canRun)("Phase 2A Proposal-centric pivot (requires real Postgre
           p_client_id: clientAId,
           p_title: "Lock test",
           p_service_type: "custom",
+          p_custom_service_name: "Custom service",
         })
         .single();
       const p = proposal as { current_version_id: string };
@@ -1231,6 +1330,7 @@ describe.skipIf(!canRun)("Phase 2A Proposal-centric pivot (requires real Postgre
           p_client_id: clientAId,
           p_title: "Ready round trip",
           p_service_type: "custom",
+          p_custom_service_name: "Custom service",
         })
         .single();
       const id = (proposal as { id: string }).id;
@@ -1249,6 +1349,7 @@ describe.skipIf(!canRun)("Phase 2A Proposal-centric pivot (requires real Postgre
           p_client_id: clientAId,
           p_title: "No direct status jump",
           p_service_type: "custom",
+          p_custom_service_name: "Custom service",
         })
         .single();
       const id = (proposal as { id: string }).id;
@@ -1270,6 +1371,7 @@ describe.skipIf(!canRun)("Phase 2A Proposal-centric pivot (requires real Postgre
           p_client_id: clientAId,
           p_title: "Archive round trip",
           p_service_type: "custom",
+          p_custom_service_name: "Custom service",
         })
         .single();
       const id = (proposal as { id: string }).id;
@@ -1294,7 +1396,7 @@ describe.skipIf(!canRun)("Phase 2A Proposal-centric pivot (requires real Postgre
         proposal_number: 999001,
         client_id: clientBId, // belongs to tenant B
         title: "Cross-tenant client",
-        service_type: "custom",
+        service_type: "flooring", // avoids proposals_custom_service_name_required_check -- this test is about the client_id FK, not service_type
         source: "direct",
         created_by: userA.id,
       });
@@ -1309,6 +1411,7 @@ describe.skipIf(!canRun)("Phase 2A Proposal-centric pivot (requires real Postgre
           p_client_id: clientAId,
           p_title: "Cross-tenant media test",
           p_service_type: "custom",
+          p_custom_service_name: "Custom service",
         })
         .single();
       const p = proposal as { current_version_id: string };
@@ -1375,6 +1478,7 @@ describe.skipIf(!canRun)("Phase 2A Proposal-centric pivot (requires real Postgre
         p_client_id: clientBId,
         p_title: "Tenant B only",
         p_service_type: "custom",
+        p_custom_service_name: "Custom service",
       });
       const { data } = await aClient.from("proposals").select("*").eq("tenant_id", tenantBId);
       expect(data ?? []).toHaveLength(0);
@@ -1387,6 +1491,7 @@ describe.skipIf(!canRun)("Phase 2A Proposal-centric pivot (requires real Postgre
           p_client_id: clientBId,
           p_title: "Tenant B target",
           p_service_type: "custom",
+          p_custom_service_name: "Custom service",
         })
         .single();
       const { error } = await aClient.rpc("mark_proposal_ready", { p_proposal_id: (bProposal as { id: string }).id });
@@ -1408,6 +1513,7 @@ describe.skipIf(!canRun)("Phase 2A Proposal-centric pivot (requires real Postgre
           p_client_id: clientAId,
           p_title: "Permission matrix proposal",
           p_service_type: "custom",
+          p_custom_service_name: "Custom service",
         })
         .single();
       const p = proposal as { id: string; current_version_id: string };
@@ -1425,6 +1531,7 @@ describe.skipIf(!canRun)("Phase 2A Proposal-centric pivot (requires real Postgre
         p_client_id: clientAId,
         p_title: "Viewer should not create this",
         p_service_type: "custom",
+        p_custom_service_name: "Custom service",
       });
       expect(createErr).not.toBeNull();
     });
@@ -1435,6 +1542,7 @@ describe.skipIf(!canRun)("Phase 2A Proposal-centric pivot (requires real Postgre
         p_client_id: clientAId,
         p_title: "Sales-created proposal",
         p_service_type: "custom",
+        p_custom_service_name: "Custom service",
       });
       expect(createErr).toBeNull();
 
@@ -1526,7 +1634,7 @@ describe.skipIf(!canRun)("Phase 2A Proposal-centric pivot (requires real Postgre
         .rpc("create_portfolio_project", {
           p_tenant_id: tenantAId,
           p_title: "Reused portfolio item",
-          p_service_type: "custom",
+          p_service_type: "flooring",
         })
         .single();
       const projectId = (project as { id: string }).id;
@@ -1554,6 +1662,7 @@ describe.skipIf(!canRun)("Phase 2A Proposal-centric pivot (requires real Postgre
           p_client_id: clientAId,
           p_title: "Uses portfolio media",
           p_service_type: "custom",
+          p_custom_service_name: "Custom service",
         })
         .single();
       const p = proposal as { current_version_id: string };
@@ -1640,6 +1749,7 @@ describe.skipIf(!canRun)("Phase 2A Proposal-centric pivot (requires real Postgre
           p_client_id: clientAId,
           p_title: "Not accepted yet",
           p_service_type: "custom",
+          p_custom_service_name: "Custom service",
         })
         .single();
 

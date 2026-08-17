@@ -137,7 +137,7 @@ describe.skipIf(!canRun)("Phase 3B.1 Proposal Revision Flow (requires real Postg
     clientId = clientAId
   ): Promise<{ proposalId: string; versionId: string }> {
     const { data: proposal } = await owner
-      .rpc("create_proposal_direct", { p_tenant_id: tenantId, p_client_id: clientId, p_title: title, p_service_type: "custom" })
+      .rpc("create_proposal_direct", { p_tenant_id: tenantId, p_client_id: clientId, p_title: title, p_service_type: "custom", p_custom_service_name: "Custom service" })
       .single();
     const p = proposal as { id: string; current_version_id: string };
     const versionId = p.current_version_id;

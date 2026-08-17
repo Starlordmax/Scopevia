@@ -50,20 +50,40 @@ export const percentToBpsSchema = z
   .refine((v) => /^\d+(\.\d{1,4})?$/.test(v), "Enter a valid percentage")
   .transform((v) => Math.round(parseFloat(v) * 100));
 
-export const createProposalDirectSchema = z.object({
-  clientId: z.string().uuid(),
-  clientContactId: z.string().uuid().optional(),
-  opportunityId: z.string().uuid().optional(),
-  title: z.string().trim().min(1, "Title is required").max(160),
-  serviceType: serviceTypeSchema,
-});
+/**
+ * `service_type = 'custom'` requires a human-readable name (e.g. "Deck
+ * repair") — shared by both proposal-creation schemas below via
+ * .superRefine(), same pattern as refineAddressPostalCode() in crm.ts.
+ * The field's key ("customServiceName") matches its <input id>/name, so
+ * a Zod issue here maps directly onto a red form field — see
+ * zodIssuesToFieldErrors() in src/lib/validation/field-errors.ts.
+ */
+function refineCustomServiceName(data: { serviceType: string; customServiceName?: string }, ctx: z.RefinementCtx) {
+  if (data.serviceType === "custom" && (!data.customServiceName || data.customServiceName.trim() === "")) {
+    ctx.addIssue({ code: "custom", path: ["customServiceName"], message: "Enter a name for this custom service." });
+  }
+}
 
-export const createProposalFromOpportunitySchema = z.object({
-  opportunityId: z.string().uuid(),
-  clientContactId: z.string().uuid().optional(),
-  title: z.string().trim().min(1, "Title is required").max(160),
-  serviceType: serviceTypeSchema,
-});
+export const createProposalDirectSchema = z
+  .object({
+    clientId: z.string().uuid(),
+    clientContactId: z.string().uuid().optional(),
+    opportunityId: z.string().uuid().optional(),
+    title: z.string().trim().min(1, "Title is required").max(160),
+    serviceType: serviceTypeSchema,
+    customServiceName: optionalText(160),
+  })
+  .superRefine(refineCustomServiceName);
+
+export const createProposalFromOpportunitySchema = z
+  .object({
+    opportunityId: z.string().uuid(),
+    clientContactId: z.string().uuid().optional(),
+    title: z.string().trim().min(1, "Title is required").max(160),
+    serviceType: serviceTypeSchema,
+    customServiceName: optionalText(160),
+  })
+  .superRefine(refineCustomServiceName);
 
 const isoDateSchema = z
   .string()
@@ -251,6 +271,8 @@ export const measurementValueFieldSchema = z.enum(["area", "perimeter", "linear_
 export const laborMeasurementPricingMethodSchema = z.enum(["area", "linear"]);
 
 const positiveDimension = (max: number, label: string) => z.coerce.number().positive(`${label} must be greater than zero`).max(max);
+/** Exact copy from the brief's field-validation list — kept distinct from positiveDimension() since a reference length's error is shown verbatim, not built from a generic "<label> must be greater than zero" template. */
+const positiveReferenceLength = (max: number) => z.coerce.number().positive("Enter a reference length greater than 0.").max(max);
 
 export const createMeasurementGroupSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(160),
@@ -267,7 +289,7 @@ export const createMeasurementGroupSchema = z.object({
 export const addMeasurementSchema = z.discriminatedUnion("shapeType", [
   z.object({
     shapeType: z.literal("manual_rectangle"),
-    name: z.string().trim().min(1, "Name is required").max(160),
+    name: z.string().trim().min(1, "Measurement name is required.").max(160),
     measurementType: measurementTypeSchema,
     unit: measurementUnitSchema,
     length: positiveDimension(100000, "Length"),
@@ -278,7 +300,7 @@ export const addMeasurementSchema = z.discriminatedUnion("shapeType", [
   }),
   z.object({
     shapeType: z.literal("manual_area"),
-    name: z.string().trim().min(1, "Name is required").max(160),
+    name: z.string().trim().min(1, "Measurement name is required.").max(160),
     measurementType: measurementTypeSchema,
     unit: measurementUnitSchema,
     area: positiveDimension(10000000, "Area"),
@@ -287,7 +309,7 @@ export const addMeasurementSchema = z.discriminatedUnion("shapeType", [
   }),
   z.object({
     shapeType: z.literal("manual_linear"),
-    name: z.string().trim().min(1, "Name is required").max(160),
+    name: z.string().trim().min(1, "Measurement name is required.").max(160),
     measurementType: measurementTypeSchema,
     unit: measurementUnitSchema,
     linearLength: positiveDimension(100000, "Linear length"),
@@ -299,28 +321,29 @@ export const addMeasurementSchema = z.discriminatedUnion("shapeType", [
 export const updateMeasurementSchema = addMeasurementSchema;
 
 export const saveMeasurementShapeSchema = z.object({
-  name: z.string().trim().min(1, "Name is required").max(160),
+  name: z.string().trim().min(1, "Measurement name is required.").max(160),
   measurementType: measurementTypeSchema,
   unit: measurementUnitSchema,
   length: positiveDimension(100000, "Length"),
   width: positiveDimension(100000, "Width"),
-  scaleReferenceLength: positiveDimension(100000, "Reference length"),
+  scaleReferenceLength: positiveReferenceLength(100000),
   scaleUnit: measurementUnitSchema,
   wastePercent: percentToBpsSchema,
   notes: optionalText(2000),
 });
 
 /**
- * Freehand/brush drawing (Phase 2C.1) — the points array and raw
- * shapeData are parsed as JSON directly in the Server Action (same
- * pattern as saveMeasurementShapeSchema's shapeData), not validated
- * field-by-field here; this schema covers the plain form fields.
+ * Freehand/brush drawing (Phase 2C.1) — the strokes array and raw
+ * shapeData are parsed/structurally validated as JSON directly in the
+ * Server Action (same pattern as saveMeasurementShapeSchema's shapeData),
+ * not validated field-by-field here; this schema covers the plain form
+ * fields. See docs/74-custom-service-name-and-multistroke-drawing.md.
  */
 export const saveMeasurementPolygonShapeSchema = z.object({
-  name: z.string().trim().min(1, "Name is required").max(160),
+  name: z.string().trim().min(1, "Measurement name is required.").max(160),
   measurementType: measurementTypeSchema,
   unit: measurementUnitSchema,
-  scaleReferenceLength: positiveDimension(100000, "Reference length"),
+  scaleReferenceLength: positiveReferenceLength(100000),
   scaleUnit: measurementUnitSchema,
   closed: z.coerce.boolean(),
   wastePercent: percentToBpsSchema,

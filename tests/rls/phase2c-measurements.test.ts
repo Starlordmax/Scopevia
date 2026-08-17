@@ -123,7 +123,7 @@ describe.skipIf(!canRun)("Phase 2C Measurements / Takeoff builder (requires real
 
   async function createDraftProposal(title: string): Promise<{ proposalId: string; versionId: string }> {
     const { data: proposal } = await aClient
-      .rpc("create_proposal_direct", { p_tenant_id: tenantAId, p_client_id: clientAId, p_title: title, p_service_type: "custom" })
+      .rpc("create_proposal_direct", { p_tenant_id: tenantAId, p_client_id: clientAId, p_title: title, p_service_type: "custom", p_custom_service_name: "Custom service" })
       .single();
     const p = proposal as { id: string; current_version_id: string };
     return { proposalId: p.id, versionId: p.current_version_id };
@@ -322,7 +322,7 @@ describe.skipIf(!canRun)("Phase 2C Measurements / Takeoff builder (requires real
         .rpc("create_client", { p_tenant_id: tenantBId, p_client_type: "individual", p_display_name: "P2C Client B" })
         .single();
       const { data: proposalB } = await bClient
-        .rpc("create_proposal_direct", { p_tenant_id: tenantBId, p_client_id: (clientB as { id: string }).id, p_title: "Proposal B", p_service_type: "custom" })
+        .rpc("create_proposal_direct", { p_tenant_id: tenantBId, p_client_id: (clientB as { id: string }).id, p_title: "Proposal B", p_service_type: "custom", p_custom_service_name: "Custom service" })
         .single();
       const versionBId = (proposalB as { current_version_id: string }).current_version_id;
 
@@ -645,8 +645,8 @@ describe.skipIf(!canRun)("Phase 2C Measurements / Takeoff builder (requires real
         .rpc("save_measurement_polygon_shape", {
           p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "L-shaped room",
           p_measurement_type: "floor_area", p_unit: "ft",
-          p_points: [
-            { x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 5 }, { x: 5, y: 5 }, { x: 5, y: 10 }, { x: 0, y: 10 },
+          p_strokes: [
+            [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 5 }, { x: 5, y: 5 }, { x: 5, y: 10 }, { x: 0, y: 10 }],
           ],
           p_closed: true, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: { type: "freehand", closed: true },
         })
@@ -666,7 +666,7 @@ describe.skipIf(!canRun)("Phase 2C Measurements / Takeoff builder (requires real
         .rpc("save_measurement_polygon_shape", {
           p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Traced trim run",
           p_measurement_type: "linear", p_unit: "ft",
-          p_points: [{ x: 0, y: 0 }, { x: 5, y: 0 }, { x: 5, y: 5 }],
+          p_strokes: [[{ x: 0, y: 0 }, { x: 5, y: 0 }, { x: 5, y: 5 }]],
           p_closed: false, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: { type: "freehand", closed: false },
         })
         .single();
@@ -683,7 +683,7 @@ describe.skipIf(!canRun)("Phase 2C Measurements / Takeoff builder (requires real
       const { error } = await aClient.rpc("save_measurement_polygon_shape", {
         p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Bad",
         p_measurement_type: "floor_area", p_unit: "ft",
-        p_points: [{ x: 0, y: 0 }, { x: 10, y: 0 }],
+        p_strokes: [[{ x: 0, y: 0 }, { x: 10, y: 0 }]],
         p_closed: true, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: {},
       });
       expect(error).not.toBeNull();
@@ -695,7 +695,7 @@ describe.skipIf(!canRun)("Phase 2C Measurements / Takeoff builder (requires real
       const { error } = await aClient.rpc("save_measurement_polygon_shape", {
         p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Bad",
         p_measurement_type: "linear", p_unit: "ft",
-        p_points: [{ x: 0, y: 0 }],
+        p_strokes: [[{ x: 0, y: 0 }]],
         p_closed: false, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: {},
       });
       expect(error).not.toBeNull();
@@ -707,7 +707,7 @@ describe.skipIf(!canRun)("Phase 2C Measurements / Takeoff builder (requires real
       const { error } = await aClient.rpc("save_measurement_polygon_shape", {
         p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Bad",
         p_measurement_type: "floor_area", p_unit: "ft",
-        p_points: [{ x: 0, y: 0 }, { x: 5, y: 0 }, { x: 10, y: 0 }],
+        p_strokes: [[{ x: 0, y: 0 }, { x: 5, y: 0 }, { x: 10, y: 0 }]],
         p_closed: true, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: {},
       });
       expect(error).not.toBeNull();
@@ -719,7 +719,7 @@ describe.skipIf(!canRun)("Phase 2C Measurements / Takeoff builder (requires real
       const { error } = await aClient.rpc("save_measurement_polygon_shape", {
         p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Bad",
         p_measurement_type: "floor_area", p_unit: "ft",
-        p_points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }],
+        p_strokes: [[{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }]],
         p_closed: true, p_scale_reference_length: -5, p_scale_unit: "ft", p_shape_data: {},
       });
       expect(error).not.toBeNull();
@@ -732,7 +732,7 @@ describe.skipIf(!canRun)("Phase 2C Measurements / Takeoff builder (requires real
         .rpc("save_measurement_polygon_shape", {
           p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Square",
           p_measurement_type: "floor_area", p_unit: "ft",
-          p_points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }],
+          p_strokes: [[{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }]],
           p_closed: true, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: {},
         })
         .single();
@@ -751,7 +751,7 @@ describe.skipIf(!canRun)("Phase 2C Measurements / Takeoff builder (requires real
         .rpc("save_measurement_polygon_shape", {
           p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Square",
           p_measurement_type: "floor_area", p_unit: "ft",
-          p_points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }],
+          p_strokes: [[{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }]],
           p_closed: true, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: {},
         })
         .single();
@@ -768,7 +768,7 @@ describe.skipIf(!canRun)("Phase 2C Measurements / Takeoff builder (requires real
         .rpc("save_measurement_polygon_shape", {
           p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "A only",
           p_measurement_type: "floor_area", p_unit: "ft",
-          p_points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }],
+          p_strokes: [[{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }]],
           p_closed: true, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: {},
         })
         .single();
@@ -789,7 +789,7 @@ describe.skipIf(!canRun)("Phase 2C Measurements / Takeoff builder (requires real
           p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Freehand floor",
           p_measurement_type: "floor_area", p_unit: "ft",
           // A 20x10 rectangle drawn as a polygon -> area 200.
-          p_points: [{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 10 }, { x: 0, y: 10 }],
+          p_strokes: [[{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 10 }, { x: 0, y: 10 }]],
           p_closed: true, p_scale_reference_length: 20, p_scale_unit: "ft", p_shape_data: {},
         })
         .single();
@@ -822,7 +822,7 @@ describe.skipIf(!canRun)("Phase 2C Measurements / Takeoff builder (requires real
         .rpc("save_measurement_polygon_shape", {
           p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Freehand floor for labor",
           p_measurement_type: "floor_area", p_unit: "ft",
-          p_points: [{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 15 }, { x: 0, y: 15 }], // area 300
+          p_strokes: [[{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 15 }, { x: 0, y: 15 }]], // area 300
           p_closed: true, p_scale_reference_length: 20, p_scale_unit: "ft", p_shape_data: {},
         })
         .single();
@@ -844,7 +844,7 @@ describe.skipIf(!canRun)("Phase 2C Measurements / Takeoff builder (requires real
         .rpc("save_measurement_polygon_shape", {
           p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Floor",
           p_measurement_type: "floor_area", p_unit: "ft",
-          p_points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }],
+          p_strokes: [[{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }]],
           p_closed: true, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: {},
         })
         .single();
@@ -871,7 +871,7 @@ describe.skipIf(!canRun)("Phase 2C Measurements / Takeoff builder (requires real
       const { error } = await aClient.rpc("save_measurement_polygon_shape", {
         p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Should not save",
         p_measurement_type: "floor_area", p_unit: "ft",
-        p_points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }],
+        p_strokes: [[{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }]],
         p_closed: true, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: {},
       });
       expect(error).not.toBeNull();
@@ -884,12 +884,147 @@ describe.skipIf(!canRun)("Phase 2C Measurements / Takeoff builder (requires real
         .rpc("save_measurement_polygon_shape", {
           p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Field worker freehand",
           p_measurement_type: "floor_area", p_unit: "ft",
-          p_points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }],
+          p_strokes: [[{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }]],
           p_closed: true, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: {},
         })
         .single();
       expect(error).toBeNull();
       expect(data).toBeTruthy();
+    });
+  });
+
+  // ===========================================================================
+  // Multi-stroke drawing (bug fix) — see
+  // docs/74-custom-service-name-and-multistroke-drawing.md. p_strokes is an
+  // array of point arrays (one per stroke); a CLOSED shape joins them
+  // end-to-end in drawn order, an OPEN path sums each stroke's own length
+  // independently, never a phantom edge across the gap between strokes.
+  // ===========================================================================
+  describe("Multi-stroke drawing", () => {
+    it("saves a closed shape from multiple strokes -- joined end-to-end, same area/perimeter as an equivalent single stroke", async () => {
+      const { versionId } = await createDraftProposal("Multi-stroke closed");
+      const groupId = await createGroup(versionId);
+      // Two strokes that together trace a 10x10 square outline.
+      const { data, error } = await aClient
+        .rpc("save_measurement_polygon_shape", {
+          p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Two-stroke square",
+          p_measurement_type: "floor_area", p_unit: "ft",
+          p_strokes: [
+            [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }],
+            [{ x: 10, y: 10 }, { x: 0, y: 10 }],
+          ],
+          p_closed: true, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: { strokeCount: 2 },
+        })
+        .single();
+      expect(error).toBeNull();
+      const m = data as { area: number; perimeter: number };
+      expect(m.area).toBe(100);
+      expect(m.perimeter).toBe(40);
+    });
+
+    it("an OPEN multi-stroke path sums each stroke's own length independently -- never a phantom edge across the gap between strokes", async () => {
+      const { versionId } = await createDraftProposal("Multi-stroke open, separate strokes");
+      const groupId = await createGroup(versionId);
+      // Stroke 1: 3 units long. Stroke 2: 4 units long, drawn far away
+      // (a 100-unit gap) after lifting the pen. A naive flatten-then-sum
+      // (the original bug) would wrongly include that gap in the total.
+      const { data, error } = await aClient
+        .rpc("save_measurement_polygon_shape", {
+          p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Two separate trim runs",
+          p_measurement_type: "linear", p_unit: "ft",
+          p_strokes: [
+            [{ x: 0, y: 0 }, { x: 3, y: 0 }],
+            [{ x: 103, y: 0 }, { x: 107, y: 0 }],
+          ],
+          p_closed: false, p_scale_reference_length: 1, p_scale_unit: "ft", p_shape_data: { strokeCount: 2 },
+        })
+        .single();
+      expect(error).toBeNull();
+      const m = data as { area: number | null; perimeter: number | null; linear_length: number };
+      expect(m.area).toBeNull();
+      expect(m.perimeter).toBeNull();
+      expect(m.linear_length).toBe(7); // 3 + 4, NOT 3 + 100 + 4
+    });
+
+    it("ignores a degenerate (single-point) stroke mixed in with valid strokes, without crashing", async () => {
+      const { versionId } = await createDraftProposal("Multi-stroke with a stray tap");
+      const groupId = await createGroup(versionId);
+      const { data, error } = await aClient
+        .rpc("save_measurement_polygon_shape", {
+          p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Stroke plus stray tap",
+          p_measurement_type: "linear", p_unit: "ft",
+          p_strokes: [
+            [{ x: 0, y: 0 }, { x: 5, y: 0 }],
+            [{ x: 50, y: 50 }], // a single-point "stray tap" stroke
+          ],
+          p_closed: false, p_scale_reference_length: 1, p_scale_unit: "ft", p_shape_data: {},
+        })
+        .single();
+      expect(error).toBeNull();
+      expect((data as { linear_length: number }).linear_length).toBe(5);
+    });
+
+    it("rejects saving an area measurement when there are not enough total points to close (friendly message)", async () => {
+      const { versionId } = await createDraftProposal("Multi-stroke not enough points");
+      const groupId = await createGroup(versionId);
+      const { error } = await aClient.rpc("save_measurement_polygon_shape", {
+        p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Too few points",
+        p_measurement_type: "floor_area", p_unit: "ft",
+        p_strokes: [[{ x: 0, y: 0 }], [{ x: 5, y: 5 }]], // 2 total points, closed needs >= 3
+        p_closed: true, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: {},
+      });
+      expect(error).not.toBeNull();
+      expect(error!.message).toBe("Close the shape before saving an area measurement");
+    });
+
+    it("rejects an empty strokes array with a friendly message", async () => {
+      const { versionId } = await createDraftProposal("Multi-stroke empty");
+      const groupId = await createGroup(versionId);
+      const { error } = await aClient.rpc("save_measurement_polygon_shape", {
+        p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Nothing drawn",
+        p_measurement_type: "linear", p_unit: "ft",
+        p_strokes: [],
+        p_closed: false, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: {},
+      });
+      expect(error).not.toBeNull();
+      expect(error!.message).toBe("Draw the area before saving");
+    });
+
+    it("a closed shape's area/perimeter from 3 strokes matches the same outline drawn as 1 stroke", async () => {
+      const { versionId } = await createDraftProposal("Multi-stroke vs single-stroke equivalence");
+      const groupId = await createGroup(versionId);
+      const outline = [
+        { x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 5 }, { x: 5, y: 5 }, { x: 5, y: 10 }, { x: 0, y: 10 },
+      ];
+
+      const { data: singleStroke } = await aClient
+        .rpc("save_measurement_polygon_shape", {
+          p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Single stroke L-shape",
+          p_measurement_type: "floor_area", p_unit: "ft",
+          p_strokes: [outline],
+          p_closed: true, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: {},
+        })
+        .single();
+
+      const { data: threeStrokes } = await aClient
+        .rpc("save_measurement_polygon_shape", {
+          p_proposal_version_id: versionId, p_measurement_group_id: groupId, p_name: "Three-stroke L-shape",
+          p_measurement_type: "floor_area", p_unit: "ft",
+          p_strokes: [
+            [outline[0]!, outline[1]!],
+            [outline[2]!, outline[3]!],
+            [outline[4]!, outline[5]!],
+          ],
+          p_closed: true, p_scale_reference_length: 10, p_scale_unit: "ft", p_shape_data: {},
+        })
+        .single();
+
+      const a = singleStroke as { area: number; perimeter: number };
+      const b = threeStrokes as { area: number; perimeter: number };
+      expect(b.area).toBe(a.area);
+      expect(b.perimeter).toBe(a.perimeter);
+      expect(a.area).toBe(75);
+      expect(a.perimeter).toBe(40);
     });
   });
 });

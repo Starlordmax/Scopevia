@@ -146,7 +146,7 @@ describe.skipIf(!canRun)("Phase 2B Material catalog & ZIP pricing (requires real
 
   async function createDraftProposal(title: string): Promise<{ proposalId: string; versionId: string }> {
     const { data: proposal } = await aClient
-      .rpc("create_proposal_direct", { p_tenant_id: tenantAId, p_client_id: clientAId, p_title: title, p_service_type: "custom" })
+      .rpc("create_proposal_direct", { p_tenant_id: tenantAId, p_client_id: clientAId, p_title: title, p_service_type: "custom", p_custom_service_name: "Custom service" })
       .single();
     const p = proposal as { id: string; current_version_id: string };
     return { proposalId: p.id, versionId: p.current_version_id };

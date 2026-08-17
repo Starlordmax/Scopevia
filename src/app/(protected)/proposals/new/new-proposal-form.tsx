@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createProposalDirectAction, createProposalFromOpportunityAction } from "../../../../actions/proposals";
@@ -8,6 +8,7 @@ import type { ActionResult } from "../../../../actions/auth";
 import { SubmitButton } from "../../../../components/submit-button";
 import { ClientSelect } from "./client-select";
 import { QuickCreateClientModal } from "./quick-create-client-modal";
+import { FieldError, fieldErrorProps, useFocusFirstFieldError } from "../../../../components/form-field-error";
 import type { ClientOption } from "../../../../lib/crm/client-options";
 import type { ContactOption } from "../../../../lib/crm/contact-options";
 import type { OpportunityOption } from "../../../../lib/crm/opportunity-options";
@@ -49,6 +50,37 @@ export function NewProposalForm({
   // reuses the same key so create_proposal_direct()/create_proposal_from_opportunity()
   // return the already-created proposal instead of a duplicate.
   const idempotencyKey = useMemo(() => crypto.randomUUID(), []);
+  const [title, setTitle] = useState("");
+  const [serviceType, setServiceType] = useState("");
+  useFocusFirstFieldError(state.fieldErrors);
+
+  // React's <form action={...}> performs a native-like form reset after
+  // EVERY action response (success or failure) -- for an uncontrolled
+  // field this is invisible (it was already going to reset), but for a
+  // CONTROLLED field (`title`/`serviceType`, needed so the Custom
+  // service name field can react to the current selection) the native
+  // reset clobbers the DOM's live value directly without React
+  // necessarily re-rendering it back on the same tick, since React only
+  // re-applies `value` when the state it's derived from actually
+  // changes -- and `serviceType`/`title` themselves never changed, only
+  // the DOM was mutated out from under them.
+  //
+  // A `key`-based forced remount (this file's earlier approach) turned
+  // out to race unpredictably with exactly *when* the browser's own
+  // reset fires relative to React's re-render/commit -- sometimes the
+  // remount ran first and the reset undid it again afterward, silently
+  // submitting the FIRST enabled <option> ("Interior painting") instead
+  // of "custom" on a resubmit. Forcing the DOM value directly via a ref,
+  // in a `useEffect` that always runs *after* commit (and therefore
+  // after any reset tied to the same submission's event handling), is
+  // the reliable fix: it doesn't matter what the browser already did to
+  // the DOM, this always re-asserts the correct value as the last word.
+  const titleRef = useRef<HTMLInputElement>(null);
+  const serviceTypeRef = useRef<HTMLSelectElement>(null);
+  useEffect(() => {
+    if (titleRef.current) titleRef.current.value = title;
+    if (serviceTypeRef.current) serviceTypeRef.current.value = serviceType;
+  }, [state, title, serviceType]);
 
   return (
     <form action={formAction} className="stack">
@@ -110,12 +142,35 @@ export function NewProposalForm({
 
       <div className="field">
         <label htmlFor="title">Proposal title</label>
-        <input id="title" name="title" type="text" required placeholder="e.g. Exterior repaint — Smith residence" />
+        {/* Controlled + force-synced via titleRef's effect above -- see
+            that comment. An uncontrolled text input has no "selected"
+            HTML attribute for a native form reset to fall back to
+            (unlike ClientSelect's <option selected>), so without this
+            it would revert to a bare empty string on every failed
+            submission, silently discarding whatever the user had
+            already typed. */}
+        <input
+          ref={titleRef}
+          id="title"
+          name="title"
+          type="text"
+          required
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="e.g. Exterior repaint — Smith residence"
+        />
       </div>
 
       <div className="field">
         <label htmlFor="serviceType">Service type</label>
-        <select id="serviceType" name="serviceType" required defaultValue="">
+        <select
+          ref={serviceTypeRef}
+          id="serviceType"
+          name="serviceType"
+          required
+          value={serviceType}
+          onChange={(e) => setServiceType(e.target.value)}
+        >
           <option value="" disabled>
             Select a service type…
           </option>
@@ -126,6 +181,26 @@ export function NewProposalForm({
           ))}
         </select>
       </div>
+
+      {serviceType === "custom" ? (
+        <div className="field">
+          <label htmlFor="customServiceName">Custom service name</label>
+          <input
+            id="customServiceName"
+            name="customServiceName"
+            type="text"
+            // Deliberately no `required` -- an empty submit must reach our
+            // own server-side validation and inline red-state UI (see
+            // fieldErrorProps/FieldError above), not the browser's native
+            // constraint-validation popup, which bypasses the Server
+            // Action entirely and never shows our styled error.
+            maxLength={160}
+            placeholder="e.g. Deck repair, Patio extension, Custom remodel"
+            {...fieldErrorProps(state.fieldErrors, "customServiceName")}
+          />
+          <FieldError fieldErrors={state.fieldErrors} id="customServiceName" />
+        </div>
+      ) : null}
 
       <div className="tenant-form" style={{ justifyContent: "flex-end" }}>
         <Link href="/proposals" className="button-secondary">

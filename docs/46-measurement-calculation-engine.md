@@ -75,6 +75,29 @@ path needs at least 2. A degenerate shape (collinear points, or points
 too close together to form any area/length) is rejected server-side
 with a friendly error, not silently accepted as zero.
 
+**Multi-stroke drawing (`docs/74`):** a freehand drawing is one or more
+independent strokes (`p_strokes`: an array of point arrays), not one
+flat point list — see
+[docs/47](47-drawing-sketch-mode.md#multi-stroke-drawing) for the full
+picture. This only changes *which points feed the formulas above*, not
+the formulas themselves:
+
+- **Closed**: every stroke's points are joined end-to-end, in drawn
+  order, into one outline — then the exact shoelace/perimeter formulas
+  above run over that joined outline unchanged.
+- **Open**: each stroke's own edge-distance sum (the same formula, `n−1`
+  edges for that stroke's `n` points) is computed independently, then
+  every stroke's sum is added together. A stroke boundary is **never**
+  bridged by a computed edge — this is the actual fix for a real
+  reported bug (multiple strokes were previously flattened into one
+  array before this formula ran, so the gap between two strokes was
+  silently summed in as if it were a drawn segment).
+
+`computeMultiStrokeLinearLength()` (`src/lib/proposals/measurements.ts`)
+mirrors the open-path case; `flattenStrokes()` + the existing
+`computePolygonArea()`/`computePolygonPerimeter()` handle the closed
+case, exactly matching `save_measurement_polygon_shape()`.
+
 `src/lib/proposals/measurements.ts`'s `computePolygonArea()` /
 `computePolygonPerimeter()` mirror this exactly (same shoelace formula,
 same closed-vs-open edge counting) for the Draw layout tab's live

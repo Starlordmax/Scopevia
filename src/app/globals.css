@@ -333,6 +333,25 @@ button:disabled {
   flex-shrink: 0;
 }
 
+/* Inline per-field validation (see src/components/form-field-error.tsx,
+   docs/74-custom-service-name-and-multistroke-drawing.md) — a red border
+   on the offending input/select plus a small red message underneath,
+   instead of relying only on the shared .error-banner at the top of the
+   form. */
+.field-input-error {
+  border-color: var(--color-danger) !important;
+}
+
+.field-input-error:focus {
+  outline-color: var(--color-danger);
+}
+
+.field-error-text {
+  color: var(--color-danger);
+  font-size: var(--text-small);
+  margin: 0;
+}
+
 .error-banner {
   display: flex;
   align-items: center;

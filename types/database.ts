@@ -2217,6 +2217,7 @@ export type Database = {
           created_at: string
           created_by: string
           current_version_id: string | null
+          custom_service_name: string | null
           id: string
           opportunity_id: string | null
           pre_archive_status: string | null
@@ -2236,6 +2237,7 @@ export type Database = {
           created_at?: string
           created_by: string
           current_version_id?: string | null
+          custom_service_name?: string | null
           id?: string
           opportunity_id?: string | null
           pre_archive_status?: string | null
@@ -2255,6 +2257,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           current_version_id?: string | null
+          custom_service_name?: string | null
           id?: string
           opportunity_id?: string | null
           pre_archive_status?: string | null
@@ -3743,6 +3746,7 @@ export type Database = {
         Args: {
           p_client_contact_id?: string
           p_client_id: string
+          p_custom_service_name?: string
           p_idempotency_key?: string
           p_opportunity_id?: string
           p_service_type: string
@@ -3757,6 +3761,7 @@ export type Database = {
           created_at: string
           created_by: string
           current_version_id: string | null
+          custom_service_name: string | null
           id: string
           opportunity_id: string | null
           pre_archive_status: string | null
@@ -3778,6 +3783,7 @@ export type Database = {
       create_proposal_from_opportunity: {
         Args: {
           p_client_contact_id?: string
+          p_custom_service_name?: string
           p_idempotency_key?: string
           p_opportunity_id: string
           p_service_type: string
@@ -3792,6 +3798,7 @@ export type Database = {
           created_at: string
           created_by: string
           current_version_id: string | null
+          custom_service_name: string | null
           id: string
           opportunity_id: string | null
           pre_archive_status: string | null
@@ -4642,12 +4649,12 @@ export type Database = {
           p_measurement_type: string
           p_name: string
           p_notes?: string
-          p_points: Json
           p_proposal_version_id: string
           p_scale_reference_length: number
           p_scale_unit: string
           p_shape_data: Json
           p_sort_order?: number
+          p_strokes: Json
           p_unit: string
           p_waste_bps?: number
         }

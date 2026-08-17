@@ -11,6 +11,8 @@ import {
   computePolygonPerimeter,
   simplifyPolyline,
   scalePoints,
+  flattenStrokes,
+  computeMultiStrokeLinearLength,
   type Point,
 } from "../../src/lib/proposals/measurements";
 
@@ -337,6 +339,55 @@ describe("scalePoints", () => {
   it("rejects a zero or negative scale", () => {
     expect(() => scalePoints([{ x: 0, y: 0 }], 0)).toThrow();
     expect(() => scalePoints([{ x: 0, y: 0 }], -5)).toThrow();
+  });
+});
+
+describe("flattenStrokes (multi-stroke drawing — see docs/74-custom-service-name-and-multistroke-drawing.md)", () => {
+  it("joins every stroke's points end-to-end, in drawn order", () => {
+    const strokes: Point[][] = [
+      [{ x: 0, y: 0 }, { x: 1, y: 0 }],
+      [{ x: 5, y: 5 }, { x: 6, y: 5 }],
+    ];
+    expect(flattenStrokes(strokes)).toEqual([
+      { x: 0, y: 0 },
+      { x: 1, y: 0 },
+      { x: 5, y: 5 },
+      { x: 6, y: 5 },
+    ]);
+  });
+
+  it("returns an empty array for no strokes", () => {
+    expect(flattenStrokes([])).toEqual([]);
+  });
+});
+
+describe("computeMultiStrokeLinearLength (the actual multi-stroke bug fix)", () => {
+  it("sums each stroke's own length independently -- never a phantom edge across the gap between strokes", () => {
+    // Stroke 1: a 3-unit horizontal segment. Stroke 2: a 4-unit horizontal
+    // segment, drawn far away (gap of 100 units) after lifting the pen.
+    // A naive flatten-then-sum would wrongly include that 100-unit gap.
+    const strokes: Point[][] = [
+      [{ x: 0, y: 0 }, { x: 3, y: 0 }],
+      [{ x: 103, y: 0 }, { x: 107, y: 0 }],
+    ];
+    expect(computeMultiStrokeLinearLength(strokes)).toBe(7); // 3 + 4, NOT 3 + 100 + 4
+  });
+
+  it("matches a single stroke's own computePolygonPerimeter(..., false)", () => {
+    const stroke: Point[] = [{ x: 0, y: 0 }, { x: 3, y: 4 }, { x: 3, y: 10 }];
+    expect(computeMultiStrokeLinearLength([stroke])).toBe(computePolygonPerimeter(stroke, false));
+  });
+
+  it("ignores a stroke with fewer than 2 points (a stray tap)", () => {
+    const strokes: Point[][] = [
+      [{ x: 0, y: 0 }, { x: 5, y: 0 }],
+      [{ x: 50, y: 50 }], // stray single-point stroke
+    ];
+    expect(computeMultiStrokeLinearLength(strokes)).toBe(5);
+  });
+
+  it("rejects a total length of zero (e.g. every stroke degenerate)", () => {
+    expect(() => computeMultiStrokeLinearLength([[{ x: 0, y: 0 }]])).toThrow("no length");
   });
 });
 

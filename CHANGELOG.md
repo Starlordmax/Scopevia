@@ -4,6 +4,52 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fix — Custom service name, multi-stroke drawing, and field validation
+
+Selecting **Custom** as a proposal's Service type now requires a
+human-readable name ("Deck repair," not the bare word "custom"),
+enforced client- and server-side, and shown everywhere the service type
+is displayed — the builder, preview, print/export, and Client Portal.
+
+Freehand drawing (Draw layout → Freehand) now genuinely supports
+multiple separate strokes — a real bug fix, not a new feature: lifting
+the pen/finger between two strokes previously still drew (and summed
+into `linear_length`) a phantom connecting line, because every stroke
+was flattened into one array before rendering or saving. Strokes now
+render independently while open, and an open path's length sums each
+stroke's own edges — never a line across the gap between them. A
+closed shape still joins every stroke end-to-end in drawn order into
+one outline, exactly as before.
+
+The Measurements step's Manual entry and Draw layout forms gained
+inline, per-field validation (red border, message under the field,
+`aria-invalid`/focus-on-first-error) instead of relying on a single
+generic error banner, matching the pattern already used for client
+addresses.
+
+Found and fixed along the way — confirmed in a real production build,
+not just dev mode: React's `<form action={...}>` performs a
+native-like form reset after every action response, success or
+failure — for a *controlled* field (needed so "Custom service name"
+can react to the current Service type selection) this silently
+desynced the DOM from React's own state. A first fix attempt (the
+`key`-based forced-remount pattern already used for the Client
+selector, [docs/72](docs/72-quick-create-client.md)) raced
+unpredictably with the browser's own reset and could silently submit
+the *wrong* service type on a resubmit. Fixed properly with a
+ref+`useEffect` that re-asserts the correct DOM value after every
+render, deterministically — see
+[docs/74](docs/74-custom-service-name-and-multistroke-drawing.md).
+
+14 new unit tests (345/345 total), 2 new RLS describe blocks (Custom
+service name, Multi-stroke drawing — 429/429 total RLS tests passing
+after updating every pre-existing proposal-creation call site for the
+new requirement), 1 new desktop + 1 new mobile E2E spec, plus a full
+regression pass across the existing Measurements, Proposals, and Quick
+Create Client E2E suites (30/30, including a pre-existing, unrelated
+`getByLabel("Client")` ambiguity found and fixed along the way). See
+[docs/74](docs/74-custom-service-name-and-multistroke-drawing.md).
+
 ### Feature — Client address + material ZIP defaults
 
 The New Client form (and the Quick Create Client modal) now capture a

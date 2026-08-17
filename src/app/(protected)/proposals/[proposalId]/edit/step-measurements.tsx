@@ -11,6 +11,7 @@ import {
 } from "../../../../../actions/measurements";
 import type { ActionResult } from "../../../../../actions/auth";
 import { SubmitButton } from "../../../../../components/submit-button";
+import { FieldError, fieldErrorProps, useFocusFirstFieldError } from "../../../../../components/form-field-error";
 import { computeRectangle, computeWallArea } from "../../../../../lib/proposals/measurements";
 import { formatCents, formatLabel } from "../../../../../lib/proposals/format";
 import { DrawLayoutCanvas } from "./draw-layout-canvas";
@@ -113,6 +114,8 @@ function ManualMeasurementForm({
   const previewWithWaste =
     preview && "area" in preview && preview.area != null ? preview.area * (1 + wasteBps / 10000) : null;
 
+  useFocusFirstFieldError(state.fieldErrors);
+
   return (
     <form action={formAction} className="stack">
       <input type="hidden" name="proposalVersionId" value={proposalVersionId} />
@@ -134,8 +137,10 @@ function ManualMeasurementForm({
       </div>
 
       <div className="field">
-        <label htmlFor="measurementName">Name</label>
-        <input id="measurementName" name="name" type="text" required placeholder="e.g. Bathroom floor" />
+        <label htmlFor="name">Name</label>
+        {/* No `required` -- an empty submit must reach our own server-side validation and inline red-state UI, not the browser's native popup. */}
+        <input id="name" name="name" type="text" placeholder="e.g. Bathroom floor" {...fieldErrorProps(state.fieldErrors, "name")} />
+        <FieldError fieldErrors={state.fieldErrors} id="name" />
       </div>
 
       <div className="tenant-form" style={{ width: "100%" }}>
@@ -168,16 +173,46 @@ function ManualMeasurementForm({
         <div className="tenant-form" style={{ width: "100%" }}>
           <div className="field" style={{ flex: 1 }}>
             <label htmlFor="length">Length ({unit})</label>
-            <input id="length" name="length" type="number" min={0.01} step={0.01} required value={length} onChange={(e) => setLength(e.target.value)} />
+            <input
+              id="length"
+              name="length"
+              type="number"
+              min={0.01}
+              step={0.01}
+              value={length}
+              onChange={(e) => setLength(e.target.value)}
+              {...fieldErrorProps(state.fieldErrors, "length")}
+            />
+            <FieldError fieldErrors={state.fieldErrors} id="length" />
           </div>
           <div className="field" style={{ flex: 1 }}>
             <label htmlFor="width">Width ({unit})</label>
-            <input id="width" name="width" type="number" min={0.01} step={0.01} required value={width} onChange={(e) => setWidth(e.target.value)} />
+            <input
+              id="width"
+              name="width"
+              type="number"
+              min={0.01}
+              step={0.01}
+              value={width}
+              onChange={(e) => setWidth(e.target.value)}
+              {...fieldErrorProps(state.fieldErrors, "width")}
+            />
+            <FieldError fieldErrors={state.fieldErrors} id="width" />
           </div>
           {measurementType === "wall_area" ? (
             <div className="field" style={{ flex: 1 }}>
               <label htmlFor="height">Height ({unit})</label>
-              <input id="height" name="height" type="number" min={0.01} step={0.01} required value={height} onChange={(e) => setHeight(e.target.value)} />
+              <input
+                id="height"
+                name="height"
+                type="number"
+                min={0.01}
+                step={0.01}
+                value={height}
+                onChange={(e) => setHeight(e.target.value)}
+                {...fieldErrorProps(state.fieldErrors, "height")}
+              />
+              <FieldError fieldErrors={state.fieldErrors} id="height" />
             </div>
           ) : null}
         </div>
@@ -186,7 +221,17 @@ function ManualMeasurementForm({
       {shapeType === "manual_area" ? (
         <div className="field">
           <label htmlFor="area">Area (sq {unit})</label>
-          <input id="area" name="area" type="number" min={0.01} step={0.01} required value={area} onChange={(e) => setArea(e.target.value)} />
+          <input
+            id="area"
+            name="area"
+            type="number"
+            min={0.01}
+            step={0.01}
+            value={area}
+            onChange={(e) => setArea(e.target.value)}
+            {...fieldErrorProps(state.fieldErrors, "area")}
+          />
+          <FieldError fieldErrors={state.fieldErrors} id="area" />
         </div>
       ) : null}
 
@@ -199,10 +244,11 @@ function ManualMeasurementForm({
             type="number"
             min={0.01}
             step={0.01}
-            required
             value={linearLength}
             onChange={(e) => setLinearLength(e.target.value)}
+            {...fieldErrorProps(state.fieldErrors, "linearLength")}
           />
+          <FieldError fieldErrors={state.fieldErrors} id="linearLength" />
         </div>
       ) : null}
 
@@ -217,7 +263,9 @@ function ManualMeasurementForm({
           step={1}
           value={wastePercent}
           onChange={(e) => setWastePercent(e.target.value)}
+          {...fieldErrorProps(state.fieldErrors, "wastePercent")}
         />
+        <FieldError fieldErrors={state.fieldErrors} id="wastePercent" />
       </div>
 
       <div className="field">

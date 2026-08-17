@@ -6,6 +6,7 @@ import { getFullProposal } from "../../../../../lib/proposals/data";
 import { getPortfolioMediaOptions } from "../../../../../lib/proposals/portfolio-options";
 import { getBusinessBranding } from "../../../../../lib/branding/data";
 import { searchMaterialCatalog } from "../../../../../lib/proposals/materials";
+import { serviceTypeLabel } from "../../../../../lib/proposals/service-type";
 import { DEFAULT_PAGE_SIZE } from "../../../../../lib/search";
 import { createClient } from "../../../../../lib/supabase/server";
 import { PageHeader } from "../../../../../components/page-header";
@@ -96,7 +97,7 @@ export default async function ProposalEditPage({
       <PageHeader
         icon={FileEdit}
         title={data.proposal.title}
-        description={`Proposal #${data.proposal.proposal_number} — ${data.proposal.status}`}
+        description={`Proposal #${data.proposal.proposal_number} — ${data.proposal.status} — ${serviceTypeLabel(data.proposal.service_type, data.proposal.custom_service_name)}`}
       />
       {data.proposal.status === "accepted" || data.proposal.status === "declined" ? (
         <p className="error-banner">

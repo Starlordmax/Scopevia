@@ -168,6 +168,7 @@ describe.skipIf(!canRun)("Phase 3A Client Portal (requires real Postgres)", () =
         p_client_id: clientAId,
         p_title: title,
         p_service_type: "custom",
+        p_custom_service_name: "Custom service",
         p_client_contact_id: clientContactId,
       })
       .single();
@@ -256,7 +257,7 @@ describe.skipIf(!canRun)("Phase 3A Client Portal (requires real Postgres)", () =
 
     it("rejects a draft proposal", async () => {
       const { data: proposal } = await aClient
-        .rpc("create_proposal_direct", { p_tenant_id: tenantAId, p_client_id: clientAId, p_title: "Still draft", p_service_type: "custom" })
+        .rpc("create_proposal_direct", { p_tenant_id: tenantAId, p_client_id: clientAId, p_title: "Still draft", p_service_type: "custom", p_custom_service_name: "Custom service" })
         .single();
       const p = proposal as { id: string };
       const { error } = await aClient.rpc("create_proposal_portal_link", {
@@ -680,7 +681,7 @@ describe.skipIf(!canRun)("Phase 3A Client Portal (requires real Postgres)", () =
       const { sessionTokenHash: sessionAHash } = await verifyOtp(tokenAHash, CLIENT_EMAIL, codeAHash);
 
       const { data: proposalB } = await bClient
-        .rpc("create_proposal_direct", { p_tenant_id: tenantBId, p_client_id: clientBId, p_title: "Isolation B", p_service_type: "custom" })
+        .rpc("create_proposal_direct", { p_tenant_id: tenantBId, p_client_id: clientBId, p_title: "Isolation B", p_service_type: "custom", p_custom_service_name: "Custom service" })
         .single();
       const proposalBId = (proposalB as { id: string }).id;
       await bClient.rpc("mark_proposal_ready", { p_proposal_id: proposalBId });

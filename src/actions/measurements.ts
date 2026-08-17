@@ -14,8 +14,17 @@ import {
   addLaborFromMeasurementSchema,
 } from "../lib/validation/proposals";
 import { friendlyRpcErrorMessage } from "../lib/errors/friendly-message";
+import { zodIssuesToFieldErrors, attributeRpcErrorToField } from "../lib/validation/field-errors";
 import type { ActionResult } from "./auth";
 import type { Json } from "../../types/database";
+
+/** Shared RPC-error → field mapping for both drawn-shape save actions (rectangle and freehand) — the SQL layer's own re-validation of things Zod already checked, or things only the DB can know (a degenerate/unclosed shape). */
+const DRAWING_RPC_FIELD_MAP: [string, string][] = [
+  ["reference length", "scaleReferenceLength"],
+  ["Close the shape before saving an area measurement", "drawing"],
+  ["Draw the area before saving", "drawing"],
+  ["Measurement name is required", "name"],
+];
 
 export async function createMeasurementGroupAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   await requireUser();
@@ -68,7 +77,10 @@ export async function addMeasurementAction(_prev: ActionResult, formData: FormDa
     wastePercent: formData.get("wastePercent") || undefined,
     notes: formData.get("notes") || undefined,
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!parsed.success) {
+    const fieldErrors = zodIssuesToFieldErrors(parsed.error);
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("add_measurement", {
@@ -112,7 +124,10 @@ export async function updateMeasurementAction(_prev: ActionResult, formData: For
     wastePercent: formData.get("wastePercent") || undefined,
     notes: formData.get("notes") || undefined,
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!parsed.success) {
+    const fieldErrors = zodIssuesToFieldErrors(parsed.error);
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("update_measurement", {
@@ -171,7 +186,10 @@ export async function saveMeasurementShapeAction(_prev: ActionResult, formData: 
     wastePercent: formData.get("wastePercent") || undefined,
     notes: formData.get("notes") || undefined,
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!parsed.success) {
+    const fieldErrors = zodIssuesToFieldErrors(parsed.error);
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("save_measurement_shape", {
@@ -188,18 +206,26 @@ export async function saveMeasurementShapeAction(_prev: ActionResult, formData: 
     p_waste_bps: parsed.data.wastePercent,
     p_notes: (parsed.data.notes ?? null) as string,
   });
-  if (error) return { error: friendlyRpcErrorMessage(error.message) };
+  if (error) {
+    const message = friendlyRpcErrorMessage(error.message);
+    const field = attributeRpcErrorToField(message, DRAWING_RPC_FIELD_MAP);
+    return { error: message, fieldErrors: field ? { [field]: message } : undefined };
+  }
 
   revalidatePath(`/proposals/${proposalId.data}/edit`);
   return {};
 }
 
 /**
- * Freehand/brush drawing (Phase 2C.1). `points` are already converted to
- * real-world units client-side (the same "client scales, server computes
- * the derived value" split as saveMeasurementShapeAction above) — this
- * action just forwards them to the RPC, which independently runs the
- * shoelace formula rather than trusting any client-computed area.
+ * Freehand/brush drawing — one or more independent strokes (Phase 2C.1;
+ * multi-stroke fix in docs/74-custom-service-name-and-multistroke-drawing.md).
+ * `strokes` (an array of point arrays, one per stroke) is already
+ * converted to real-world units client-side (the same "client scales,
+ * server computes the derived value" split as saveMeasurementShapeAction
+ * above) — this action does a shallow structural/count check (never a
+ * crash on malformed JSON) and forwards the strokes to the RPC, which
+ * independently recomputes area/perimeter/linear_length rather than
+ * trusting any client-computed value.
  */
 export async function saveMeasurementPolygonShapeAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   await requireUser();
@@ -209,18 +235,26 @@ export async function saveMeasurementPolygonShapeAction(_prev: ActionResult, for
   const measurementGroupId = uuidSchema.safeParse(formData.get("measurementGroupId"));
   if (!proposalVersionId.success || !proposalId.success || !measurementGroupId.success) return { error: "Invalid request" };
 
-  const pointsRaw = formData.get("points");
+  const strokesRaw = formData.get("strokes");
   const shapeDataRaw = formData.get("shapeData");
-  let points: Json;
+  let strokes: Json;
   let shapeData: Json;
   try {
-    points = JSON.parse(typeof pointsRaw === "string" ? pointsRaw : "[]") as Json;
+    strokes = JSON.parse(typeof strokesRaw === "string" ? strokesRaw : "[]") as Json;
     shapeData = JSON.parse(typeof shapeDataRaw === "string" ? shapeDataRaw : "{}") as Json;
   } catch {
     return { error: "Invalid drawing data" };
   }
-  if (!Array.isArray(points) || points.length < 2) {
-    return { error: "Draw a shape before saving" };
+
+  const closed = formData.get("closed") === "true";
+  const totalPoints: number = Array.isArray(strokes)
+    ? (strokes as unknown[]).reduce((sum: number, stroke) => sum + (Array.isArray(stroke) ? stroke.length : 0), 0)
+    : 0;
+  if (!Array.isArray(strokes) || strokes.length === 0 || (!closed && totalPoints < 2)) {
+    return { error: "Draw the area before saving.", fieldErrors: { drawing: "Draw the area before saving." } };
+  }
+  if (closed && totalPoints < 3) {
+    return { error: "Close the shape before saving an area measurement.", fieldErrors: { drawing: "Close the shape before saving an area measurement." } };
   }
 
   const parsed = saveMeasurementPolygonShapeSchema.safeParse({
@@ -229,11 +263,14 @@ export async function saveMeasurementPolygonShapeAction(_prev: ActionResult, for
     unit: formData.get("unit"),
     scaleReferenceLength: formData.get("scaleReferenceLength") || undefined,
     scaleUnit: formData.get("scaleUnit"),
-    closed: formData.get("closed") === "true",
+    closed,
     wastePercent: formData.get("wastePercent") || undefined,
     notes: formData.get("notes") || undefined,
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!parsed.success) {
+    const fieldErrors = zodIssuesToFieldErrors(parsed.error);
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("save_measurement_polygon_shape", {
@@ -242,7 +279,7 @@ export async function saveMeasurementPolygonShapeAction(_prev: ActionResult, for
     p_name: parsed.data.name,
     p_measurement_type: parsed.data.measurementType,
     p_unit: parsed.data.unit,
-    p_points: points,
+    p_strokes: strokes,
     p_closed: parsed.data.closed,
     p_scale_reference_length: parsed.data.scaleReferenceLength,
     p_scale_unit: parsed.data.scaleUnit,
@@ -250,7 +287,11 @@ export async function saveMeasurementPolygonShapeAction(_prev: ActionResult, for
     p_waste_bps: parsed.data.wastePercent,
     p_notes: (parsed.data.notes ?? null) as string,
   });
-  if (error) return { error: friendlyRpcErrorMessage(error.message) };
+  if (error) {
+    const message = friendlyRpcErrorMessage(error.message);
+    const field = attributeRpcErrorToField(message, DRAWING_RPC_FIELD_MAP);
+    return { error: message, fieldErrors: field ? { [field]: message } : undefined };
+  }
 
   revalidatePath(`/proposals/${proposalId.data}/edit`);
   return {};

@@ -25,7 +25,7 @@ test.describe("Measurements / Takeoff builder", () => {
     await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
     await page.goto("/proposals/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await page.waitForURL(/clientId=/);
     await page.getByLabel("Proposal title").fill(proposalTitle);
     await page.getByLabel("Service type").selectOption("flooring");
@@ -42,7 +42,7 @@ test.describe("Measurements / Takeoff builder", () => {
     await expect(measurementsPanel.locator("#measurementGroupId option", { hasText: "Living Room" })).toHaveCount(1);
 
     await measurementsPanel.locator("#measurementGroupId").selectOption({ label: "Living Room" });
-    await measurementsPanel.locator("#measurementName").fill("Living room floor");
+    await measurementsPanel.locator("#name").fill("Living room floor");
     // measurementType defaults to floor_area, shapeType defaults to manual_rectangle -- exactly what this scenario needs.
     await measurementsPanel.locator("#length").fill("20");
     await measurementsPanel.locator("#width").fill("15");
@@ -134,7 +134,7 @@ test.describe("Measurements / Takeoff builder", () => {
     await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
     await page.goto("/proposals/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await page.waitForURL(/clientId=/);
     await page.getByLabel("Proposal title").fill(proposalTitle);
     await page.getByLabel("Service type").selectOption("flooring");
@@ -174,9 +174,9 @@ test.describe("Measurements / Takeoff builder", () => {
     await expect(measurementsPanel.getByRole("button", { name: "Shape closed ✓" })).toBeVisible();
 
     await measurementsPanel.locator("#freehandGroupId").selectOption({ label: "Kitchen" });
-    await measurementsPanel.locator("#freehandName").fill("Kitchen floor (freehand)");
+    await measurementsPanel.locator("#name").fill("Kitchen floor (freehand)");
     // 200px bounding width represents 20 real-world feet -> 10 px/ft -> 60px height = 6ft -> 20ft x 6ft = 120 sq ft.
-    await measurementsPanel.locator("#freehandScaleReferenceLength").fill("20");
+    await measurementsPanel.locator("#scaleReferenceLength").fill("20");
     await expect(measurementsPanel.locator(".unsaved-preview-tile")).toContainText("120.00 sq ft");
     await expect(measurementsPanel.locator(".unsaved-preview-tile")).toContainText("Perimeter: 52.00 ft");
 

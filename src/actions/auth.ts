@@ -7,7 +7,13 @@ import { signUpSchema, signInSchema, forgotPasswordSchema, resetPasswordSchema }
 import { logAuditEvent } from "../lib/audit/log";
 import { resolveSiteOrigin } from "../lib/auth/site-origin";
 
-export type ActionResult = { error?: string; message?: string };
+/**
+ * `fieldErrors` is optional and additive to `error` — a form that wants
+ * inline, per-field red states (see docs/74-custom-service-name-and-multistroke-drawing.md,
+ * "Validation UX") reads it directly; every existing consumer that only
+ * reads `error` keeps working unchanged.
+ */
+export type ActionResult = { error?: string; message?: string; fieldErrors?: Record<string, string> };
 
 /**
  * `NEXT_PUBLIC_SITE_URL` wins whenever it's set (Render/staging/production),

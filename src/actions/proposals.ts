@@ -17,6 +17,7 @@ import {
   addProposalLineItemFromCatalogSchema,
 } from "../lib/validation/proposals";
 import { friendlyRpcErrorMessage } from "../lib/errors/friendly-message";
+import { zodIssuesToFieldErrors, attributeRpcErrorToField } from "../lib/validation/field-errors";
 import type { ActionResult } from "./auth";
 import type { Database } from "../../types/database";
 
@@ -46,8 +47,12 @@ export async function createProposalDirectAction(_prev: ActionResult, formData: 
     opportunityId: formData.get("opportunityId") || undefined,
     title: formData.get("title"),
     serviceType: formData.get("serviceType"),
+    customServiceName: formData.get("customServiceName") || undefined,
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!parsed.success) {
+    const fieldErrors = zodIssuesToFieldErrors(parsed.error);
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors };
+  }
 
   const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
 
@@ -61,10 +66,15 @@ export async function createProposalDirectAction(_prev: ActionResult, formData: 
       p_client_contact_id: parsed.data.clientContactId,
       p_opportunity_id: parsed.data.opportunityId,
       p_idempotency_key: idempotencyKey || undefined,
+      p_custom_service_name: parsed.data.customServiceName,
     })
     .single();
 
-  if (error) return { error: friendlyRpcErrorMessage(error.message) };
+  if (error) {
+    const message = friendlyRpcErrorMessage(error.message);
+    const field = attributeRpcErrorToField(message, [["Enter a name for this custom service.", "customServiceName"]]);
+    return { error: message, fieldErrors: field ? { [field]: message } : undefined };
+  }
 
   const proposal = data as Proposal;
   redirect(`/proposals/${proposal.id}/edit?step=measurements`);
@@ -81,8 +91,12 @@ export async function createProposalFromOpportunityAction(_prev: ActionResult, f
     clientContactId: formData.get("clientContactId") || undefined,
     title: formData.get("title"),
     serviceType: formData.get("serviceType"),
+    customServiceName: formData.get("customServiceName") || undefined,
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!parsed.success) {
+    const fieldErrors = zodIssuesToFieldErrors(parsed.error);
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors };
+  }
 
   const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
 
@@ -95,10 +109,15 @@ export async function createProposalFromOpportunityAction(_prev: ActionResult, f
       p_service_type: parsed.data.serviceType,
       p_client_contact_id: parsed.data.clientContactId,
       p_idempotency_key: idempotencyKey || undefined,
+      p_custom_service_name: parsed.data.customServiceName,
     })
     .single();
 
-  if (error) return { error: friendlyRpcErrorMessage(error.message) };
+  if (error) {
+    const message = friendlyRpcErrorMessage(error.message);
+    const field = attributeRpcErrorToField(message, [["Enter a name for this custom service.", "customServiceName"]]);
+    return { error: message, fieldErrors: field ? { [field]: message } : undefined };
+  }
 
   const proposal = data as Proposal;
   redirect(`/proposals/${proposal.id}/edit?step=measurements`);

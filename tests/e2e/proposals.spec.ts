@@ -20,7 +20,7 @@ test.describe("Proposals — full builder flow", () => {
 
     // Direct creation, no opportunity selected — must auto-create one.
     await page.goto("/proposals/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await page.waitForURL(/clientId=/);
     await page.getByLabel("Proposal title").fill(proposalTitle);
     await page.getByLabel("Service type").selectOption("interior_painting");
@@ -224,7 +224,7 @@ test.describe("Proposals — full builder flow", () => {
     await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
     await page.goto("/proposals/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await page.waitForURL(/clientId=/);
     await page.getByLabel("Proposal title").fill(`E2E Portfolio Reuse ${suffix}`);
     await page.getByLabel("Service type").selectOption("bathroom_remodeling");
@@ -251,10 +251,11 @@ test.describe("Job summary (update_proposal_scope)", () => {
     await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
     await page.goto("/proposals/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await page.waitForURL(/clientId=/);
     await page.getByLabel("Proposal title").fill(`E2E Scope Partial ${suffix}`);
     await page.getByLabel("Service type").selectOption("custom");
+    await page.getByLabel("Custom service name").fill("Custom test service");
     await page.getByRole("button", { name: "Save and continue" }).click();
     await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=measurements/);
     await page.getByRole("link", { name: "Continue to Scope of Work" }).click();
@@ -295,10 +296,11 @@ test.describe("Job summary (update_proposal_scope)", () => {
     await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
     await page.goto("/proposals/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await page.waitForURL(/clientId=/);
     await page.getByLabel("Proposal title").fill(`E2E Scope Empty ${suffix}`);
     await page.getByLabel("Service type").selectOption("custom");
+    await page.getByLabel("Custom service name").fill("Custom test service");
     await page.getByRole("button", { name: "Save and continue" }).click();
     await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=measurements/);
     await page.getByRole("link", { name: "Continue to Scope of Work" }).click();
@@ -324,7 +326,7 @@ test.describe("Labor pricing method", () => {
     await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
     await page.goto("/proposals/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await page.waitForURL(/clientId=/);
     await page.getByLabel("Proposal title").fill(`E2E Fixed Labor ${suffix}`);
     await page.getByLabel("Service type").selectOption("bathroom_remodeling");
@@ -390,10 +392,11 @@ test.describe("Labor pricing method", () => {
     await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
     await page.goto("/proposals/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await page.waitForURL(/clientId=/);
     await page.getByLabel("Proposal title").fill(`E2E Hourly Labor ${suffix}`);
     await page.getByLabel("Service type").selectOption("custom");
+    await page.getByLabel("Custom service name").fill("Custom test service");
     await page.getByRole("button", { name: "Save and continue" }).click();
     await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=measurements/);
 
@@ -428,10 +431,11 @@ test.describe("Labor pricing method", () => {
     await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
     await page.goto("/proposals/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await page.waitForURL(/clientId=/);
     await page.getByLabel("Proposal title").fill(`E2E Preview Vs Saved ${suffix}`);
     await page.getByLabel("Service type").selectOption("custom");
+    await page.getByLabel("Custom service name").fill("Custom test service");
     await page.getByRole("button", { name: "Save and continue" }).click();
     await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=measurements/);
 
@@ -507,10 +511,11 @@ test.describe("Proposals — Viewer permissions", () => {
     await ownerPage.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
     await ownerPage.goto("/proposals/new");
-    await ownerPage.getByLabel("Client").selectOption({ label: clientName });
+    await ownerPage.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await ownerPage.waitForURL(/clientId=/);
     await ownerPage.getByLabel("Proposal title").fill(`E2E Viewer Proposal ${suffix}`);
     await ownerPage.getByLabel("Service type").selectOption("custom");
+    await ownerPage.getByLabel("Custom service name").fill("Custom test service");
     await ownerPage.getByRole("button", { name: "Save and continue" }).click();
     await ownerPage.waitForURL(/step=measurements/);
     await ownerContext.close();
@@ -534,10 +539,11 @@ test.describe("Proposals — Sales permissions", () => {
     await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
     await page.goto("/proposals/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await page.waitForURL(/clientId=/);
     await page.getByLabel("Proposal title").fill(`E2E Sales Proposal ${suffix}`);
     await page.getByLabel("Service type").selectOption("custom");
+    await page.getByLabel("Custom service name").fill("Custom test service");
     await page.getByRole("button", { name: "Save and continue" }).click();
     await page.waitForURL(/step=measurements/);
     await page.getByRole("link", { name: "Continue to Scope of Work" }).click();
@@ -563,11 +569,12 @@ test.describe("Proposals — tenant isolation", () => {
     await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
     await page.goto("/proposals/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await page.waitForURL(/clientId=/);
     const proposalTitle = `E2E Isolation Proposal ${suffix}`;
     await page.getByLabel("Proposal title").fill(proposalTitle);
     await page.getByLabel("Service type").selectOption("custom");
+    await page.getByLabel("Custom service name").fill("Custom test service");
     await page.getByRole("button", { name: "Save and continue" }).click();
     await page.waitForURL(/step=measurements/);
     const proposalUrl = page.url().replace(/\/edit\?step=measurements$/, "");

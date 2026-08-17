@@ -4,7 +4,17 @@ import { useActionState, useMemo, useRef, useState } from "react";
 import { saveMeasurementShapeAction, saveMeasurementPolygonShapeAction } from "../../../../../actions/measurements";
 import type { ActionResult } from "../../../../../actions/auth";
 import { SubmitButton } from "../../../../../components/submit-button";
-import { computeRectangle, computePolygonArea, computePolygonPerimeter, simplifyPolyline, scalePoints, type Point } from "../../../../../lib/proposals/measurements";
+import { FieldError, fieldErrorProps, useFocusFirstFieldError } from "../../../../../components/form-field-error";
+import {
+  computeRectangle,
+  computePolygonArea,
+  computePolygonPerimeter,
+  computeMultiStrokeLinearLength,
+  flattenStrokes,
+  simplifyPolyline,
+  scalePoints,
+  type Point,
+} from "../../../../../lib/proposals/measurements";
 import type { Database } from "../../../../../../types/database";
 
 type ProposalMeasurementGroup = Database["public"]["Tables"]["proposal_measurement_groups"]["Row"];
@@ -21,10 +31,18 @@ type DrawingMode = "freehand" | "rectangle";
 function GroupAndNameFields({
   measurementGroups,
   idPrefix,
+  fieldErrors,
 }: {
   measurementGroups: ProposalMeasurementGroup[];
   idPrefix: string;
+  fieldErrors?: Record<string, string>;
 }) {
+  // `id="name"` (not `${idPrefix}Name`) deliberately matches the Zod
+  // schema's field key exactly (path[0] === "name" for every schema this
+  // form submits to) -- see zodIssuesToFieldErrors() and
+  // fieldErrorProps()'s doc comment. Safe: Manual entry / Freehand /
+  // Rectangle are mutually exclusive in the DOM (step-measurements.tsx
+  // only ever mounts one at a time), so there is never an id collision.
   return (
     <>
       <div className="field">
@@ -39,8 +57,10 @@ function GroupAndNameFields({
         </select>
       </div>
       <div className="field">
-        <label htmlFor={`${idPrefix}Name`}>Name</label>
-        <input id={`${idPrefix}Name`} name="name" type="text" required placeholder="e.g. Living room floor" />
+        <label htmlFor="name">Name</label>
+        {/* No `required` -- an empty submit must reach our own server-side validation and inline red-state UI, not the browser's native popup. */}
+        <input id="name" name="name" type="text" placeholder="e.g. Living room floor" {...fieldErrorProps(fieldErrors, "name")} />
+        <FieldError fieldErrors={fieldErrors} id="name" />
       </div>
     </>
   );
@@ -117,42 +137,59 @@ function FreehandDrawForm({
     setCurrentStroke([]);
   }
 
-  const rawPoints = useMemo(() => [...strokes.flat(), ...currentStroke], [strokes, currentStroke]);
+  // Strokes actually eligible to save (completed only -- the in-progress
+  // stroke, if any, is included separately below for the LIVE preview
+  // while dragging, but never submitted mid-drag since Save is disabled
+  // whenever isDrawing is true).
   const isDrawing = currentStroke.length > 0;
-  const hasEnoughPoints = rawPoints.length >= (closed ? 3 : 2);
+  const displayStrokes = isDrawing ? [...strokes, currentStroke] : strokes;
+  const totalPointCount = useMemo(() => strokes.reduce((n, s) => n + s.length, 0) + currentStroke.length, [strokes, currentStroke]);
+  const hasEnoughPoints = closed ? totalPointCount >= 3 : strokes.some((s) => s.length >= 2) || currentStroke.length >= 2;
 
-  const simplifiedPoints = useMemo(
-    () => (rawPoints.length > 2 ? simplifyPolyline(rawPoints, SIMPLIFY_TOLERANCE_PX) : rawPoints),
-    [rawPoints]
+  // Douglas-Peucker runs PER STROKE, not on a flattened cross-stroke
+  // array -- simplifying across the gap between two strokes would treat
+  // that gap as if it were a real drawn segment. See docs/47,
+  // "Multi-stroke drawing."
+  const simplifiedStrokes = useMemo(
+    () => strokes.map((s) => (s.length > 2 ? simplifyPolyline(s, SIMPLIFY_TOLERANCE_PX) : s)),
+    [strokes]
   );
 
   const referenceLength = parseFloat(scaleReferenceLength) || 0;
-  const boundingWidthPx = rawPoints.length > 0 ? Math.max(...rawPoints.map((p) => p.x)) - Math.min(...rawPoints.map((p) => p.x)) : 0;
+  // The bounding box (for scale calibration) legitimately spans every
+  // stroke, including the in-progress one -- this is purely "how wide is
+  // everything drawn so far," not a geometry computation that could be
+  // corrupted by a phantom cross-stroke edge.
+  const boundingBoxPoints = useMemo(() => [...strokes.flat(), ...currentStroke], [strokes, currentStroke]);
+  const boundingWidthPx =
+    boundingBoxPoints.length > 0 ? Math.max(...boundingBoxPoints.map((p) => p.x)) - Math.min(...boundingBoxPoints.map((p) => p.x)) : 0;
   const pixelsPerUnit = boundingWidthPx > 0 && referenceLength > 0 ? boundingWidthPx / referenceLength : 0;
 
   let preview: { area: number | null; perimeter: number | null; linear: number | null } | null = null;
-  let realPoints: Point[] = [];
+  let realStrokes: Point[][] = [];
   if (hasEnoughPoints && pixelsPerUnit > 0) {
     try {
-      realPoints = scalePoints(simplifiedPoints, pixelsPerUnit);
+      realStrokes = simplifiedStrokes.map((s) => scalePoints(s, pixelsPerUnit));
       if (closed) {
-        preview = { area: computePolygonArea(realPoints), perimeter: computePolygonPerimeter(realPoints, true), linear: null };
+        const outline = flattenStrokes(realStrokes);
+        preview = { area: computePolygonArea(outline), perimeter: computePolygonPerimeter(outline, true), linear: null };
       } else {
-        preview = { area: null, perimeter: null, linear: computePolygonPerimeter(realPoints, false) };
+        preview = { area: null, perimeter: null, linear: computeMultiStrokeLinearLength(realStrokes) };
       }
     } catch {
       preview = null;
     }
   }
 
-  const polylineStr = rawPoints.map((p) => `${p.x},${p.y}`).join(" ");
   const shapeData = JSON.stringify({
     type: "freehand",
     closed,
     strokeCount: strokes.length,
-    points: simplifiedPoints,
+    strokes: simplifiedStrokes,
     viewport: { width: VIEWPORT_WIDTH, height: VIEWPORT_HEIGHT },
   });
+  const drawingFieldError = state.fieldErrors?.drawing;
+  useFocusFirstFieldError(state.fieldErrors);
 
   return (
     <div className="stack">
@@ -186,13 +223,37 @@ function FreehandDrawForm({
         role="img"
         aria-label="Drawing surface — draw the area's outline with mouse or touch"
       >
-        {rawPoints.length > 1 ? (
-          closed ? (
-            <polygon points={polylineStr} fill="rgba(37, 99, 235, 0.15)" stroke="#2563eb" strokeWidth={2} />
-          ) : (
-            <polyline points={polylineStr} fill="none" stroke="#2563eb" strokeWidth={2} />
+        {closed ? (
+          // Closing joins every stroke end-to-end, in drawn order, into
+          // one outline -- only ever rendered once the user has
+          // explicitly asked for that (Close shape), never automatically
+          // while separate strokes are still just separate strokes. See
+          // docs/47, "Multi-stroke drawing."
+          <polygon
+            points={flattenStrokes(strokes)
+              .map((p) => `${p.x},${p.y}`)
+              .join(" ")}
+            fill="rgba(37, 99, 235, 0.15)"
+            stroke="#2563eb"
+            strokeWidth={2}
+          />
+        ) : (
+          // NOT closed: each stroke renders as its OWN <polyline> -- the
+          // actual fix for "the drawing feels like one continuous line."
+          // Lifting the pen/finger between strokes never draws a
+          // connecting segment.
+          displayStrokes.map((stroke, i) =>
+            stroke.length > 1 ? (
+              <polyline
+                key={i}
+                points={stroke.map((p) => `${p.x},${p.y}`).join(" ")}
+                fill="none"
+                stroke="#2563eb"
+                strokeWidth={2}
+              />
+            ) : null
           )
-        ) : null}
+        )}
       </svg>
 
       <div className="tenant-form" style={{ width: "100%" }}>
@@ -215,16 +276,21 @@ function FreehandDrawForm({
           type="button"
           className={closed ? "button-primary" : "button-secondary"}
           onClick={() => setClosed((prev) => !prev)}
-          disabled={rawPoints.length < 3 || isDrawing}
+          disabled={totalPointCount < 3 || isDrawing}
         >
           {closed ? "Shape closed ✓" : "Close shape"}
         </button>
       </div>
+      {drawingFieldError ? (
+        <p id="drawing-error" className="field-error-text" role="alert">
+          {drawingFieldError}
+        </p>
+      ) : null}
 
       <form action={formAction} className="stack">
         <input type="hidden" name="proposalVersionId" value={proposalVersionId} />
         <input type="hidden" name="proposalId" value={proposalId} />
-        <input type="hidden" name="points" value={realPoints.length > 0 ? JSON.stringify(realPoints) : ""} />
+        <input type="hidden" name="strokes" value={realStrokes.length > 0 ? JSON.stringify(realStrokes) : ""} />
         <input type="hidden" name="shapeData" value={shapeData} />
         <input type="hidden" name="closed" value={closed ? "true" : "false"} />
         <input type="hidden" name="unit" value={scaleUnit} />
@@ -233,7 +299,7 @@ function FreehandDrawForm({
 
         {state.error ? <p className="error-banner">{state.error}</p> : null}
 
-        <GroupAndNameFields measurementGroups={measurementGroups} idPrefix="freehand" />
+        <GroupAndNameFields measurementGroups={measurementGroups} idPrefix="freehand" fieldErrors={state.fieldErrors} />
 
         {closed ? (
           <div className="field">
@@ -259,9 +325,9 @@ function FreehandDrawForm({
             </select>
           </div>
           <div className="field" style={{ flex: 1 }}>
-            <label htmlFor="freehandScaleReferenceLength">This drawing&apos;s width represents ({scaleUnit})</label>
+            <label htmlFor="scaleReferenceLength">This drawing&apos;s width represents ({scaleUnit})</label>
             <input
-              id="freehandScaleReferenceLength"
+              id="scaleReferenceLength"
               name="scaleReferenceLength"
               type="number"
               min={0.01}
@@ -269,7 +335,9 @@ function FreehandDrawForm({
               value={scaleReferenceLength}
               onChange={(e) => setScaleReferenceLength(e.target.value)}
               required
+              {...fieldErrorProps(state.fieldErrors, "scaleReferenceLength")}
             />
+            <FieldError fieldErrors={state.fieldErrors} id="scaleReferenceLength" />
           </div>
           <div className="field" style={{ flex: 1 }}>
             <label htmlFor="freehandWaste">Waste %</label>
@@ -393,6 +461,8 @@ function RectangleDrawForm({
       })
     : "";
 
+  useFocusFirstFieldError(state.fieldErrors);
+
   return (
     <div className="stack">
       <p className="hint">Drag on the grid below to draw a rectangle (mouse or touch), then enter the real-world length of its width to scale it.</p>
@@ -428,7 +498,7 @@ function RectangleDrawForm({
 
         {state.error ? <p className="error-banner">{state.error}</p> : null}
 
-        <GroupAndNameFields measurementGroups={measurementGroups} idPrefix="drawRect" />
+        <GroupAndNameFields measurementGroups={measurementGroups} idPrefix="drawRect" fieldErrors={state.fieldErrors} />
 
         <div className="tenant-form" style={{ width: "100%" }}>
           <div className="field" style={{ flex: 1 }}>
@@ -452,9 +522,9 @@ function RectangleDrawForm({
 
         <div className="tenant-form" style={{ width: "100%" }}>
           <div className="field" style={{ flex: 1 }}>
-            <label htmlFor="drawScaleReferenceLength">Real-world width ({scaleUnit})</label>
+            <label htmlFor="scaleReferenceLength">Real-world width ({scaleUnit})</label>
             <input
-              id="drawScaleReferenceLength"
+              id="scaleReferenceLength"
               name="scaleReferenceLength"
               type="number"
               min={0.01}
@@ -462,7 +532,9 @@ function RectangleDrawForm({
               value={scaleReferenceLength}
               onChange={(e) => setScaleReferenceLength(e.target.value)}
               required
+              {...fieldErrorProps(state.fieldErrors, "scaleReferenceLength")}
             />
+            <FieldError fieldErrors={state.fieldErrors} id="scaleReferenceLength" />
           </div>
           <div className="field" style={{ flex: 1 }}>
             <label htmlFor="drawWaste">Waste %</label>

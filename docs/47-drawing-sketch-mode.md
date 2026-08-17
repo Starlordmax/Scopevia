@@ -6,6 +6,19 @@ verified end-to-end (`tests/e2e/measurements.spec.ts`,
 mouse-emulated Pointer Events, the same code path a real touch drag
 exercises).
 
+> **Update (`docs/74`, multi-stroke fix):** the "Multiple strokes
+> concatenate into one point list" line below described a real bug, not
+> a feature — every stroke was flattened into one array before
+> rendering/saving, so lifting the pen between strokes still drew (and
+> summed into `linear_length`) a straight line across the gap. Fixed:
+> strokes now stay genuinely separate — rendered as independent SVG
+> `<polyline>`s while open, and an open path's `linear_length` sums each
+> stroke's own length independently, never a phantom cross-stroke edge.
+> A **closed** shape still joins every stroke end-to-end in drawn order
+> into one outline (that part of "Multi-stroke drawing" below was
+> always correct and is unchanged) — see
+> [docs/74-custom-service-name-and-multistroke-drawing.md](74-custom-service-name-and-multistroke-drawing.md).
+
 ## Phase 2C.1: freehand/brush drawing
 
 Phase 2C shipped rectangle-only sketching, with the limitation
@@ -83,9 +96,11 @@ justification from Phase 2C extends to freehand capture:
 ## The freehand flow
 
 1. **Draw**: drag anywhere on the canvas (mouse, touch, or stylus) — one
-   or more strokes are captured as they're drawn, rendered live as an
-   SVG `<polyline>`. Multiple strokes concatenate into one point list
-   (draw a few short strokes, or one continuous trace — both work).
+   or more strokes are captured as they're drawn. Each stroke renders as
+   its own independent SVG `<polyline>` while the shape is open — lifting
+   the pen/finger and starting a new stroke elsewhere never draws (or
+   computes) a connecting line between them; see "Multi-stroke drawing"
+   below.
 2. **Undo** removes the last completed stroke; **Clear** discards
    everything and starts over; both are disabled mid-stroke.
 3. **Close shape** (a toggle button, the brief's recommended MVP
@@ -109,6 +124,41 @@ justification from Phase 2C extends to freehand capture:
    shoelace formula and edge-length summation — the server never
    trusts a client-computed area, exactly the same discipline as
    rectangle mode.
+
+## Multi-stroke drawing
+
+A freehand outline is captured as `Point[][]` — an array of strokes,
+each stroke its own array of points — not a single flat point list.
+This was already true internally (Undo/Clear always operated on whole
+strokes), but rendering and saving used to flatten every stroke into
+one array first, which is what caused the reported "feels like one
+continuous line" bug (see
+[docs/74](74-custom-service-name-and-multistroke-drawing.md) for the
+full root-cause writeup). Fixed:
+
+- **While drawing (not yet closed)**: each stroke renders as its own
+  independent `<polyline>` — no line is ever drawn between the end of
+  one stroke and the start of the next.
+- **Open path saved as linear**: `linear_length` is the sum of each
+  stroke's own edge length, computed independently — a stroke boundary
+  is never bridged by a computed edge. Tracing a fence line in three
+  separate strokes (lifting the pen at each corner) now correctly sums
+  "stroke 1 + stroke 2 + stroke 3," not that plus the gaps between
+  wherever the pen happened to lift.
+- **Closed shape**: pressing **Close shape** joins every stroke's points
+  end-to-end, *in the order they were drawn*, into one outline, then
+  computes area/perimeter over that joined outline exactly as before —
+  this was always the behavior for a single stroke, and is now
+  explicitly documented as the (deliberately simple, no path-reordering
+  or auto-matching) strategy for multiple strokes too. Douglas-Peucker
+  simplification runs on each stroke individually before this join, so
+  simplifying near one stroke's endpoint never looks across a stroke
+  boundary.
+- Server-side, `save_measurement_polygon_shape()` takes `p_strokes`
+  (an array of point arrays) instead of a flat `p_points` array, and
+  independently recomputes both the closed-join and the open-per-stroke-sum
+  cases — the server never trusts a client-computed length, exactly the
+  same discipline as everywhere else in this app.
 
 ## Point simplification (Douglas-Peucker)
 

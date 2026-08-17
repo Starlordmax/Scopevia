@@ -18,7 +18,7 @@ test.describe("Proposal Builder (mobile, 390x844)", () => {
     await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
     await page.goto("/proposals/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await page.waitForURL(/clientId=/);
     await page.getByLabel("Proposal title").fill(`E2E Mobile Proposal ${suffix}`);
     await page.getByLabel("Service type").selectOption("interior_painting");
@@ -145,10 +145,11 @@ test.describe("Proposal Builder (mobile, 390x844)", () => {
     await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
     await page.goto("/proposals/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await page.waitForURL(/clientId=/);
     await page.getByLabel("Proposal title").fill(`E2E Mobile Preview ${suffix}`);
     await page.getByLabel("Service type").selectOption("custom");
+    await page.getByLabel("Custom service name").fill("Custom test service");
     await page.getByRole("button", { name: "Save and continue" }).click();
     await page.waitForURL(/step=measurements/);
 

@@ -219,3 +219,37 @@ export function scalePoints(points: Point[], pixelsPerUnit: number): Point[] {
   requirePositive(pixelsPerUnit, "Scale");
   return points.map((p) => ({ x: p.x / pixelsPerUnit, y: p.y / pixelsPerUnit }));
 }
+
+// =============================================================================
+// Multi-stroke drawing (bug fix — see docs/74-custom-service-name-and-multistroke-drawing.md).
+// A freehand drawing is one or more independent strokes (the user lifts
+// the pen/finger between them). These mirror
+// save_measurement_polygon_shape()'s multi-stroke handling exactly:
+//   - CLOSED (area): strokes are joined end-to-end in drawn order into
+//     one outline — flattenStrokes() below, then the existing
+//     computePolygonArea()/computePolygonPerimeter(..., true).
+//   - OPEN (linear): each stroke's own length is summed independently —
+//     computeMultiStrokeLinearLength() below — NEVER a phantom edge
+//     connecting the last point of one stroke to the first point of the
+//     next (that gap is where the pen/finger lifted, not a drawn line).
+//     This is the actual fix for the reported "strokes auto-connect" bug.
+// =============================================================================
+
+/** Joins every stroke's points end-to-end, in drawn order, into one flat outline — the deliberately simple "close shape" strategy for a multi-stroke area (see docs/47, "Multi-stroke drawing"). */
+export function flattenStrokes(strokes: Point[][]): Point[] {
+  return strokes.flat();
+}
+
+/**
+ * Sums each stroke's own consecutive-edge length independently, then adds
+ * those sums together — a stroke with fewer than 2 points contributes 0
+ * (a stray tap, not a drawn segment). Mirrors
+ * save_measurement_polygon_shape()'s OPEN-path loop exactly.
+ */
+export function computeMultiStrokeLinearLength(strokes: Point[][]): number {
+  const total = strokes.reduce((sum, stroke) => (stroke.length >= 2 ? sum + computePolygonPerimeter(stroke, false) : sum), 0);
+  if (total <= 0) {
+    throw new Error("The drawn path has no length -- points may be too close together");
+  }
+  return roundTo(total, 2);
+}

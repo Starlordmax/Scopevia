@@ -1,17 +1,9 @@
 import { formatCents, formatLabel } from "../../../../lib/proposals/format";
 import { acceptanceRecordFootnote, imageUnavailableLabel } from "../../../../lib/proposals/export-copy";
 import { resolveLogoDisplay } from "../../../../lib/branding/logo-display";
+import { serviceTypeLabel } from "../../../../lib/proposals/service-type";
 import type { FullProposal } from "../../../../lib/proposals/data";
 import type { ProposalClientResponse } from "../../../../lib/portal/data";
-
-const SERVICE_TYPE_LABELS: Record<string, string> = {
-  interior_painting: "Interior painting",
-  exterior_painting: "Exterior painting",
-  bathroom_remodeling: "Bathroom remodeling",
-  general_remodeling: "General remodeling",
-  flooring: "Flooring",
-  custom: "Custom",
-};
 
 /**
  * The proposal as a professional commercial document — order fixed per
@@ -70,7 +62,7 @@ export function ProposalDocument({
 
       <section>
         <h2>{proposal.title}</h2>
-        <p className="hint">{SERVICE_TYPE_LABELS[proposal.service_type] ?? proposal.service_type}</p>
+        <p className="hint">{serviceTypeLabel(proposal.service_type, proposal.custom_service_name)}</p>
         {version.summary ? <p>{version.summary}</p> : null}
       </section>
 

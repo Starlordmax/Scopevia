@@ -110,6 +110,7 @@ test.describe("Field Worker permissions", () => {
     await ownerPage.waitForURL(/clientId=/);
     await ownerPage.getByLabel("Proposal title").fill(proposalTitle);
     await ownerPage.getByLabel("Service type").selectOption("custom");
+    await ownerPage.getByLabel("Custom service name").fill("Custom test service");
     await ownerPage.getByRole("button", { name: "Save and continue" }).click();
     await ownerPage.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=measurements/);
     const proposalUrl = ownerPage.url().replace(/\/edit\?step=measurements$/, "");

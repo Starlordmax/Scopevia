@@ -108,7 +108,7 @@ describe.skipIf(!canRun)("Phase 3C Proposal Export — security & version safety
 
   async function createReadyProposal(title: string, owner: SupabaseClient = aClient, tenantId = tenantAId, clientId = clientAId) {
     const { data: proposal } = await owner
-      .rpc("create_proposal_direct", { p_tenant_id: tenantId, p_client_id: clientId, p_title: title, p_service_type: "custom" })
+      .rpc("create_proposal_direct", { p_tenant_id: tenantId, p_client_id: clientId, p_title: title, p_service_type: "custom", p_custom_service_name: "Custom service" })
       .single();
     const p = proposal as { id: string; current_version_id: string };
     await owner.rpc("mark_proposal_ready", { p_proposal_id: p.id });

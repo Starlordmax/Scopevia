@@ -24,7 +24,7 @@ test.describe("Measurements / Takeoff builder (mobile, 390x844)", () => {
     await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
     await page.goto("/proposals/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await page.waitForURL(/clientId=/);
     await page.getByLabel("Proposal title").fill(`E2E Mobile Measurements ${suffix}`);
     await page.getByLabel("Service type").selectOption("flooring");
@@ -44,7 +44,7 @@ test.describe("Measurements / Takeoff builder (mobile, 390x844)", () => {
     await measurementsPanel.locator("#groupName").fill("Bedroom");
     await measurementsPanel.getByRole("button", { name: "+ Add group" }).click();
     await measurementsPanel.locator("#measurementGroupId").selectOption({ label: "Bedroom" });
-    await measurementsPanel.locator("#measurementName").fill("Bedroom floor");
+    await measurementsPanel.locator("#name").fill("Bedroom floor");
     await measurementsPanel.locator("#length").fill("10");
     await measurementsPanel.locator("#width").fill("8");
     await expect(measurementsPanel.locator(".unsaved-preview-tile")).toContainText("80.00 sq ft");
@@ -72,10 +72,10 @@ test.describe("Measurements / Takeoff builder (mobile, 390x844)", () => {
     scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(viewportWidth + 1);
 
-    await measurementsPanel.locator("#drawScaleReferenceLength").fill("12");
+    await measurementsPanel.locator("#scaleReferenceLength").fill("12");
     await expect(measurementsPanel.locator(".unsaved-preview-tile").getByText(/sq ft$/)).toBeVisible();
     await measurementsPanel.locator("#drawRectGroupId").selectOption({ label: "Bedroom" });
-    await measurementsPanel.locator("#drawRectName").fill("Bedroom sketch");
+    await measurementsPanel.locator("#name").fill("Bedroom sketch");
     await measurementsPanel.getByRole("button", { name: "Save drawn measurement" }).click();
     await expect(measurementsPanel.locator("tr").filter({ hasText: "Bedroom sketch" })).toBeVisible();
 
@@ -127,7 +127,7 @@ test.describe("Measurements / Takeoff builder (mobile, 390x844)", () => {
     await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
     await page.goto("/proposals/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await page.waitForURL(/clientId=/);
     await page.getByLabel("Proposal title").fill(`E2E Mobile Freehand ${suffix}`);
     await page.getByLabel("Service type").selectOption("flooring");
@@ -170,10 +170,10 @@ test.describe("Measurements / Takeoff builder (mobile, 390x844)", () => {
     await measurementsPanel.getByRole("button", { name: "Close shape" }).click();
     await expect(measurementsPanel.getByRole("button", { name: "Shape closed ✓" })).toBeVisible();
 
-    await measurementsPanel.locator("#freehandScaleReferenceLength").fill("12");
+    await measurementsPanel.locator("#scaleReferenceLength").fill("12");
     await expect(measurementsPanel.locator(".unsaved-preview-tile").getByText(/sq ft$/)).toBeVisible();
     await measurementsPanel.locator("#freehandGroupId").selectOption({ label: "Bathroom" });
-    await measurementsPanel.locator("#freehandName").fill("Bathroom sketch (freehand)");
+    await measurementsPanel.locator("#name").fill("Bathroom sketch (freehand)");
 
     scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(viewportWidth + 1);

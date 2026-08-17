@@ -197,6 +197,7 @@ describe.skipIf(!canRun)("Client Address + Material ZIP Defaults (requires real 
         p_client_id: clientId,
         p_title: `ZIP default proposal ${RUN_ID}`,
         p_service_type: "custom",
+        p_custom_service_name: "Custom service",
       })
       .single();
     expect(proposalErr).toBeNull();
@@ -228,6 +229,7 @@ describe.skipIf(!canRun)("Client Address + Material ZIP Defaults (requires real 
         p_client_id: clientId,
         p_title: `Intl proposal ${RUN_ID}`,
         p_service_type: "custom",
+        p_custom_service_name: "Custom service",
       })
       .single();
     expect(proposalErr).toBeNull();
@@ -258,6 +260,7 @@ describe.skipIf(!canRun)("Client Address + Material ZIP Defaults (requires real 
         p_client_id: clientId,
         p_title: `Zip plus four proposal ${RUN_ID}`,
         p_service_type: "custom",
+        p_custom_service_name: "Custom service",
       })
       .single();
     const proposalId = (proposal as ProposalRow).id;
@@ -283,6 +286,7 @@ describe.skipIf(!canRun)("Client Address + Material ZIP Defaults (requires real 
         p_client_id: clientId,
         p_title: `Override proposal ${RUN_ID}`,
         p_service_type: "custom",
+        p_custom_service_name: "Custom service",
       })
       .single();
     const proposalId = (proposal as ProposalRow).id;
@@ -320,6 +324,7 @@ describe.skipIf(!canRun)("Client Address + Material ZIP Defaults (requires real 
         p_client_id: clientId,
         p_title: `Materials search proposal ${RUN_ID}`,
         p_service_type: "custom",
+        p_custom_service_name: "Custom service",
       })
       .single();
     const proposalId = (proposal as ProposalRow).id;

@@ -7,6 +7,14 @@ via Playwright (`tests/e2e/measurements.spec.ts` +
 `measurements.mobile.spec.ts`, 2 scenarios each — manual/rectangle and
 freehand).
 
+> **Update (`docs/74`):** Draw layout → Freehand now genuinely supports
+> multiple separate strokes (a real bug fix — see
+> [docs/47](47-drawing-sketch-mode.md#multi-stroke-drawing)), and the
+> Manual entry / Draw layout forms gained inline, per-field red-state
+> validation (red border, message under the field, focus moved to the
+> first invalid field) instead of a single generic error banner. See
+> [docs/74-custom-service-name-and-multistroke-drawing.md](74-custom-service-name-and-multistroke-drawing.md).
+
 ## What this phase adds
 
 A new **Measurements** step in the Proposal Builder, between Client & Job
