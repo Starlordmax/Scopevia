@@ -10,6 +10,7 @@ import {
 } from "../../../../../actions/proposals";
 import type { ActionResult } from "../../../../../actions/auth";
 import { SubmitButton } from "../../../../../components/submit-button";
+import { FieldError, fieldErrorProps, useFocusFirstFieldError } from "../../../../../components/form-field-error";
 import { computeLineItemTotalCents } from "../../../../../lib/proposals/calculations";
 import { formatCents, formatLabel } from "../../../../../lib/proposals/format";
 import type { MaterialCatalogSearchResult } from "../../../../../lib/proposals/materials";
@@ -126,6 +127,7 @@ function CatalogResultRow({
 }) {
   const [state, formAction] = useActionState(addProposalLineItemFromCatalogAction, initialState);
   const hasPrice = result.unit_price_cents !== null;
+  useFocusFirstFieldError(state.fieldErrors);
 
   return (
     <tr>
@@ -153,16 +155,27 @@ function CatalogResultRow({
             <input type="hidden" name="materialCatalogItemId" value={result.id} />
             {state.error ? <p className="error-banner">{state.error}</p> : null}
             <div className="tenant-form" style={{ width: "100%" }}>
-              <input
-                type="number"
-                name="quantity"
-                min={0.001}
-                step={0.001}
-                defaultValue={1}
-                required
-                style={{ width: 80 }}
-                aria-label={`Quantity — ${result.name}`}
-              />
+              <div>
+                {/* `id` is only ever set while THIS row actually has an
+                    error -- every row shares the same field name
+                    ("quantity"), so an unconditional id would duplicate
+                    across every row in the table. Only one row's own
+                    useActionState can be non-empty at a time (the one
+                    whose form was just submitted), so this never collides
+                    in practice. */}
+                <input
+                  type="number"
+                  name="quantity"
+                  min={0.001}
+                  step={0.001}
+                  defaultValue={1}
+                  id={state.fieldErrors?.quantity ? "quantity" : undefined}
+                  style={{ width: 80 }}
+                  aria-label={`Quantity — ${result.name}`}
+                  {...fieldErrorProps(state.fieldErrors, "quantity")}
+                />
+                <FieldError fieldErrors={state.fieldErrors} id="quantity" />
+              </div>
               {sections.length > 0 ? (
                 <select name="sectionId" defaultValue="" aria-label={`Section — ${result.name}`} style={{ flex: "0 0 auto" }}>
                   <option value="">No section</option>
@@ -342,6 +355,7 @@ export function StepMaterials({
   const [state, formAction] = useActionState(addProposalLineItemAction, initialState);
   const [quantity, setQuantity] = useState("1");
   const [unitPrice, setUnitPrice] = useState("");
+  useFocusFirstFieldError(state.fieldErrors);
 
   const previewTotal = computeLineItemTotalCents({
     quantity: parseFloat(quantity) || 0,
@@ -382,7 +396,14 @@ export function StepMaterials({
 
               <div className="field">
                 <label htmlFor="description">Description</label>
-                <input id="description" name="description" type="text" required placeholder="e.g. Sherwin-Williams exterior paint" />
+                <input
+                  id="description"
+                  name="description"
+                  type="text"
+                  placeholder="e.g. Sherwin-Williams exterior paint"
+                  {...fieldErrorProps(state.fieldErrors, "description")}
+                />
+                <FieldError fieldErrors={state.fieldErrors} id="description" />
               </div>
 
               <div className="tenant-form" style={{ width: "100%" }}>
@@ -431,22 +452,27 @@ export function StepMaterials({
                     type="number"
                     min={0.001}
                     step={0.001}
-                    required
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
+                    {...fieldErrorProps(state.fieldErrors, "quantity")}
                   />
+                  <FieldError fieldErrors={state.fieldErrors} id="quantity" />
                 </div>
                 <div className="field" style={{ flex: 1 }}>
-                  <label htmlFor="unitPrice">Unit price ($)</label>
+                  {/* id is "unitPriceCents" (not "unitPrice") to match the
+                      Zod schema's field name; `name` stays "unitPrice" for
+                      the Server Action's FormData read. */}
+                  <label htmlFor="unitPriceCents">Unit price ($)</label>
                   <input
-                    id="unitPrice"
+                    id="unitPriceCents"
                     name="unitPrice"
                     type="text"
                     inputMode="decimal"
-                    required
                     value={unitPrice}
                     onChange={(e) => setUnitPrice(e.target.value)}
+                    {...fieldErrorProps(state.fieldErrors, "unitPriceCents")}
                   />
+                  <FieldError fieldErrors={state.fieldErrors} id="unitPriceCents" />
                 </div>
               </div>
 

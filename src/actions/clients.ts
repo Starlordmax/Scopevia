@@ -10,6 +10,7 @@ import { uuidSchema } from "../lib/validation/schemas";
 import { createClientSchema, quickCreateClientSchema, createClientContactSchema, updateClientContactSchema } from "../lib/validation/crm";
 import { buildQuickClientDisplayName } from "../lib/crm/quick-client";
 import { friendlyRpcErrorMessage } from "../lib/errors/friendly-message";
+import { zodIssuesToFieldErrors } from "../lib/validation/field-errors";
 import type { ActionResult } from "./auth";
 import type { Database } from "../../types/database";
 
@@ -46,7 +47,9 @@ export async function createClientAction(_prev: ActionResult, formData: FormData
   if (!tenantId.success) return { error: "Invalid request" };
 
   const parsed = readClientForm(formData);
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
+  }
 
   try {
     await requirePermission(tenantId.data, PERMISSIONS.CLIENTS_CREATE);
@@ -85,7 +88,9 @@ export async function createClientAction(_prev: ActionResult, formData: FormData
   redirect(`/clients/${client.id}`);
 }
 
-export type QuickCreateClientResult = { ok: true; clientId: string; displayName: string } | { ok: false; error: string };
+export type QuickCreateClientResult =
+  | { ok: true; clientId: string; displayName: string }
+  | { ok: false; error: string; fieldErrors?: Record<string, string> };
 
 /**
  * Quick Create Client — invoked directly (not via a bound <form action>)
@@ -135,7 +140,13 @@ export async function createQuickClientAction(input: {
     postalCode: input.postalCode,
     countryCode: input.countryCode,
   });
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid input",
+      fieldErrors: zodIssuesToFieldErrors(parsed.error),
+    };
+  }
 
   try {
     await requirePermission(tenantId.data, PERMISSIONS.CLIENTS_CREATE);
@@ -159,7 +170,8 @@ export async function createQuickClientAction(input: {
       .is("archived_at", null)
       .limit(1);
     if (existing && existing.length > 0) {
-      return { ok: false, error: "This email is already associated with an existing client." };
+      const message = "This email is already associated with an existing client.";
+      return { ok: false, error: message, fieldErrors: { email: message } };
     }
 
     const displayName = buildQuickClientDisplayName(parsed.data.firstName, parsed.data.lastName);
@@ -225,7 +237,9 @@ export async function updateClientAction(_prev: ActionResult, formData: FormData
   if (!clientId.success) return { error: "Invalid request" };
 
   const parsed = readClientForm(formData);
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("update_client", {
@@ -300,7 +314,9 @@ export async function createClientContactAction(_prev: ActionResult, formData: F
     notes: formData.get("notes") || undefined,
     isPrimary: formData.get("isPrimary") === "on",
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("create_client_contact", {
@@ -337,7 +353,9 @@ export async function updateClientContactAction(_prev: ActionResult, formData: F
     preferredContactMethod: formData.get("preferredContactMethod") || undefined,
     notes: formData.get("notes") || undefined,
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("update_client_contact", {

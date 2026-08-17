@@ -6,6 +6,7 @@ import { requireUser } from "../lib/auth/session";
 import { uuidSchema } from "../lib/validation/schemas";
 import { createNoteSchema, updateNoteSchema } from "../lib/validation/crm";
 import { friendlyRpcErrorMessage } from "../lib/errors/friendly-message";
+import { zodIssuesToFieldErrors } from "../lib/validation/field-errors";
 import type { ActionResult } from "./auth";
 
 function parentPath(clientId?: string, opportunityId?: string, projectId?: string): string {
@@ -27,7 +28,9 @@ export async function createNoteAction(_prev: ActionResult, formData: FormData):
     opportunityId: formData.get("opportunityId") || undefined,
     projectId: formData.get("projectId") || undefined,
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("create_note", {
@@ -57,7 +60,9 @@ export async function updateNoteAction(_prev: ActionResult, formData: FormData):
   );
 
   const parsed = updateNoteSchema.safeParse({ body: formData.get("body") });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("update_note", { p_note_id: noteId.data, p_body: parsed.data.body });

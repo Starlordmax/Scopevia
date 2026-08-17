@@ -97,7 +97,7 @@ export function NewProposalForm({
             <label htmlFor="clientId">Client</label>
             <div className="tenant-form" style={{ alignItems: "flex-start" }}>
               <div style={{ flex: 1 }}>
-                <ClientSelect clients={clients} defaultClientId={defaultClientId} />
+                <ClientSelect clients={clients} defaultClientId={defaultClientId} fieldErrors={state.fieldErrors} />
               </div>
               <QuickCreateClientModal tenantId={tenantId} />
             </div>
@@ -154,11 +154,12 @@ export function NewProposalForm({
           id="title"
           name="title"
           type="text"
-          required
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="e.g. Exterior repaint — Smith residence"
+          {...fieldErrorProps(state.fieldErrors, "title")}
         />
+        <FieldError fieldErrors={state.fieldErrors} id="title" />
       </div>
 
       <div className="field">
@@ -167,9 +168,9 @@ export function NewProposalForm({
           ref={serviceTypeRef}
           id="serviceType"
           name="serviceType"
-          required
           value={serviceType}
           onChange={(e) => setServiceType(e.target.value)}
+          {...fieldErrorProps(state.fieldErrors, "serviceType")}
         >
           <option value="" disabled>
             Select a service type…
@@ -180,6 +181,7 @@ export function NewProposalForm({
             </option>
           ))}
         </select>
+        <FieldError fieldErrors={state.fieldErrors} id="serviceType" />
       </div>
 
       {serviceType === "custom" ? (

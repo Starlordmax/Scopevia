@@ -6,6 +6,7 @@ import { createClient } from "../lib/supabase/server";
 import { signUpSchema, signInSchema, forgotPasswordSchema, resetPasswordSchema } from "../lib/validation/schemas";
 import { logAuditEvent } from "../lib/audit/log";
 import { resolveSiteOrigin } from "../lib/auth/site-origin";
+import { zodIssuesToFieldErrors } from "../lib/validation/field-errors";
 
 /**
  * `fieldErrors` is optional and additive to `error` — a form that wants
@@ -36,7 +37,7 @@ export async function signUpAction(_prev: ActionResult, formData: FormData): Pro
     fullName: formData.get("fullName") || undefined,
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
   }
 
   const supabase = await createClient();
@@ -66,7 +67,7 @@ export async function signInAction(_prev: ActionResult, formData: FormData): Pro
     password: formData.get("password"),
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
   }
 
   const supabase = await createClient();
@@ -113,7 +114,7 @@ export async function signOutAction(): Promise<void> {
 export async function forgotPasswordAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const parsed = forgotPasswordSchema.safeParse({ email: formData.get("email") });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
   }
 
   const supabase = await createClient();
@@ -133,7 +134,7 @@ export async function resetPasswordAction(_prev: ActionResult, formData: FormDat
     confirmPassword: formData.get("confirmPassword"),
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
   }
 
   const supabase = await createClient();

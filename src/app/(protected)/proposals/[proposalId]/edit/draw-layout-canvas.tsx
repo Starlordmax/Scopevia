@@ -47,7 +47,12 @@ function GroupAndNameFields({
     <>
       <div className="field">
         <label htmlFor={`${idPrefix}GroupId`}>Group</label>
-        <select id={`${idPrefix}GroupId`} name="measurementGroupId" required disabled={measurementGroups.length === 0}>
+        {/* No `required` -- with no groups yet this select's only option is
+            an empty placeholder, but SubmitButton is already disabled in
+            that state, so an empty value can never actually reach the
+            Server Action; consistent with this file's other fields, which
+            never rely on native constraint validation. */}
+        <select id={`${idPrefix}GroupId`} name="measurementGroupId" disabled={measurementGroups.length === 0}>
           {measurementGroups.length === 0 ? <option value="">Create a group first (Manual entry tab)</option> : null}
           {measurementGroups.map((g) => (
             <option key={g.id} value={g.id}>
@@ -334,7 +339,6 @@ function FreehandDrawForm({
               step={0.01}
               value={scaleReferenceLength}
               onChange={(e) => setScaleReferenceLength(e.target.value)}
-              required
               {...fieldErrorProps(state.fieldErrors, "scaleReferenceLength")}
             />
             <FieldError fieldErrors={state.fieldErrors} id="scaleReferenceLength" />
@@ -531,7 +535,6 @@ function RectangleDrawForm({
               step={0.01}
               value={scaleReferenceLength}
               onChange={(e) => setScaleReferenceLength(e.target.value)}
-              required
               {...fieldErrorProps(state.fieldErrors, "scaleReferenceLength")}
             />
             <FieldError fieldErrors={state.fieldErrors} id="scaleReferenceLength" />

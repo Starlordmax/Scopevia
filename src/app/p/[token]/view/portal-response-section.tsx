@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { acceptProposalAction, declineProposalAction, type PortalActionResult } from "../../../../actions/portal-visitor";
 import { ConfirmSubmitButton } from "../../../../components/confirm-submit-button";
+import { FieldError, fieldErrorProps, useFocusFirstFieldError } from "../../../../components/form-field-error";
 
 const initial: PortalActionResult = {};
 
@@ -14,6 +15,7 @@ export function PortalResponseSection({ token, existingResponse }: { token: stri
   const [acceptState, acceptAction] = useActionState(acceptProposalAction, initial);
   const [declineState, declineAction] = useActionState(declineProposalAction, initial);
   const [mode, setMode] = useState<"none" | "accept" | "decline">("none");
+  useFocusFirstFieldError(mode === "accept" ? acceptState.fieldErrors : mode === "decline" ? declineState.fieldErrors : undefined);
 
   if (existingResponse) {
     return (
@@ -56,13 +58,30 @@ export function PortalResponseSection({ token, existingResponse }: { token: stri
 
           <div className="field">
             <label htmlFor="clientName">Your name</label>
-            <input id="clientName" name="clientName" type="text" required placeholder="Jane Doe" />
+            {/* No `required` -- an empty submit must reach our own
+                server-side validation and inline red-state UI. */}
+            <input
+              id="clientName"
+              name="clientName"
+              type="text"
+              placeholder="Jane Doe"
+              {...fieldErrorProps(acceptState.fieldErrors, "clientName")}
+            />
+            <FieldError fieldErrors={acceptState.fieldErrors} id="clientName" />
           </div>
 
           <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-            <input type="checkbox" name="acceptedTerms" required style={{ marginTop: 4 }} />
+            <input
+              id="acceptedTerms"
+              type="checkbox"
+              name="acceptedTerms"
+              style={{ marginTop: 4 }}
+              aria-invalid={acceptState.fieldErrors?.acceptedTerms ? true : undefined}
+              aria-describedby={acceptState.fieldErrors?.acceptedTerms ? "acceptedTerms-error" : undefined}
+            />
             <span>I confirm that I have reviewed this proposal and approve the scope and pricing shown above.</span>
           </label>
+          <FieldError fieldErrors={acceptState.fieldErrors} id="acceptedTerms" />
 
           <div className="tenant-form">
             <ConfirmSubmitButton

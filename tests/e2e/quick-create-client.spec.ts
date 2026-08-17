@@ -108,7 +108,12 @@ test.describe("Quick Create Client — Proposal form", () => {
     await page.getByLabel("Phone").fill("555-444-5555");
     await page.getByRole("button", { name: "Create client" }).click();
 
-    await expect(page.getByText("This email is already associated with an existing client.")).toBeVisible({ timeout: 15_000 });
+    // The same message also appears in the top-of-form error banner (by
+    // design, once fieldErrors was added alongside it), so target the
+    // field-specific message by id to avoid an ambiguous match.
+    await expect(page.locator("#email-error")).toHaveText("This email is already associated with an existing client.", {
+      timeout: 15_000,
+    });
     await expect(page.getByRole("heading", { name: "Create new client" })).toBeVisible();
     await expect(page.getByText("This page couldn't load")).toHaveCount(0);
   });

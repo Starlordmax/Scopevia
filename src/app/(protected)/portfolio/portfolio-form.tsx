@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createPortfolioProjectAction, updatePortfolioProjectAction } from "../../../actions/portfolio";
 import type { ActionResult } from "../../../actions/auth";
 import { SubmitButton } from "../../../components/submit-button";
+import { FieldError, fieldErrorProps, useFocusFirstFieldError } from "../../../components/form-field-error";
 import type { Database } from "../../../../types/database";
 
 type PortfolioProject = Database["public"]["Tables"]["portfolio_projects"]["Row"];
@@ -23,6 +24,7 @@ const initialState: ActionResult = {};
 export function PortfolioForm({ tenantId, project }: { tenantId: string; project?: PortfolioProject }) {
   const isEdit = Boolean(project);
   const [state, formAction] = useActionState(isEdit ? updatePortfolioProjectAction : createPortfolioProjectAction, initialState);
+  useFocusFirstFieldError(state.fieldErrors);
 
   return (
     <form action={formAction} className="stack">
@@ -32,12 +34,25 @@ export function PortfolioForm({ tenantId, project }: { tenantId: string; project
 
       <div className="field">
         <label htmlFor="title">Title</label>
-        <input id="title" name="title" type="text" required defaultValue={project?.title} placeholder="e.g. Residential bathroom remodel" />
+        <input
+          id="title"
+          name="title"
+          type="text"
+          defaultValue={project?.title}
+          placeholder="e.g. Residential bathroom remodel"
+          {...fieldErrorProps(state.fieldErrors, "title")}
+        />
+        <FieldError fieldErrors={state.fieldErrors} id="title" />
       </div>
 
       <div className="field">
         <label htmlFor="serviceType">Service type</label>
-        <select id="serviceType" name="serviceType" required defaultValue={project?.service_type ?? ""}>
+        <select
+          id="serviceType"
+          name="serviceType"
+          defaultValue={project?.service_type ?? ""}
+          {...fieldErrorProps(state.fieldErrors, "serviceType")}
+        >
           <option value="" disabled>
             Select a service type…
           </option>
@@ -47,6 +62,7 @@ export function PortfolioForm({ tenantId, project }: { tenantId: string; project
             </option>
           ))}
         </select>
+        <FieldError fieldErrors={state.fieldErrors} id="serviceType" />
       </div>
 
       <div className="field">

@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { createNoteAction, updateNoteAction, archiveNoteAction } from "../actions/notes";
 import type { ActionResult } from "../actions/auth";
 import { SubmitButton } from "./submit-button";
+import { FieldError, fieldErrorProps, useFocusFirstFieldError } from "./form-field-error";
 
 const initialState: ActionResult = {};
 
@@ -34,6 +35,7 @@ export function NotesSection({
   ...parent
 }: ParentIds & { notes: NoteItem[]; canCreate: boolean; canUpdate: boolean; canArchive: boolean }) {
   const [createState, createAction] = useActionState(createNoteAction, initialState);
+  useFocusFirstFieldError(createState.fieldErrors);
 
   return (
     <div className="stack">
@@ -55,14 +57,15 @@ export function NotesSection({
           <input type="hidden" name="tenantId" value={parent.tenantId} />
           <ParentHiddenFields {...parent} />
           <div className="field">
-            <label htmlFor="note-body">Add a note</label>
+            <label htmlFor="body">Add a note</label>
             <textarea
-              id="note-body"
+              id="body"
               name="body"
               rows={3}
-              required
               style={{ font: "inherit", padding: 10, borderRadius: 8, border: "1px solid var(--color-border)" }}
+              {...fieldErrorProps(createState.fieldErrors, "body")}
             />
+            <FieldError fieldErrors={createState.fieldErrors} id="body" />
           </div>
           <SubmitButton pendingText="Adding…">Add note</SubmitButton>
         </form>
@@ -84,6 +87,7 @@ function NoteBody({
 }) {
   const [updateState, updateAction] = useActionState(updateNoteAction, initialState);
   const [archiveState, archiveAction] = useActionState(archiveNoteAction, initialState);
+  useFocusFirstFieldError(updateState.fieldErrors);
 
   return (
     <div className="card" style={{ padding: 12 }}>
@@ -103,12 +107,20 @@ function NoteBody({
                 {updateState.error ? <p className="error-banner">{updateState.error}</p> : null}
                 <input type="hidden" name="noteId" value={note.id} />
                 <ParentHiddenFields {...parent} />
+                {/* `id` is only ever set while THIS note's own update
+                    triggered the error -- every note's edit form shares
+                    the same field name ("body"), so an unconditional id
+                    would duplicate across every note on the page. Only
+                    one note's useActionState can be non-empty at a time. */}
                 <textarea
+                  id={updateState.fieldErrors?.body ? "body" : undefined}
                   name="body"
                   defaultValue={note.body}
                   rows={2}
                   style={{ font: "inherit", padding: 10, borderRadius: 8, border: "1px solid var(--color-border)" }}
+                  {...fieldErrorProps(updateState.fieldErrors, "body")}
                 />
+                <FieldError fieldErrors={updateState.fieldErrors} id="body" />
                 <SubmitButton pendingText="Saving…" className="button-secondary">
                   Save
                 </SubmitButton>

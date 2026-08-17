@@ -6,6 +6,7 @@ import { requireUser } from "../lib/auth/session";
 import { uuidSchema } from "../lib/validation/schemas";
 import { updateProposalSettingsSchema } from "../lib/validation/proposals";
 import { friendlyRpcErrorMessage } from "../lib/errors/friendly-message";
+import { zodIssuesToFieldErrors } from "../lib/validation/field-errors";
 import type { ActionResult } from "./auth";
 
 export async function updateProposalSettingsAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
@@ -23,7 +24,9 @@ export async function updateProposalSettingsAction(_prev: ActionResult, formData
     defaultExclusions: formData.get("defaultExclusions") || undefined,
     proposalNumberPrefix: formData.get("proposalNumberPrefix"),
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
+  }
 
   const taxRateBps = Math.round(parseFloat(parsed.data.defaultTaxRatePercent || "0") * 100);
 

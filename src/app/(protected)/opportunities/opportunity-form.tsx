@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { createOpportunityAction, updateOpportunityAction } from "../../../actions/opportunities";
 import type { ActionResult } from "../../../actions/auth";
 import { SubmitButton } from "../../../components/submit-button";
+import { FieldError, fieldErrorProps, useFocusFirstFieldError } from "../../../components/form-field-error";
 import type { ClientOption } from "../../../lib/crm/client-options";
 import type { AssignableMember } from "../../../lib/crm/assignable-members";
 import type { Database } from "../../../../types/database";
@@ -28,6 +29,7 @@ export function OpportunityForm({
 }) {
   const isEdit = Boolean(opportunity);
   const [state, formAction] = useActionState(isEdit ? updateOpportunityAction : createOpportunityAction, initialState);
+  useFocusFirstFieldError(state.fieldErrors);
 
   return (
     <form action={formAction} className="stack">
@@ -38,7 +40,7 @@ export function OpportunityForm({
       {!isEdit ? (
         <div className="field">
           <label htmlFor="clientId">Client</label>
-          <select id="clientId" name="clientId" required defaultValue={defaultClientId ?? ""}>
+          <select id="clientId" name="clientId" defaultValue={defaultClientId ?? ""} {...fieldErrorProps(state.fieldErrors, "clientId")}>
             <option value="" disabled>
               Select a client…
             </option>
@@ -48,6 +50,7 @@ export function OpportunityForm({
               </option>
             ))}
           </select>
+          <FieldError fieldErrors={state.fieldErrors} id="clientId" />
           {clients.length === 0 ? (
             <span className="hint">
               No clients yet — <Link href="/clients/new">create one first</Link>.
@@ -58,7 +61,8 @@ export function OpportunityForm({
 
       <div className="field">
         <label htmlFor="title">Title</label>
-        <input id="title" name="title" type="text" required defaultValue={opportunity?.title} />
+        <input id="title" name="title" type="text" defaultValue={opportunity?.title} {...fieldErrorProps(state.fieldErrors, "title")} />
+        <FieldError fieldErrors={state.fieldErrors} id="title" />
       </div>
 
       <div className="field">

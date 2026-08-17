@@ -6,6 +6,7 @@ import { uploadCurrentJobPhotoAction } from "../../../../../actions/media";
 import { attachPortfolioMediaToProposalAction, detachProposalMediaAction } from "../../../../../actions/media";
 import type { ActionResult } from "../../../../../actions/auth";
 import { SubmitButton } from "../../../../../components/submit-button";
+import { FieldError, fieldErrorProps, useFocusFirstFieldError } from "../../../../../components/form-field-error";
 import type { ProposalMediaWithUrl } from "../../../../../lib/proposals/data";
 import type { PortfolioOption } from "../../../../../lib/proposals/portfolio-options";
 
@@ -32,6 +33,7 @@ export function StepPhotos({
 }) {
   const [uploadState, uploadAction] = useActionState(uploadCurrentJobPhotoAction, initialState);
   const attachedAssetIds = new Set(previousWorkMedia.map((m) => m.media_asset_id));
+  useFocusFirstFieldError(uploadState.fieldErrors);
 
   return (
     <div className="stack">
@@ -74,7 +76,16 @@ export function StepPhotos({
               <input type="hidden" name="proposalId" value={proposalId} />
               <div className="field">
                 <label htmlFor="file">Upload a photo</label>
-                <input id="file" name="file" type="file" accept="image/jpeg,image/png,image/webp" required />
+                {/* No `required` -- an empty submit must reach our own
+                    red-state UI, not the browser's native popup. */}
+                <input
+                  id="file"
+                  name="file"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  {...fieldErrorProps(uploadState.fieldErrors, "file")}
+                />
+                <FieldError fieldErrors={uploadState.fieldErrors} id="file" />
               </div>
               <div className="field">
                 <label htmlFor="caption">Caption (optional)</label>

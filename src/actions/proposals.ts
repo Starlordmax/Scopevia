@@ -180,7 +180,9 @@ export async function addProposalSectionAction(_prev: ActionResult, formData: Fo
     description: formData.get("description") || undefined,
     sectionType: formData.get("sectionType") || "custom",
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("add_proposal_section", {
@@ -226,7 +228,9 @@ export async function addProposalLaborItemAction(_prev: ActionResult, formData: 
           hourlyRateCents: formData.get("hourlyRate"),
         }
   );
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
+  }
 
   const supabase = await createClient();
   // p_worker_count/p_estimated_days/p_hours_per_day/p_hourly_rate_cents
@@ -291,7 +295,9 @@ export async function addProposalLineItemAction(_prev: ActionResult, formData: F
     taxable: formData.get("taxable") === "on" || formData.get("taxable") === "true",
     sectionId: formData.get("sectionId") || undefined,
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("add_proposal_line_item", {
@@ -362,7 +368,9 @@ export async function addProposalLineItemFromCatalogAction(_prev: ActionResult, 
     sectionId: formData.get("sectionId") || undefined,
     unitPriceCentsOverride: formData.get("unitPriceOverride") || undefined,
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
+  }
 
   // Same cast discipline as update_proposal_pricing_zip above: these
   // params have SQL DEFAULT NULL, Postgres accepts null, but the

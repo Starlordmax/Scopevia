@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { FieldError, fieldErrorProps } from "../../../../components/form-field-error";
 import type { ClientOption } from "../../../../lib/crm/client-options";
 
 /**
@@ -21,30 +22,41 @@ import type { ClientOption } from "../../../../lib/crm/client-options";
  * this key-based remount is specifically for the "selection changed from
  * OUTSIDE this component" case.
  */
-export function ClientSelect({ clients, defaultClientId }: { clients: ClientOption[]; defaultClientId?: string }) {
+export function ClientSelect({
+  clients,
+  defaultClientId,
+  fieldErrors,
+}: {
+  clients: ClientOption[];
+  defaultClientId?: string;
+  fieldErrors?: Record<string, string>;
+}) {
   const router = useRouter();
 
   return (
-    <select
-      key={defaultClientId ?? "none"}
-      id="clientId"
-      name="clientId"
-      required
-      defaultValue={defaultClientId ?? ""}
-      onChange={(e) => {
-        const params = new URLSearchParams();
-        if (e.target.value) params.set("clientId", e.target.value);
-        router.push(`/proposals/new?${params.toString()}`);
-      }}
-    >
-      <option value="" disabled>
-        Select a client…
-      </option>
-      {clients.map((c) => (
-        <option key={c.id} value={c.id}>
-          {c.displayName}
+    <>
+      <select
+        key={defaultClientId ?? "none"}
+        id="clientId"
+        name="clientId"
+        defaultValue={defaultClientId ?? ""}
+        onChange={(e) => {
+          const params = new URLSearchParams();
+          if (e.target.value) params.set("clientId", e.target.value);
+          router.push(`/proposals/new?${params.toString()}`);
+        }}
+        {...fieldErrorProps(fieldErrors, "clientId")}
+      >
+        <option value="" disabled>
+          Select a client…
         </option>
-      ))}
-    </select>
+        {clients.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.displayName}
+          </option>
+        ))}
+      </select>
+      <FieldError fieldErrors={fieldErrors} id="clientId" />
+    </>
   );
 }

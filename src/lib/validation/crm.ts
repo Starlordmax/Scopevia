@@ -161,7 +161,7 @@ export const updateClientContactSchema = createClientContactSchema.omit({ client
 export const opportunityStatusSchema = z.enum(OPPORTUNITY_STATUSES);
 
 export const createOpportunitySchema = z.object({
-  clientId: z.string().uuid(),
+  clientId: z.string({ message: "Please select a client." }).uuid("Please select a client."),
   title: z.string().trim().min(1, "Title is required").max(160),
   source: optionalText(80),
   estimatedValueCents: dollarsToCentsSchema,
@@ -172,11 +172,20 @@ export const createOpportunitySchema = z.object({
 
 export const updateOpportunitySchema = createOpportunitySchema.omit({ clientId: true });
 
-export const changeOpportunityStatusSchema = z.object({
-  newStatus: opportunityStatusSchema,
-  lostReason: optionalText(500),
-  inspectionScheduledAt: optionalText(40),
-});
+export const changeOpportunityStatusSchema = z
+  .object({
+    newStatus: opportunityStatusSchema,
+    lostReason: optionalText(500),
+    inspectionScheduledAt: optionalText(40),
+  })
+  .superRefine((data, ctx) => {
+    if (data.newStatus === "lost" && !data.lostReason) {
+      ctx.addIssue({ code: "custom", path: ["lostReason"], message: "Tell us why this opportunity was lost." });
+    }
+    if (data.newStatus === "inspection_scheduled" && !data.inspectionScheduledAt) {
+      ctx.addIssue({ code: "custom", path: ["inspectionScheduledAt"], message: "Choose an inspection date and time." });
+    }
+  });
 
 // Projects ----------------------------------------------------------------
 

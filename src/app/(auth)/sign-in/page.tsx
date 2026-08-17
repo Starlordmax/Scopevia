@@ -4,11 +4,13 @@ import { useActionState } from "react";
 import Link from "next/link";
 import { signInAction, type ActionResult } from "../../../actions/auth";
 import { SubmitButton } from "../../../components/submit-button";
+import { FieldError, fieldErrorProps, useFocusFirstFieldError } from "../../../components/form-field-error";
 
 const initialState: ActionResult = {};
 
 export default function SignInPage() {
   const [state, formAction] = useActionState(signInAction, initialState);
+  useFocusFirstFieldError(state.fieldErrors);
 
   return (
     <div className="card stack">
@@ -22,12 +24,20 @@ export default function SignInPage() {
 
         <div className="field">
           <label htmlFor="email">Email</label>
-          <input id="email" name="email" type="email" autoComplete="email" required />
+          <input id="email" name="email" type="email" autoComplete="email" {...fieldErrorProps(state.fieldErrors, "email")} />
+          <FieldError fieldErrors={state.fieldErrors} id="email" />
         </div>
 
         <div className="field">
           <label htmlFor="password">Password</label>
-          <input id="password" name="password" type="password" autoComplete="current-password" required />
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            {...fieldErrorProps(state.fieldErrors, "password")}
+          />
+          <FieldError fieldErrors={state.fieldErrors} id="password" />
         </div>
 
         <SubmitButton pendingText="Signing in…">Sign in</SubmitButton>

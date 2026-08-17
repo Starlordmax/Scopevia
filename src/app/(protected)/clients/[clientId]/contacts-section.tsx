@@ -10,6 +10,7 @@ import {
 } from "../../../../actions/clients";
 import type { ActionResult } from "../../../../actions/auth";
 import { SubmitButton } from "../../../../components/submit-button";
+import { FieldError, fieldErrorProps, useFocusFirstFieldError } from "../../../../components/form-field-error";
 import type { Database } from "../../../../../types/database";
 
 type Contact = Database["public"]["Tables"]["client_contacts"]["Row"];
@@ -33,6 +34,7 @@ export function ContactsSection({
 }) {
   const [createState, createAction] = useActionState(createClientContactAction, initialState);
   const [showForm, setShowForm] = useState(false);
+  useFocusFirstFieldError(createState.fieldErrors);
 
   return (
     <div className="stack">
@@ -53,8 +55,11 @@ export function ContactsSection({
             <input type="hidden" name="clientId" value={clientId} />
             <div className="tenant-form" style={{ width: "100%" }}>
               <div className="field" style={{ flex: 1 }}>
-                <label htmlFor="c-first">First name</label>
-                <input id="c-first" name="firstName" type="text" required />
+                <label htmlFor="firstName">First name</label>
+                {/* No `required` -- an empty submit must reach our own
+                    red-state UI, not the browser's native popup. */}
+                <input id="firstName" name="firstName" type="text" {...fieldErrorProps(createState.fieldErrors, "firstName")} />
+                <FieldError fieldErrors={createState.fieldErrors} id="firstName" />
               </div>
               <div className="field" style={{ flex: 1 }}>
                 <label htmlFor="c-last">Last name</label>
@@ -104,6 +109,14 @@ function ContactRow({
 }) {
   const [editState, editAction] = useActionState(updateClientContactAction, initialState);
   const [editing, setEditing] = useState(false);
+  useFocusFirstFieldError(editState.fieldErrors);
+  // Swaps to the plain schema field name ("firstName", matching
+  // fieldErrors' key) only while THIS row actually has the error, so
+  // useFocusFirstFieldError's getElementById lookup can find it -- every
+  // row otherwise keeps its own `edit-first-${contact.id}` id, since
+  // several ContactRow instances render at once and a bare "firstName"
+  // id would collide across rows.
+  const firstNameFieldId = editState.fieldErrors?.firstName ? "firstName" : `edit-first-${contact.id}`;
 
   return (
     <li className="card" style={{ padding: 12 }}>
@@ -164,8 +177,15 @@ function ContactRow({
           <input type="hidden" name="clientId" value={clientId} />
           <div className="tenant-form" style={{ width: "100%" }}>
             <div className="field" style={{ flex: 1 }}>
-              <label htmlFor={`edit-first-${contact.id}`}>First name</label>
-              <input id={`edit-first-${contact.id}`} name="firstName" type="text" defaultValue={contact.first_name} required />
+              <label htmlFor={firstNameFieldId}>First name</label>
+              <input
+                id={firstNameFieldId}
+                name="firstName"
+                type="text"
+                defaultValue={contact.first_name}
+                {...fieldErrorProps(editState.fieldErrors, "firstName")}
+              />
+              <FieldError fieldErrors={editState.fieldErrors} id="firstName" />
             </div>
             <div className="field" style={{ flex: 1 }}>
               <label htmlFor={`edit-last-${contact.id}`}>Last name</label>

@@ -5,6 +5,7 @@ import { createClientAction, updateClientAction } from "../../../actions/clients
 import type { ActionResult } from "../../../actions/auth";
 import { SubmitButton } from "../../../components/submit-button";
 import { AddressFields } from "../../../components/address-fields";
+import { FieldError, fieldErrorProps, useFocusFirstFieldError } from "../../../components/form-field-error";
 import type { Database } from "../../../../types/database";
 
 type Client = Database["public"]["Tables"]["clients"]["Row"];
@@ -15,6 +16,7 @@ export function ClientForm({ tenantId, client }: { tenantId: string; client?: Cl
   const isEdit = Boolean(client);
   const [state, formAction] = useActionState(isEdit ? updateClientAction : createClientAction, initialState);
   const [clientType, setClientType] = useState(client?.client_type ?? "individual");
+  useFocusFirstFieldError(state.fieldErrors);
 
   return (
     <form action={formAction} className="stack">
@@ -32,7 +34,16 @@ export function ClientForm({ tenantId, client }: { tenantId: string; client?: Cl
 
       <div className="field">
         <label htmlFor="displayName">Display name</label>
-        <input id="displayName" name="displayName" type="text" required defaultValue={client?.display_name} />
+        {/* No `required` -- an empty submit must reach our own red-state
+            UI instead of the browser's native popup. */}
+        <input
+          id="displayName"
+          name="displayName"
+          type="text"
+          defaultValue={client?.display_name}
+          {...fieldErrorProps(state.fieldErrors, "displayName")}
+        />
+        <FieldError fieldErrors={state.fieldErrors} id="displayName" />
         <span className="hint">What you&apos;ll see in lists — e.g. &quot;Sarah Nguyen&quot; or &quot;Acme Property Management&quot;.</span>
       </div>
 
@@ -79,6 +90,7 @@ export function ClientForm({ tenantId, client }: { tenantId: string; client?: Cl
           postalCode: client?.postal_code,
           countryCode: client?.country_code,
         }}
+        fieldErrors={state.fieldErrors}
       />
 
       {/* Website was removed from the New Client form (see

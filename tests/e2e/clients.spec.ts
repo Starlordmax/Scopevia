@@ -49,19 +49,32 @@ test.describe("Clients", () => {
     await expect(page.getByRole("heading", { name: new RegExp(name) })).toBeVisible();
   });
 
-  test("submitting the form with the required display name empty is blocked client-side, no partial record created", async ({
+  test("submitting the form with the required display name empty shows a red, inline error and creates no partial record", async ({
     page,
   }) => {
     await page.goto("/clients/new");
     await page.getByLabel("Display name").fill("");
     await page.getByRole("button", { name: "Create client" }).click();
 
-    // Native HTML5 required-field validation blocks submission entirely —
-    // we never leave /clients/new, and no request reaches the server, so
-    // there is no possibility of a stack trace/SQL message being shown.
+    // No `required` attribute — the empty submit reaches the Server
+    // Action, which returns a field-level error rendered inline (red
+    // border + message), not a browser popup. Still no partial record:
+    // we never leave /clients/new, and no technical/SQL message is shown.
     await expect(page).toHaveURL(/\/clients\/new$/);
-    const isValid = await page.getByLabel("Display name").evaluate((el: HTMLInputElement) => el.validity.valid);
-    expect(isValid).toBe(false);
+    const displayName = page.getByLabel("Display name");
+    await expect(displayName).toHaveClass(/field-input-error/);
+    await expect(displayName).toHaveAttribute("aria-invalid", "true");
+    // The same message also appears in the top-of-form error banner (by
+    // design — a general error never replaces the field-level one), so
+    // target the field-specific message by id rather than getByText.
+    await expect(page.locator("#displayName-error")).toHaveText("Display name is required");
+    await expect(displayName).toBeFocused();
+
+    // Correcting the field and resubmitting clears the red state and
+    // actually creates the client.
+    await displayName.fill("E2E Fixed After Error");
+    await page.getByRole("button", { name: "Create client" }).click();
+    await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
   });
 
   test("editing a client persists after reload", async ({ page }) => {

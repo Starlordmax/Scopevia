@@ -105,12 +105,15 @@ test.describe("Opportunities", () => {
 
     await page.getByRole("button", { name: "Move to inspection scheduled" }).click();
     const dateField = page.getByLabel("Inspection date & time");
-    await expect(dateField).toHaveAttribute("required", "");
-    // Try to submit without filling the date: native validation should block it.
+    // No `required` attribute — submitting without a date reaches the
+    // Server Action, which now returns a field-level error (see
+    // changeOpportunityStatusSchema's superRefine): red border + inline
+    // message, not a browser popup.
     await page.getByRole("button", { name: /^Confirm: move to/ }).click();
     await expect(page).toHaveURL(url); // still here, no navigation happened
-    const stillNew = await dateField.evaluate((el: HTMLInputElement) => el.validity.valid);
-    expect(stillNew).toBe(false);
+    await expect(dateField).toHaveClass(/field-input-error/);
+    await expect(page.locator("#inspectionScheduledAt-error")).toHaveText("Choose an inspection date and time.");
+    await expect(dateField).toBeFocused();
 
     await dateField.fill("2027-01-15T10:00");
     await page.getByRole("button", { name: /^Confirm: move to/ }).click();
@@ -128,8 +131,9 @@ test.describe("Opportunities", () => {
     const reasonField = page.getByLabel("Why was this lost?");
     await page.getByRole("button", { name: /^Confirm: move to/ }).click();
     await expect(page).toHaveURL(url);
-    const valid = await reasonField.evaluate((el: HTMLInputElement) => el.validity.valid);
-    expect(valid).toBe(false);
+    await expect(reasonField).toHaveClass(/field-input-error/);
+    await expect(page.locator("#lostReason-error")).toHaveText("Tell us why this opportunity was lost.");
+    await expect(reasonField).toBeFocused();
 
     await reasonField.fill("Went with a competitor");
     await page.getByRole("button", { name: /^Confirm: move to/ }).click();

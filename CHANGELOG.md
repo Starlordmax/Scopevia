@@ -4,6 +4,52 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fix — Global required-field validation with red highlighting
+
+Every form in the app with a required or validatable field now
+highlights the offending field in red, shows a specific message right
+under it, and moves keyboard focus there on a failed submit — instead
+of either the browser's unstyled native `required` popup or a single
+generic top-of-form error banner that gave no indication of *which*
+field needed fixing. Extends the pattern already built for
+Measurements (see the entry below) to Sign in/up, Forgot/Reset
+password, Profile, Members/invitations, Clients (including Quick
+Create Client), Opportunities, Proposal creation, every step of the
+Proposal Builder (Scope, Materials & Costs, Labor, Photos, Settings),
+the Client Portal (request code, verify, accept/decline), business
+logo upload, Portfolio, and Notes.
+
+The reusable pieces (`fieldErrorProps`, `<FieldError>`,
+`useFocusFirstFieldError`, `zodIssuesToFieldErrors`) were not
+reinvented — every form reuses the exact same primitives Measurements
+already used, so red borders, `aria-invalid`/`aria-describedby`, and
+focus-on-error behave identically everywhere. A field's general
+Server Action error (top banner) and its field-specific error
+(inline, red) are complementary, not either/or — both can render for
+the same failed submit, and neither ever shows a raw SQL/RPC message.
+
+Two real bugs found and fixed along the way: opportunity status
+transitions (`lost`, `inspection_scheduled`) were only enforced by the
+now-removed `required` attribute, not by the schema itself — a
+`.superRefine()` now makes the schema the actual source of truth. And
+a `<select>` submitted with literally nothing selected (not even an
+empty string) was falling through to Zod's own technical
+"expected string, received null" message instead of a friendly one —
+fixed by giving the affected schemas a friendly message on the base
+type check too, not just the format check.
+
+23 new/updated unit tests (369/369 total), several existing E2E specs
+updated for the new red-state behavior (a browser's native `required`
+popup can no longer be asserted against, since `required` was removed
+everywhere it's replaced), 2 new E2E specs (desktop + mobile) covering
+Quick Create Client, New Proposal's client selector, and the Client
+Portal's request-code/verify/accept forms end to end. RLS/integration
+verification was blocked this session by this environment's
+already-documented Supabase Auth rate limit (see docs/73's own
+changelog entry) — every touched Server Action's Zod-failure branch
+is unit-tested directly instead. See
+[docs/75](docs/75-global-field-validation.md).
+
 ### Fix — Custom service name, multi-stroke drawing, and field validation
 
 Selecting **Custom** as a proposal's Service type now requires a

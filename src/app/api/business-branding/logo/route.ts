@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   const contentLength = Number(request.headers.get("content-length") ?? "0");
   if (contentLength > MAX_REQUEST_BYTES) {
     return NextResponse.json(
-      { error: "Please upload a PNG, JPG, or WEBP image under 10 MB." },
+      { error: "Please upload a PNG, JPG, or WEBP image under 10 MB.", fieldErrors: { file: "Please upload a PNG, JPG, or WEBP image under 10 MB." } },
       { status: 413 }
     );
   }
@@ -69,12 +69,15 @@ export async function POST(request: Request) {
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
-    return NextResponse.json({ error: "Choose a logo file to upload" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Choose a logo file to upload", fieldErrors: { file: "Choose a logo file to upload." } },
+      { status: 400 }
+    );
   }
 
   const validation = validateLogoFile({ type: file.type, size: file.size });
   if (!validation.ok) {
-    return NextResponse.json({ error: validation.error }, { status: 400 });
+    return NextResponse.json({ error: validation.error, fieldErrors: { file: validation.error } }, { status: 400 });
   }
 
   try {

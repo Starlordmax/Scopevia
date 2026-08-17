@@ -15,12 +15,14 @@ import {
 import { sendPortalCodeEmail } from "../lib/email/portal";
 import { notifyProposalAccepted, notifyProposalDeclined } from "../lib/notifications/proposals";
 import { portalRequestOtpSchema, portalVerifyOtpSchema, acceptProposalSchema, declineProposalSchema } from "../lib/validation/portal";
+import { zodIssuesToFieldErrors } from "../lib/validation/field-errors";
 
 // A code is valid for 10 minutes — long enough to check an inbox, short
 // enough that a leaked/forwarded code stops working quickly.
 const OTP_TTL_MINUTES = 10;
 
-export type PortalActionResult = { error?: string };
+/** `fieldErrors` is additive to `error`, same convention as the main app's `ActionResult` (src/actions/auth.ts) — see docs/74-custom-service-name-and-multistroke-drawing.md, "Validation UX." */
+export type PortalActionResult = { error?: string; fieldErrors?: Record<string, string> };
 
 /**
  * Requests a one-time access code for a client portal link. Always redirects
@@ -35,7 +37,10 @@ export async function requestPortalOtpAction(_prev: PortalActionResult, formData
     token: formData.get("token"),
     email: formData.get("email"),
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Enter a valid email address." };
+  if (!parsed.success) {
+    const fieldErrors = zodIssuesToFieldErrors(parsed.error);
+    return { error: parsed.error.issues[0]?.message ?? "Enter a valid email address.", fieldErrors };
+  }
 
   const { token, email } = parsed.data;
   const tokenHash = hashPortalSecret(token);
@@ -110,7 +115,10 @@ export async function verifyPortalOtpAction(_prev: PortalActionResult, formData:
     email: formData.get("email"),
     code: formData.get("code"),
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Enter the 6-digit code from your email." };
+  if (!parsed.success) {
+    const fieldErrors = zodIssuesToFieldErrors(parsed.error);
+    return { error: parsed.error.issues[0]?.message ?? "Enter the 6-digit code from your email.", fieldErrors };
+  }
 
   const { token, email, code } = parsed.data;
   const tokenHash = hashPortalSecret(token);
@@ -193,7 +201,10 @@ export async function acceptProposalAction(_prev: PortalActionResult, formData: 
     clientName: formData.get("clientName"),
     acceptedTerms: formData.get("acceptedTerms") === "on",
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Please check your response and try again." };
+  if (!parsed.success) {
+    const fieldErrors = zodIssuesToFieldErrors(parsed.error);
+    return { error: parsed.error.issues[0]?.message ?? "Please check your response and try again.", fieldErrors };
+  }
 
   const { token, clientName } = parsed.data;
   const sessionTokenHash = await getPortalSessionTokenHash(token);
@@ -247,7 +258,10 @@ export async function declineProposalAction(_prev: PortalActionResult, formData:
     token: formData.get("token"),
     declineReason: formData.get("declineReason") || undefined,
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Please check your response and try again." };
+  if (!parsed.success) {
+    const fieldErrors = zodIssuesToFieldErrors(parsed.error);
+    return { error: parsed.error.issues[0]?.message ?? "Please check your response and try again.", fieldErrors };
+  }
 
   const { token, declineReason } = parsed.data;
   const sessionTokenHash = await getPortalSessionTokenHash(token);

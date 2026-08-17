@@ -3,12 +3,14 @@
 import { useActionState } from "react";
 import { verifyPortalOtpAction, requestPortalOtpAction, type PortalActionResult } from "../../../../actions/portal-visitor";
 import { SubmitButton } from "../../../../components/submit-button";
+import { FieldError, fieldErrorProps, useFocusFirstFieldError } from "../../../../components/form-field-error";
 
 const initialState: PortalActionResult = {};
 
 export function VerifyCodeForm({ token, email }: { token: string; email: string }) {
   const [verifyState, verifyAction] = useActionState(verifyPortalOtpAction, initialState);
   const [resendState, resendAction] = useActionState(requestPortalOtpAction, initialState);
+  useFocusFirstFieldError(verifyState.fieldErrors);
 
   return (
     <div className="stack">
@@ -20,6 +22,7 @@ export function VerifyCodeForm({ token, email }: { token: string; email: string 
 
         <div className="field">
           <label htmlFor="code">Access code</label>
+          {/* No `required` -- see request-code-form.tsx's comment. */}
           <input
             id="code"
             name="code"
@@ -28,9 +31,10 @@ export function VerifyCodeForm({ token, email }: { token: string; email: string 
             autoComplete="one-time-code"
             pattern="[0-9]{6}"
             maxLength={6}
-            required
             placeholder="123456"
+            {...fieldErrorProps(verifyState.fieldErrors, "code")}
           />
+          <FieldError fieldErrors={verifyState.fieldErrors} id="code" />
           <p className="hint">Enter the 6-digit code we sent to your email.</p>
         </div>
 

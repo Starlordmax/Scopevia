@@ -45,7 +45,10 @@ test.describe.serial("Business branding — Profile (Owner/Admin)", () => {
     await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
     await page.goto("/proposals/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
+    // exact: true -- "Client" alone is also a substring of the Quick
+    // Create Client modal's own "Client type" label and its dialog title,
+    // both present (if not visible) in the DOM even while closed.
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await page.waitForURL(/clientId=/);
     await page.getByLabel("Proposal title").fill(`E2E Branding Proposal ${suffix}`);
     await page.getByLabel("Service type").selectOption("custom");
@@ -123,7 +126,12 @@ test.describe.serial("Business branding — Profile (Owner/Admin)", () => {
       .and(page.locator("button"))
       .click();
 
-    await expect(page.getByText("Please upload a PNG, JPG, or WEBP image under 10 MB.")).toBeVisible({ timeout: 15_000 });
+    // The same message also appears in the top-of-form error banner (by
+    // design), so target the field-specific message by id.
+    await expect(page.locator("#file-error")).toHaveText("Please upload a PNG, JPG, or WEBP image under 10 MB.", {
+      timeout: 15_000,
+    });
+    await expect(page.getByLabel(/Upload logo|Replace logo/)).toHaveAttribute("aria-invalid", "true");
     await expect(page.getByText("This page couldn't load")).toHaveCount(0);
   });
 
@@ -139,7 +147,22 @@ test.describe.serial("Business branding — Profile (Owner/Admin)", () => {
       .getByRole("button", { name: /Upload logo|Replace logo/ })
       .and(page.locator("button"))
       .click();
-    await expect(page.getByText("Only PNG, JPG, or WEBP images are supported.")).toBeVisible({ timeout: 15_000 });
+    // The same message also appears in the top-of-form error banner (by
+    // design), so target the field-specific message by id.
+    await expect(page.locator("#file-error")).toHaveText("Only PNG, JPG, or WEBP images are supported.", { timeout: 15_000 });
+    await expect(page.getByLabel(/Upload logo|Replace logo/)).toHaveClass(/field-input-error/);
+  });
+
+  test("submitting with no file selected shows a red, inline error instead of a silent no-op", async ({ page }) => {
+    await page.goto("/profile");
+    await page
+      .getByRole("button", { name: /Upload logo|Replace logo/ })
+      .and(page.locator("button"))
+      .click();
+
+    await expect(page.locator("#file-error")).toHaveText("Choose a logo file to upload.");
+    await expect(page.getByLabel(/Upload logo|Replace logo/)).toHaveClass(/field-input-error/);
+    await expect(page.getByLabel(/Upload logo|Replace logo/)).toHaveAttribute("aria-invalid", "true");
   });
 });
 

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { updateProposalScopeAction, addProposalSectionAction, archiveProposalSectionAction } from "../../../../../actions/proposals";
 import type { ActionResult } from "../../../../../actions/auth";
 import { SubmitButton } from "../../../../../components/submit-button";
+import { FieldError, fieldErrorProps, useFocusFirstFieldError } from "../../../../../components/form-field-error";
 import { formatLabel } from "../../../../../lib/proposals/format";
 import type { Database } from "../../../../../../types/database";
 
@@ -58,6 +59,7 @@ export function StepScope({
   const [scopeState, scopeAction] = useActionState(updateProposalScopeAction, initialState);
   const [sectionState, sectionAction] = useActionState(addProposalSectionAction, initialState);
   const template = TEMPLATES[serviceType];
+  useFocusFirstFieldError(sectionState.fieldErrors);
 
   return (
     <div className="stack">
@@ -159,7 +161,14 @@ export function StepScope({
               <input type="hidden" name="proposalId" value={proposalId} />
               <div className="field">
                 <label htmlFor="title">Custom section title</label>
-                <input id="title" name="title" type="text" required placeholder="e.g. Surface preparation" />
+                <input
+                  id="title"
+                  name="title"
+                  type="text"
+                  placeholder="e.g. Surface preparation"
+                  {...fieldErrorProps(sectionState.fieldErrors, "title")}
+                />
+                <FieldError fieldErrors={sectionState.fieldErrors} id="title" />
               </div>
               <div className="field">
                 <label htmlFor="description">Description</label>

@@ -36,6 +36,7 @@ const MEASUREMENT_TYPES = [
 
 function GroupForm({ proposalId, proposalVersionId }: { proposalId: string; proposalVersionId: string }) {
   const [state, formAction] = useActionState(createMeasurementGroupAction, initialState);
+  useFocusFirstFieldError(state.fieldErrors);
   return (
     <form action={formAction} className="tenant-form" style={{ width: "100%" }}>
       <input type="hidden" name="proposalVersionId" value={proposalVersionId} />
@@ -43,7 +44,13 @@ function GroupForm({ proposalId, proposalVersionId }: { proposalId: string; prop
       {state.error ? <p className="error-banner">{state.error}</p> : null}
       <div className="field" style={{ flex: 1 }}>
         <label htmlFor="groupName">New group name</label>
-        <input id="groupName" name="name" type="text" required placeholder="e.g. Bathroom" />
+        {/* fieldErrors is keyed by the schema's field name ("name"), which
+            also matches this input's `name` attribute -- useFocusFirstFieldError
+            falls back to a [name=...] lookup when id and the error key differ,
+            which is the case here since "name" as an id would collide with
+            ManualMeasurementForm's own "name" field on this same page. */}
+        <input id="groupName" name="name" type="text" placeholder="e.g. Bathroom" {...fieldErrorProps(state.fieldErrors, "name")} />
+        <FieldError fieldErrors={state.fieldErrors} id="name" />
       </div>
       <div className="field" style={{ flex: "0 0 auto" }}>
         <label htmlFor="groupUnitSystem">Units</label>
@@ -126,7 +133,11 @@ function ManualMeasurementForm({
 
       <div className="field">
         <label htmlFor="measurementGroupId">Group</label>
-        <select id="measurementGroupId" name="measurementGroupId" required disabled={measurementGroups.length === 0}>
+        {/* No `required` -- with no groups yet this select's only option is
+            an empty placeholder, but SubmitButton is already disabled in
+            that state, so an empty value can never actually reach the
+            Server Action. */}
+        <select id="measurementGroupId" name="measurementGroupId" disabled={measurementGroups.length === 0}>
           {measurementGroups.length === 0 ? <option value="">Add a group above first</option> : null}
           {measurementGroups.map((g) => (
             <option key={g.id} value={g.id}>
@@ -382,6 +393,7 @@ function GenerateMaterialForm({
   const selectedMeasurement = measurements.find((m) => m.id === measurementId);
   const [materialId, setMaterialId] = useState(catalogResults[0]?.id ?? "");
   const selectedMaterial = catalogResults.find((r) => r.id === materialId);
+  useFocusFirstFieldError(state.fieldErrors);
 
   const availableFields: { value: string; label: string }[] = [];
   if (selectedMeasurement?.area != null) availableFields.push({ value: "area", label: `Area (${selectedMeasurement.area} sq ${selectedMeasurement.unit})` });
@@ -441,7 +453,16 @@ function GenerateMaterialForm({
           <label htmlFor="coverageRate">
             Coverage rate {selectedMaterial ? `(${selectedMaterial.default_unit === "gallon" ? "sq ft per gallon" : `per ${selectedMaterial.default_unit.replace(/_/g, " ")}`})` : ""}
           </label>
-          <input id="coverageRate" name="coverageRate" type="number" min={0.01} step={0.01} required defaultValue="1" />
+          <input
+            id="coverageRate"
+            name="coverageRate"
+            type="number"
+            min={0.01}
+            step={0.01}
+            defaultValue="1"
+            {...fieldErrorProps(state.fieldErrors, "coverageRate")}
+          />
+          <FieldError fieldErrors={state.fieldErrors} id="coverageRate" />
         </div>
         <div className="field" style={{ flex: 1 }}>
           <label htmlFor="coats">Coats</label>
@@ -493,6 +514,7 @@ function GenerateLaborForm({
   const [state, formAction] = useActionState(addLaborFromMeasurementAction, initialState);
   const [measurementId, setMeasurementId] = useState(measurements[0]?.id ?? "");
   const selectedMeasurement = measurements.find((m) => m.id === measurementId);
+  useFocusFirstFieldError(state.fieldErrors);
 
   const canUseArea = selectedMeasurement?.area != null;
   const canUseLinear = selectedMeasurement?.linear_length != null || selectedMeasurement?.perimeter != null;
@@ -519,7 +541,14 @@ function GenerateLaborForm({
 
       <div className="field">
         <label htmlFor="laborLabel">Label</label>
-        <input id="laborLabel" name="label" type="text" required placeholder="e.g. Flooring install labor" />
+        <input
+          id="laborLabel"
+          name="label"
+          type="text"
+          placeholder="e.g. Flooring install labor"
+          {...fieldErrorProps(state.fieldErrors, "label")}
+        />
+        <FieldError fieldErrors={state.fieldErrors} id="label" />
       </div>
 
       <div className="tenant-form" style={{ width: "100%" }}>
@@ -538,8 +567,19 @@ function GenerateLaborForm({
           </select>
         </div>
         <div className="field" style={{ flex: 1 }}>
-          <label htmlFor="laborRate">Rate ($ per unit)</label>
-          <input id="laborRate" name="rate" type="text" inputMode="decimal" required placeholder="e.g. 4.00" />
+          <label htmlFor="rateCents">Rate ($ per unit)</label>
+          {/* id is "rateCents" (not "laborRate") to match the Zod schema's
+              field name -- the form field itself stays name="rate" since
+              that's what the Server Action reads from FormData. */}
+          <input
+            id="rateCents"
+            name="rate"
+            type="text"
+            inputMode="decimal"
+            placeholder="e.g. 4.00"
+            {...fieldErrorProps(state.fieldErrors, "rateCents")}
+          />
+          <FieldError fieldErrors={state.fieldErrors} id="rateCents" />
         </div>
       </div>
 

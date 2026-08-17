@@ -80,7 +80,7 @@ test.describe("Measurements / Takeoff builder", () => {
     // --- Generate labor by area ($4.00/sq ft x 300 sq ft = $1,200.00) ---
     await generatePanel.locator("#laborLabel").fill("Flooring install labor");
     await generatePanel.locator("#pricingMethod").selectOption("area");
-    await generatePanel.locator("#laborRate").fill("4.00");
+    await generatePanel.locator("#rateCents").fill("4.00");
     await generatePanel.getByRole("button", { name: "Add labor to proposal" }).click();
 
     // --- Confirm the generated material landed in Materials & Costs' Saved
@@ -211,7 +211,7 @@ test.describe("Measurements / Takeoff builder", () => {
     // --- Generate labor by area ($4.00/sq ft x 120 sq ft = $480.00) ---
     await generatePanel.locator("#laborLabel").fill("Freehand floor install labor");
     await generatePanel.locator("#pricingMethod").selectOption("area");
-    await generatePanel.locator("#laborRate").fill("4.00");
+    await generatePanel.locator("#rateCents").fill("4.00");
     await generatePanel.getByRole("button", { name: "Add labor to proposal" }).click();
 
     // --- Confirm the generated material: 120 sq ft x 1 coat x 1.10 waste / 1 coverage = 132 sq ft, at $3.50/sq ft = $462.00 ---

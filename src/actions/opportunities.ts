@@ -14,6 +14,7 @@ import {
   convertOpportunitySchema,
 } from "../lib/validation/crm";
 import { friendlyRpcErrorMessage } from "../lib/errors/friendly-message";
+import { zodIssuesToFieldErrors } from "../lib/validation/field-errors";
 import type { ActionResult } from "./auth";
 import type { Database } from "../../types/database";
 
@@ -35,7 +36,9 @@ export async function createOpportunityAction(_prev: ActionResult, formData: For
     expectedCloseDate: formData.get("expectedCloseDate") || undefined,
     assignedTo: formData.get("assignedTo") || undefined,
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
+  }
 
   try {
     await requirePermission(tenantId.data, PERMISSIONS.OPPORTUNITIES_CREATE);
@@ -77,7 +80,9 @@ export async function updateOpportunityAction(_prev: ActionResult, formData: For
     expectedCloseDate: formData.get("expectedCloseDate") || undefined,
     assignedTo: formData.get("assignedTo") || undefined,
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("update_opportunity", {
@@ -107,7 +112,9 @@ export async function changeOpportunityStatusAction(_prev: ActionResult, formDat
     lostReason: formData.get("lostReason") || undefined,
     inspectionScheduledAt: formData.get("inspectionScheduledAt") || undefined,
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("change_opportunity_status", {

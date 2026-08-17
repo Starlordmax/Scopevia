@@ -38,7 +38,9 @@ export async function createMeasurementGroupAction(_prev: ActionResult, formData
     unitSystem: formData.get("unitSystem") || undefined,
     serviceType: formData.get("serviceType") || undefined,
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
+  }
 
   const supabase = await createClient();
   // `as string` cast for the same reason as update_proposal_scope
@@ -316,7 +318,9 @@ export async function generateMaterialFromMeasurementAction(_prev: ActionResult,
     sectionId: formData.get("sectionId") || undefined,
     unitPriceCentsOverride: formData.get("unitPriceOverride") || undefined,
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
+  }
 
   const supabase = await createClient();
   // `as` casts for the same reason as update_proposal_scope (docs/37):
@@ -355,7 +359,9 @@ export async function addLaborFromMeasurementAction(_prev: ActionResult, formDat
     pricingMethod: formData.get("pricingMethod"),
     rateCents: formData.get("rate"),
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("add_proposal_labor_item_from_measurement", {

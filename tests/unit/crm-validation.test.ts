@@ -91,14 +91,30 @@ describe("createOpportunitySchema", () => {
 });
 
 describe("changeOpportunityStatusSchema", () => {
-  it("accepts every declared opportunity status as a syntactically valid target", () => {
+  it("accepts every declared opportunity status as a syntactically valid target, given its required companion field", () => {
     for (const status of OPPORTUNITY_STATUSES) {
-      expect(changeOpportunityStatusSchema.safeParse({ newStatus: status }).success).toBe(true);
+      const extra =
+        status === "lost"
+          ? { lostReason: "Client went with another contractor" }
+          : status === "inspection_scheduled"
+            ? { inspectionScheduledAt: "2026-01-01T10:00" }
+            : {};
+      expect(changeOpportunityStatusSchema.safeParse({ newStatus: status, ...extra }).success).toBe(true);
     }
   });
 
   it("rejects an unknown status", () => {
     expect(changeOpportunityStatusSchema.safeParse({ newStatus: "made_up" }).success).toBe(false);
+  });
+
+  it("requires a lost reason when moving to lost", () => {
+    const result = changeOpportunityStatusSchema.safeParse({ newStatus: "lost" });
+    expect(result.success).toBe(false);
+  });
+
+  it("requires an inspection date when moving to inspection_scheduled", () => {
+    const result = changeOpportunityStatusSchema.safeParse({ newStatus: "inspection_scheduled" });
+    expect(result.success).toBe(false);
   });
 });
 

@@ -17,12 +17,15 @@ export async function uploadCurrentJobPhotoAction(_prev: ActionResult, formData:
   if (!tenantId.success || !proposalVersionId.success || !proposalId.success) return { error: "Invalid request" };
 
   const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) return { error: "Choose an image to upload" };
+  if (!(file instanceof File) || file.size === 0) {
+    const message = "Please upload a PNG, JPG, or WEBP image under 10 MB.";
+    return { error: message, fieldErrors: { file: message } };
+  }
 
   const caption = String(formData.get("caption") ?? "");
 
   const uploadResult = await uploadMediaFile(tenantId.data, file, "current_job", caption);
-  if ("error" in uploadResult) return { error: uploadResult.error };
+  if ("error" in uploadResult) return { error: uploadResult.error, fieldErrors: { file: uploadResult.error } };
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("attach_media_to_proposal", {

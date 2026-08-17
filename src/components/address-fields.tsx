@@ -1,6 +1,7 @@
 "use client";
 
 import { resolveAddressAutocompleteProvider } from "../lib/address/autocomplete-provider";
+import { FieldError, fieldErrorProps } from "./form-field-error";
 
 /**
  * Shared "Address" field group — used by the New Client form
@@ -8,7 +9,9 @@ import { resolveAddressAutocompleteProvider } from "../lib/address/autocomplete-
  * (`src/app/(protected)/proposals/new/quick-create-client-modal.tsx`).
  * Every field is optional; only `postalCode` has any format validation
  * (server-side, in `quickCreateClientSchema`/`createClientSchema`), and
- * only when it's actually present.
+ * only when it's actually present. `fieldErrors` is passed through from
+ * whichever caller's own Server Action state — see
+ * docs/74-custom-service-name-and-multistroke-drawing.md, "Validation UX."
  *
  * Autocomplete: `data-address-autocomplete` carries the resolved provider
  * ("none" unless both `NEXT_PUBLIC_ADDRESS_AUTOCOMPLETE_PROVIDER` and
@@ -21,6 +24,7 @@ import { resolveAddressAutocompleteProvider } from "../lib/address/autocomplete-
  */
 export function AddressFields({
   defaultValues,
+  fieldErrors,
 }: {
   defaultValues?: {
     addressLine1?: string | null;
@@ -30,6 +34,7 @@ export function AddressFields({
     postalCode?: string | null;
     countryCode?: string | null;
   };
+  fieldErrors?: Record<string, string>;
 }) {
   const provider = resolveAddressAutocompleteProvider(
     process.env.NEXT_PUBLIC_ADDRESS_AUTOCOMPLETE_PROVIDER,
@@ -85,7 +90,9 @@ export function AddressFields({
             placeholder="e.g. 33101"
             autoComplete="off"
             defaultValue={defaultValues?.postalCode ?? ""}
+            {...fieldErrorProps(fieldErrors, "postalCode")}
           />
+          <FieldError fieldErrors={fieldErrors} id="postalCode" />
         </div>
         <div className="field" style={{ flex: 1 }}>
           <label htmlFor="countryCode">Country</label>

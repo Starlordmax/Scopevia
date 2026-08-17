@@ -79,7 +79,7 @@ test.describe("Client contacts", () => {
     await expect(page.locator("li.card").filter({ hasText: "Gamma" }).getByText("Archived")).toHaveCount(0);
   });
 
-  test("required-field validation blocks an empty first name client-side; no duplicate created on rapid double submit", async ({
+  test("required-field validation shows a red, inline error for an empty first name; no duplicate created on rapid double submit", async ({
     page,
   }) => {
     const suffix = uniqueSuffix();
@@ -87,13 +87,19 @@ test.describe("Client contacts", () => {
 
     await page.getByRole("button", { name: "+ Add contact" }).click();
     await page.getByRole("button", { name: "Add contact" }).click();
-    // Still on the same page (native required validation blocked it) — the
-    // form itself is still open, not replaced by a fresh empty toggle state.
-    await expect(page.getByLabel("First name")).toBeVisible();
-    const isValid = await page.getByLabel("First name").evaluate((el: HTMLInputElement) => el.validity.valid);
-    expect(isValid).toBe(false);
+    // No `required` attribute — the empty submit reaches the Server
+    // Action, which returns a field-level error rendered inline (red
+    // border + message + focus), not a browser popup. The form itself is
+    // still open, not replaced by a fresh empty toggle state.
+    const firstName = page.getByLabel("First name");
+    await expect(firstName).toBeVisible();
+    await expect(firstName).toHaveClass(/field-input-error/);
+    // The same message also appears in the top-of-form error banner (by
+    // design), so target the field-specific message by id.
+    await expect(page.locator("#firstName-error")).toHaveText("First name is required");
+    await expect(firstName).toBeFocused();
 
-    await page.getByLabel("First name").fill(`Delta-${suffix}`);
+    await firstName.fill(`Delta-${suffix}`);
     const submit = page.getByRole("button", { name: "Add contact" });
     // Fire two rapid clicks to simulate an eager double-submit; the button
     // disables itself on the first click (see components/submit-button.tsx),

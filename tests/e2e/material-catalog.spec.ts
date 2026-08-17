@@ -27,7 +27,7 @@ test.describe("Material catalog by ZIP", () => {
     await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
     await page.goto("/proposals/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await page.waitForURL(/clientId=/);
     await page.getByLabel("Proposal title").fill(proposalTitle);
     await page.getByLabel("Service type").selectOption("interior_painting");
@@ -155,7 +155,7 @@ test.describe("Material catalog by ZIP", () => {
     await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
     await page.goto("/proposals/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await page.waitForURL(/clientId=/);
     await page.getByLabel("Proposal title").fill(`E2E No Price ${suffix}`);
     await page.getByLabel("Service type").selectOption("flooring");
@@ -188,7 +188,7 @@ test.describe("Material catalog by ZIP", () => {
     await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
     await page.goto("/proposals/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await page.waitForURL(/clientId=/);
     await page.getByLabel("Proposal title").fill(`E2E Category Filter ${suffix}`);
     await page.getByLabel("Service type").selectOption("bathroom_remodeling");
@@ -230,7 +230,7 @@ test.describe("Material catalog by ZIP", () => {
     await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
     await page.goto("/proposals/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await page.waitForURL(/clientId=/);
     await page.getByLabel("Proposal title").fill(`E2E Empty States ${suffix}`);
     await page.getByLabel("Service type").selectOption("custom");
@@ -281,7 +281,7 @@ test.describe("Material catalog by ZIP", () => {
     await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
     await page.goto("/proposals/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await page.waitForURL(/clientId=/);
     await page.getByLabel("Proposal title").fill(`E2E Pagination ${suffix}`);
     await page.getByLabel("Service type").selectOption("custom");

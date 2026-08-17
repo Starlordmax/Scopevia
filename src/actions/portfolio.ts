@@ -8,6 +8,7 @@ import { uuidSchema } from "../lib/validation/schemas";
 import { createPortfolioProjectSchema } from "../lib/validation/proposals";
 import { uploadMediaFile } from "../lib/storage/media";
 import { friendlyRpcErrorMessage } from "../lib/errors/friendly-message";
+import { zodIssuesToFieldErrors } from "../lib/validation/field-errors";
 import type { ActionResult } from "./auth";
 import type { Database } from "../../types/database";
 
@@ -26,7 +27,9 @@ export async function createPortfolioProjectAction(_prev: ActionResult, formData
     locationLabel: formData.get("locationLabel") || undefined,
     completedAt: formData.get("completedAt") || undefined,
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -58,7 +61,9 @@ export async function updatePortfolioProjectAction(_prev: ActionResult, formData
     locationLabel: formData.get("locationLabel") || undefined,
     completedAt: formData.get("completedAt") || undefined,
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("update_portfolio_project", {
@@ -112,12 +117,15 @@ export async function uploadPortfolioPhotoAction(_prev: ActionResult, formData: 
   if (!tenantId.success || !portfolioProjectId.success) return { error: "Invalid request" };
 
   const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) return { error: "Choose an image to upload" };
+  if (!(file instanceof File) || file.size === 0) {
+    const message = "Please upload a PNG, JPG, or WEBP image under 10 MB.";
+    return { error: message, fieldErrors: { file: message } };
+  }
 
   const caption = String(formData.get("caption") ?? "");
 
   const uploadResult = await uploadMediaFile(tenantId.data, file, "portfolio", caption);
-  if ("error" in uploadResult) return { error: uploadResult.error };
+  if ("error" in uploadResult) return { error: uploadResult.error, fieldErrors: { file: uploadResult.error } };
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("add_portfolio_project_media", {

@@ -8,14 +8,10 @@ const optionalText = (max: number) =>
     .optional()
     .transform((v) => (v === "" ? undefined : v));
 
-export const serviceTypeSchema = z.enum([
-  "interior_painting",
-  "exterior_painting",
-  "bathroom_remodeling",
-  "general_remodeling",
-  "flooring",
-  "custom",
-]);
+export const serviceTypeSchema = z.enum(
+  ["interior_painting", "exterior_painting", "bathroom_remodeling", "general_remodeling", "flooring", "custom"],
+  { message: "Please select a service type." }
+);
 
 export const sectionTypeSchema = z.enum(["scope", "schedule", "materials", "additional_services", "exclusions", "custom"]);
 
@@ -66,7 +62,7 @@ function refineCustomServiceName(data: { serviceType: string; customServiceName?
 
 export const createProposalDirectSchema = z
   .object({
-    clientId: z.string().uuid(),
+    clientId: z.string({ message: "Please select a client." }).uuid("Please select a client."),
     clientContactId: z.string().uuid().optional(),
     opportunityId: z.string().uuid().optional(),
     title: z.string().trim().min(1, "Title is required").max(160),
@@ -370,9 +366,16 @@ export const addLaborFromMeasurementSchema = z.object({
 
 export const updateProposalSettingsSchema = z.object({
   defaultCustomerHourlyRate: requiredDollarsToCentsSchema,
-  defaultHoursPerDay: z.coerce.number().min(0.5).max(24),
+  defaultHoursPerDay: z.coerce
+    .number({ message: "Enter hours per day between 0.5 and 24." })
+    .min(0.5, "Enter hours per day between 0.5 and 24.")
+    .max(24, "Enter hours per day between 0.5 and 24."),
   defaultTaxRatePercent: z.string().trim().optional().default("0"),
-  defaultProposalValidDays: z.coerce.number().int().min(1).max(365),
+  defaultProposalValidDays: z.coerce
+    .number({ message: "Enter a number of days between 1 and 365." })
+    .int("Enter a number of days between 1 and 365.")
+    .min(1, "Enter a number of days between 1 and 365.")
+    .max(365, "Enter a number of days between 1 and 365."),
   defaultTerms: optionalText(4000).transform((v) => v ?? ""),
   defaultExclusions: optionalText(4000).transform((v) => v ?? ""),
   proposalNumberPrefix: z.string().trim().min(1, "Prefix is required").max(20),

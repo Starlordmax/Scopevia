@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { removeBusinessLogoAction } from "../../../actions/branding";
 import type { ActionResult } from "../../../actions/auth";
 import { SubmitButton } from "../../../components/submit-button";
+import { FieldError, fieldErrorProps, useFocusFirstFieldError } from "../../../components/form-field-error";
 
 const initialState: ActionResult = {};
 const GENERIC_UPLOAD_ERROR = "We couldn't upload the logo right now. Please try again.";
@@ -41,23 +42,36 @@ export function BusinessBrandingCard({
   const router = useRouter();
   const uploadFormRef = useRef<HTMLFormElement>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadFieldErrors, setUploadFieldErrors] = useState<Record<string, string> | undefined>(undefined);
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [removeState, removeAction] = useActionState(removeBusinessLogoAction, initialState);
+  useFocusFirstFieldError(uploadFieldErrors);
 
   async function handleUploadSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setUploadError(null);
+    setUploadFieldErrors(undefined);
     setUploadMessage(null);
-    setIsUploading(true);
 
+    // No `required` on the file input (see below) -- an empty selection
+    // must reach our own red-state UI instead of the browser's native
+    // popup, so this client-side check stands in for it.
+    const formData = new FormData(event.currentTarget);
+    const file = formData.get("file");
+    if (!(file instanceof File) || file.size === 0) {
+      setUploadFieldErrors({ file: "Choose a logo file to upload." });
+      return;
+    }
+
+    setIsUploading(true);
     try {
-      const formData = new FormData(event.currentTarget);
       const response = await fetch("/api/business-branding/logo", { method: "POST", body: formData });
       const body: ActionResult = await response.json().catch(() => ({ error: GENERIC_UPLOAD_ERROR }));
 
       if (!response.ok || body.error) {
         setUploadError(body.error ?? GENERIC_UPLOAD_ERROR);
+        setUploadFieldErrors(body.fieldErrors);
         return;
       }
 
@@ -95,8 +109,18 @@ export function BusinessBrandingCard({
             {uploadMessage ? <p className="success-banner">{uploadMessage}</p> : null}
             <input type="hidden" name="tenantId" value={tenantId} />
             <div className="field">
-              <label htmlFor="logoFile">{logoUrl ? "Replace logo" : "Upload logo"}</label>
-              <input id="logoFile" name="file" type="file" accept="image/png,image/jpeg,image/webp" required />
+              <label htmlFor="file">{logoUrl ? "Replace logo" : "Upload logo"}</label>
+              {/* No `required` -- an empty submit must reach our own
+                  client-side check (above) and red-state UI, not the
+                  browser's native popup. */}
+              <input
+                id="file"
+                name="file"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                {...fieldErrorProps(uploadFieldErrors, "file")}
+              />
+              <FieldError fieldErrors={uploadFieldErrors} id="file" />
               <span className="hint">Recommended: PNG, JPG, or WEBP. Max 10 MB.</span>
             </div>
             <button type="submit" className="button-success" disabled={isUploading} aria-busy={isUploading}>

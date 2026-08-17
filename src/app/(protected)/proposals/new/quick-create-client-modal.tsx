@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { createQuickClientAction } from "../../../../actions/clients";
 import { AddressFields } from "../../../../components/address-fields";
+import { FieldError, fieldErrorProps, useFocusFirstFieldError } from "../../../../components/form-field-error";
 
 const noopSubscribe = () => () => {};
 
@@ -42,7 +43,9 @@ export function QuickCreateClientModal({ tenantId }: { tenantId: string }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [clientType, setClientType] = useState<"individual" | "business">("individual");
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string> | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  useFocusFirstFieldError(fieldErrors);
   // The trigger button lives inside the proposal page's own <form> (it's
   // just a plain button, that's fine); the <dialog> — which has its OWN
   // <form> inside it — must NOT be a DOM descendant of that outer <form>,
@@ -53,6 +56,7 @@ export function QuickCreateClientModal({ tenantId }: { tenantId: string }) {
 
   function openModal() {
     setError(null);
+    setFieldErrors(undefined);
     setClientType("individual");
     formRef.current?.reset();
     dialogRef.current?.showModal();
@@ -65,16 +69,17 @@ export function QuickCreateClientModal({ tenantId }: { tenantId: string }) {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setFieldErrors(undefined);
     setIsSubmitting(true);
 
     const formData = new FormData(event.currentTarget);
     const result = await createQuickClientAction({
       tenantId,
       clientType,
-      firstName: String(formData.get("quickFirstName") ?? ""),
-      lastName: String(formData.get("quickLastName") ?? ""),
-      email: String(formData.get("quickEmail") ?? ""),
-      phone: String(formData.get("quickPhone") ?? ""),
+      firstName: String(formData.get("firstName") ?? ""),
+      lastName: String(formData.get("lastName") ?? ""),
+      email: String(formData.get("email") ?? ""),
+      phone: String(formData.get("phone") ?? ""),
       addressLine1: String(formData.get("addressLine1") ?? ""),
       addressLine2: String(formData.get("addressLine2") ?? ""),
       city: String(formData.get("city") ?? ""),
@@ -87,6 +92,7 @@ export function QuickCreateClientModal({ tenantId }: { tenantId: string }) {
 
     if (!result.ok) {
       setError(result.error);
+      setFieldErrors(result.fieldErrors);
       return;
     }
 
@@ -121,26 +127,60 @@ export function QuickCreateClientModal({ tenantId }: { tenantId: string }) {
 
         <div className="tenant-form" style={{ width: "100%" }}>
           <div className="field" style={{ flex: 1 }}>
-            <label htmlFor="quickFirstName">First name</label>
-            <input id="quickFirstName" name="quickFirstName" type="text" required maxLength={80} autoComplete="off" />
+            <label htmlFor="firstName">First name</label>
+            {/* No `required` -- an empty submit must reach our own
+                red-state UI, not the browser's native popup. */}
+            <input
+              id="firstName"
+              name="firstName"
+              type="text"
+              maxLength={80}
+              autoComplete="off"
+              {...fieldErrorProps(fieldErrors, "firstName")}
+            />
+            <FieldError fieldErrors={fieldErrors} id="firstName" />
           </div>
           <div className="field" style={{ flex: 1 }}>
-            <label htmlFor="quickLastName">Last name</label>
-            <input id="quickLastName" name="quickLastName" type="text" required maxLength={80} autoComplete="off" />
+            <label htmlFor="lastName">Last name</label>
+            <input
+              id="lastName"
+              name="lastName"
+              type="text"
+              maxLength={80}
+              autoComplete="off"
+              {...fieldErrorProps(fieldErrors, "lastName")}
+            />
+            <FieldError fieldErrors={fieldErrors} id="lastName" />
           </div>
         </div>
 
         <div className="field">
-          <label htmlFor="quickEmail">Email</label>
-          <input id="quickEmail" name="quickEmail" type="email" required maxLength={255} autoComplete="off" />
+          <label htmlFor="email">Email</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            maxLength={255}
+            autoComplete="off"
+            {...fieldErrorProps(fieldErrors, "email")}
+          />
+          <FieldError fieldErrors={fieldErrors} id="email" />
         </div>
 
         <div className="field">
-          <label htmlFor="quickPhone">Phone</label>
-          <input id="quickPhone" name="quickPhone" type="tel" required maxLength={30} autoComplete="off" />
+          <label htmlFor="phone">Phone</label>
+          <input
+            id="phone"
+            name="phone"
+            type="tel"
+            maxLength={30}
+            autoComplete="off"
+            {...fieldErrorProps(fieldErrors, "phone")}
+          />
+          <FieldError fieldErrors={fieldErrors} id="phone" />
         </div>
 
-        <AddressFields />
+        <AddressFields fieldErrors={fieldErrors} />
 
         <div className="tenant-form" style={{ justifyContent: "flex-end" }}>
           <button type="button" className="button-secondary" onClick={closeModal} disabled={isSubmitting}>

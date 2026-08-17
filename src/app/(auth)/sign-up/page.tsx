@@ -4,11 +4,13 @@ import { useActionState } from "react";
 import Link from "next/link";
 import { signUpAction, type ActionResult } from "../../../actions/auth";
 import { SubmitButton } from "../../../components/submit-button";
+import { FieldError, fieldErrorProps, useFocusFirstFieldError } from "../../../components/form-field-error";
 
 const initialState: ActionResult = {};
 
 export default function SignUpPage() {
   const [state, formAction] = useActionState(signUpAction, initialState);
+  useFocusFirstFieldError(state.fieldErrors);
 
   return (
     <div className="card stack">
@@ -27,12 +29,21 @@ export default function SignUpPage() {
 
         <div className="field">
           <label htmlFor="email">Email</label>
-          <input id="email" name="email" type="email" autoComplete="email" required />
+          <input id="email" name="email" type="email" autoComplete="email" {...fieldErrorProps(state.fieldErrors, "email")} />
+          <FieldError fieldErrors={state.fieldErrors} id="email" />
         </div>
 
         <div className="field">
           <label htmlFor="password">Password</label>
-          <input id="password" name="password" type="password" autoComplete="new-password" minLength={8} required />
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="new-password"
+            minLength={8}
+            {...fieldErrorProps(state.fieldErrors, "password")}
+          />
+          <FieldError fieldErrors={state.fieldErrors} id="password" />
           <span className="hint">At least 8 characters.</span>
         </div>
 

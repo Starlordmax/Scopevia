@@ -5,6 +5,7 @@ import Link from "next/link";
 import { addProposalLaborItemAction, archiveProposalLaborItemAction } from "../../../../../actions/proposals";
 import type { ActionResult } from "../../../../../actions/auth";
 import { SubmitButton } from "../../../../../components/submit-button";
+import { FieldError, fieldErrorProps, useFocusFirstFieldError } from "../../../../../components/form-field-error";
 import { computeLaborHours, computeLaborTotalCents } from "../../../../../lib/proposals/calculations";
 import { formatCents } from "../../../../../lib/proposals/format";
 import type { Database } from "../../../../../../types/database";
@@ -40,6 +41,7 @@ export function StepLabor({
   const [hoursPerDay, setHoursPerDay] = useState(8);
   const [hourlyRate, setHourlyRate] = useState((defaultHourlyRateCents / 100).toFixed(2));
   const [fixedPrice, setFixedPrice] = useState("");
+  useFocusFirstFieldError(state.fieldErrors);
 
   // Orientative only — the value that actually saves comes back from the
   // server's recalculate_proposal_version(). See docs/34-proposal-builder-ux.md
@@ -113,9 +115,10 @@ export function StepLabor({
                   id="label"
                   name="label"
                   type="text"
-                  required
                   placeholder={pricingMethod === "hourly" ? "e.g. Lead painter, Remodeling crew" : "e.g. Bathroom remodeling labor"}
+                  {...fieldErrorProps(state.fieldErrors, "label")}
                 />
+                <FieldError fieldErrors={state.fieldErrors} id="label" />
               </div>
 
               {pricingMethod === "hourly" ? (
@@ -127,10 +130,11 @@ export function StepLabor({
                       name="workerCount"
                       type="number"
                       min={1}
-                      required
                       value={workerCount}
                       onChange={(e) => setWorkerCount(Number(e.target.value) || 0)}
+                      {...fieldErrorProps(state.fieldErrors, "workerCount")}
                     />
+                    <FieldError fieldErrors={state.fieldErrors} id="workerCount" />
                   </div>
                   <div className="field" style={{ flex: 1 }}>
                     <label htmlFor="estimatedDays">Days</label>
@@ -140,10 +144,11 @@ export function StepLabor({
                       type="number"
                       min={0.5}
                       step={0.5}
-                      required
                       value={estimatedDays}
                       onChange={(e) => setEstimatedDays(Number(e.target.value) || 0)}
+                      {...fieldErrorProps(state.fieldErrors, "estimatedDays")}
                     />
+                    <FieldError fieldErrors={state.fieldErrors} id="estimatedDays" />
                   </div>
                   <div className="field" style={{ flex: 1 }}>
                     <label htmlFor="hoursPerDay">Hours/day</label>
@@ -154,40 +159,49 @@ export function StepLabor({
                       min={0.5}
                       max={24}
                       step={0.5}
-                      required
                       value={hoursPerDay}
                       onChange={(e) => setHoursPerDay(Number(e.target.value) || 0)}
+                      {...fieldErrorProps(state.fieldErrors, "hoursPerDay")}
                     />
+                    <FieldError fieldErrors={state.fieldErrors} id="hoursPerDay" />
                   </div>
                 </div>
               ) : null}
 
               {pricingMethod === "hourly" ? (
                 <div className="field">
-                  <label htmlFor="hourlyRate">Rate per hour ($)</label>
+                  {/* id is "hourlyRateCents" (not "hourlyRate") to match
+                      the Zod schema's field name; `name` stays
+                      "hourlyRate" for the Server Action's FormData read. */}
+                  <label htmlFor="hourlyRateCents">Rate per hour ($)</label>
                   <input
-                    id="hourlyRate"
+                    id="hourlyRateCents"
                     name="hourlyRate"
                     type="text"
                     inputMode="decimal"
-                    required
                     value={hourlyRate}
                     onChange={(e) => setHourlyRate(e.target.value)}
+                    {...fieldErrorProps(state.fieldErrors, "hourlyRateCents")}
                   />
+                  <FieldError fieldErrors={state.fieldErrors} id="hourlyRateCents" />
                 </div>
               ) : (
                 <div className="field">
-                  <label htmlFor="fixedPrice">Fixed labor price ($)</label>
+                  {/* id is "fixedTotalCents" (not "fixedPrice") to match
+                      the Zod schema's field name; `name` stays
+                      "fixedPrice" for the Server Action's FormData read. */}
+                  <label htmlFor="fixedTotalCents">Fixed labor price ($)</label>
                   <input
-                    id="fixedPrice"
+                    id="fixedTotalCents"
                     name="fixedPrice"
                     type="text"
                     inputMode="decimal"
-                    required
                     placeholder="e.g. 700.00"
                     value={fixedPrice}
                     onChange={(e) => setFixedPrice(e.target.value)}
+                    {...fieldErrorProps(state.fieldErrors, "fixedTotalCents")}
                   />
+                  <FieldError fieldErrors={state.fieldErrors} id="fixedTotalCents" />
                   <span className="hint">You&apos;re entering the total labor cost directly — no hourly calculation.</span>
                 </div>
               )}
