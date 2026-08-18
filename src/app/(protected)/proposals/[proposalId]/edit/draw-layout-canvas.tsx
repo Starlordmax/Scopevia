@@ -48,11 +48,17 @@ function GroupAndNameFields({
       <div className="field">
         <label htmlFor={`${idPrefix}GroupId`}>Group</label>
         {/* No `required` -- with no groups yet this select's only option is
-            an empty placeholder, but SubmitButton is already disabled in
-            that state, so an empty value can never actually reach the
-            Server Action; consistent with this file's other fields, which
-            never rely on native constraint validation. */}
-        <select id={`${idPrefix}GroupId`} name="measurementGroupId" disabled={measurementGroups.length === 0}>
+            an empty placeholder; Save is no longer disabled just because
+            of that (see handleSubmit in FreehandDrawForm/RectangleDrawForm),
+            so an empty/missing group now reaches the same red-state UI as
+            every other field instead of silently blocking the click with
+            no explanation. */}
+        <select
+          id={`${idPrefix}GroupId`}
+          name="measurementGroupId"
+          disabled={measurementGroups.length === 0}
+          {...fieldErrorProps(fieldErrors, "measurementGroupId")}
+        >
           {measurementGroups.length === 0 ? <option value="">Create a group first (Manual entry tab)</option> : null}
           {measurementGroups.map((g) => (
             <option key={g.id} value={g.id}>
@@ -60,6 +66,7 @@ function GroupAndNameFields({
             </option>
           ))}
         </select>
+        <FieldError fieldErrors={fieldErrors} id="measurementGroupId" />
       </div>
       <div className="field">
         <label htmlFor="name">Name</label>
@@ -195,23 +202,35 @@ function FreehandDrawForm({
   });
 
   // The Save button used to be `disabled` whenever there was nothing drawn
-  // yet or the reference length was missing/invalid -- which meant a click
-  // in exactly those states did NOTHING: no error, no red border, no
-  // explanation, since a disabled button can't be clicked at all and the
-  // Server Action (the only thing that ever populated `fieldErrors`) never
-  // ran. Save is now always clickable (except mid-drag or with no group to
-  // save into); these two geometry-blocking cases are instead caught
-  // HERE, client-side, before the browser-level form submission — the
-  // same visual result (red border, message, aria-invalid, focus) as a
-  // server round trip, just without one, since the server has no way to
-  // know about pixel geometry it was never sent. `attemptedSubmit` keeps
-  // these hidden until the user actually tries to save, and because
-  // they're recomputed every render (not "set once"), fixing the
-  // underlying issue clears the red state immediately, before a re-submit.
+  // yet, the reference length was missing/invalid, or no measurement
+  // group existed yet -- which meant a click in any of those states did
+  // NOTHING: no error, no red border, no explanation, since a disabled
+  // button can't be clicked at all and the Server Action (the only thing
+  // that ever populated `fieldErrors`) never ran. A real user hit exactly
+  // this: drew a full shape, entered a reference length, but never
+  // created a group first -- Save silently did nothing and "Continue to
+  // Scope of Work" let them leave with the drawing un-saved and no
+  // indication why. Save is now always clickable (except mid-drag); all
+  // three blocking cases are instead caught HERE, client-side, before the
+  // browser-level form submission — the same visual result (red border,
+  // message, aria-invalid, focus) as a server round trip, just without
+  // one, since the server has no way to know about pixel geometry it was
+  // never sent, and a nonexistent group has nothing for it to validate.
+  // `attemptedSubmit` keeps these hidden until the user actually tries to
+  // save, and because they're recomputed every render (not "set once"),
+  // fixing the underlying issue clears the red state immediately, before
+  // a re-submit. `measurementGroups.length === 0` is a reliable signal
+  // for "no group selected" without needing to track the uncontrolled
+  // <select>'s own value: once at least one group exists, a native
+  // <select> can never be left on its disabled placeholder option (the
+  // browser auto-selects the first real option instead), so the only way
+  // this field can actually be empty is if there's nothing to select at all.
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
   const clientFieldErrors: Record<string, string> = {};
   if (attemptedSubmit) {
-    if (!hasEnoughPoints) {
+    if (measurementGroups.length === 0) {
+      clientFieldErrors.measurementGroupId = "Create a measurement group before saving.";
+    } else if (!hasEnoughPoints) {
       clientFieldErrors.drawing = "Draw the area before saving.";
     } else if (referenceLength <= 0) {
       clientFieldErrors.scaleReferenceLength = "Enter a reference length greater than 0.";
@@ -223,7 +242,7 @@ function FreehandDrawForm({
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     setAttemptedSubmit(true);
-    if (!hasEnoughPoints || referenceLength <= 0) {
+    if (measurementGroups.length === 0 || !hasEnoughPoints || referenceLength <= 0) {
       e.preventDefault();
     }
   }
@@ -431,14 +450,15 @@ function FreehandDrawForm({
           <p className="hint">Draw a shape, close it (or leave it open for a linear path), and enter its reference width to see the calculated area/length.</p>
         )}
 
-        {/* Deliberately NOT disabled just because there's no drawing yet or
-            the reference length is invalid -- those are exactly the two
-            things this button's own click is supposed to surface as a
-            red-state error (see handleSubmit above). A disabled button
-            can't be clicked at all, so gating on them here would silently
-            swallow the click with no explanation, same as the removed
-            `required` attribute elsewhere in this app. */}
-        <SubmitButton pendingText="Saving…" className="button-primary" disabled={measurementGroups.length === 0 || isDrawing}>
+        {/* Deliberately NOT disabled just because there's no group yet,
+            no drawing yet, or the reference length is invalid -- those
+            are exactly the three things this button's own click is
+            supposed to surface as a red-state error (see handleSubmit
+            above). A disabled button can't be clicked at all, so gating
+            on them here would silently swallow the click with no
+            explanation, same as the removed `required` attribute
+            elsewhere in this app. Only mid-drag stays a real block. */}
+        <SubmitButton pendingText="Saving…" className="button-primary" disabled={isDrawing}>
           Save drawn measurement
         </SubmitButton>
       </form>
@@ -528,22 +548,32 @@ function RectangleDrawForm({
     : "";
 
   // Same fix as FreehandDrawForm above: Save used to be `disabled` whenever
-  // nothing was drawn, so a click in that state did nothing visible at
-  // all. Now always clickable (bar mid-drag/no group); "nothing drawn" is
-  // instead caught client-side and shown the same way a server error
-  // would be. (Submitting an empty rectangle to the server was also
-  // considered, but shapeData="" fails JSON.parse() server-side and
-  // surfaces a generic, non-field-specific "Invalid drawing data" —
-  // strictly worse than catching it here with a real field-level message.)
+  // nothing was drawn OR no measurement group existed yet, so a click in
+  // either state did nothing visible at all -- a real user hit exactly
+  // this (drew a shape, set a reference length, but never created a
+  // group first) and had no idea why Save wasn't working. Now always
+  // clickable (bar mid-drag); both cases are instead caught client-side
+  // and shown the same way a server error would be. (Submitting an empty
+  // rectangle to the server was also considered, but shapeData="" fails
+  // JSON.parse() server-side and surfaces a generic, non-field-specific
+  // "Invalid drawing data" — strictly worse than catching it here with a
+  // real field-level message.)
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
-  const clientFieldErrors: Record<string, string> = attemptedSubmit && !hasShape ? { drawing: "Draw the area before saving." } : {};
+  const clientFieldErrors: Record<string, string> = {};
+  if (attemptedSubmit) {
+    if (measurementGroups.length === 0) {
+      clientFieldErrors.measurementGroupId = "Create a measurement group before saving.";
+    } else if (!hasShape) {
+      clientFieldErrors.drawing = "Draw the area before saving.";
+    }
+  }
   const fieldErrors: Record<string, string> = { ...state.fieldErrors, ...clientFieldErrors };
   const drawingFieldError = fieldErrors.drawing;
   useFocusFirstFieldError(fieldErrors);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     setAttemptedSubmit(true);
-    if (!hasShape) {
+    if (measurementGroups.length === 0 || !hasShape) {
       e.preventDefault();
     }
   }
@@ -676,8 +706,9 @@ function RectangleDrawForm({
           <p className="hint">Draw a rectangle and enter its real-world width to see the calculated area.</p>
         )}
 
-        {/* Not disabled on `!hasShape` -- same reasoning as FreehandDrawForm's Save button above. */}
-        <SubmitButton pendingText="Saving…" className="button-primary" disabled={measurementGroups.length === 0}>
+        {/* Not disabled on `!hasShape` or `measurementGroups.length === 0` --
+            same reasoning as FreehandDrawForm's Save button above. */}
+        <SubmitButton pendingText="Saving…" className="button-primary">
           Save drawn measurement
         </SubmitButton>
       </form>

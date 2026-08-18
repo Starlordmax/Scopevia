@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fix — Measurements Save button also silently blocked on a missing group
+
+A third instance of the same bug documented below: a real user drew a
+full shape, closed it, and entered a valid reference length, but had
+never created a measurement group first — `Save drawn measurement` was
+*also* `disabled` whenever no group existed, on top of the two
+conditions already fixed. The click did nothing, and nothing explained
+why. Fixed the same way: Save (Draw layout's Freehand and Rectangle
+modes, and Manual entry) is no longer disabled on a missing group; it's
+instead caught client-side and shown as a red error — "Create a
+measurement group before saving." — directly on the Group field, using
+the same primitives as every other field. The in-progress drawing is
+never lost. New E2E test reproduces the exact reported scenario with a
+real screenshot. See [docs/76](docs/76-measurements-draw-validation-visible-fix.md), "Addendum."
+
 ### Fix — Measurements' Draw layout validation was invisible in the real UI
 
 The previous fix built the correct `fieldErrors`/red-border/`aria-invalid`

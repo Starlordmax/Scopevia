@@ -121,10 +121,28 @@ function ManualMeasurementForm({
   const previewWithWaste =
     preview && "area" in preview && preview.area != null ? preview.area * (1 + wasteBps / 10000) : null;
 
-  useFocusFirstFieldError(state.fieldErrors);
+  // Same fix as draw-layout-canvas.tsx's Save buttons: this form's Save
+  // used to be `disabled` whenever no measurement group existed yet, so a
+  // click in that state did nothing visible at all -- no error, no red
+  // border, no explanation. Save is now always clickable; a missing
+  // group is instead caught client-side (the server parses
+  // measurementGroupId outside its Zod schema and would otherwise only
+  // ever return a generic, non-field-specific "Invalid request").
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+  const clientFieldErrors: Record<string, string> =
+    attemptedSubmit && measurementGroups.length === 0 ? { measurementGroupId: "Create a measurement group before saving." } : {};
+  const fieldErrors: Record<string, string> = { ...state.fieldErrors, ...clientFieldErrors };
+  useFocusFirstFieldError(fieldErrors);
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    setAttemptedSubmit(true);
+    if (measurementGroups.length === 0) {
+      e.preventDefault();
+    }
+  }
 
   return (
-    <form action={formAction} noValidate className="stack">
+    <form action={formAction} onSubmit={handleSubmit} noValidate className="stack">
       <input type="hidden" name="proposalVersionId" value={proposalVersionId} />
       <input type="hidden" name="proposalId" value={proposalId} />
       <input type="hidden" name="unit" value={unit} />
@@ -133,11 +151,15 @@ function ManualMeasurementForm({
 
       <div className="field">
         <label htmlFor="measurementGroupId">Group</label>
-        {/* No `required` -- with no groups yet this select's only option is
-            an empty placeholder, but SubmitButton is already disabled in
-            that state, so an empty value can never actually reach the
-            Server Action. */}
-        <select id="measurementGroupId" name="measurementGroupId" disabled={measurementGroups.length === 0}>
+        {/* No `required` -- Save is never disabled just because this is
+            empty (see handleSubmit above), so a missing group now reaches
+            the same red-state UI as every other field. */}
+        <select
+          id="measurementGroupId"
+          name="measurementGroupId"
+          disabled={measurementGroups.length === 0}
+          {...fieldErrorProps(fieldErrors, "measurementGroupId")}
+        >
           {measurementGroups.length === 0 ? <option value="">Add a group above first</option> : null}
           {measurementGroups.map((g) => (
             <option key={g.id} value={g.id}>
@@ -145,13 +167,14 @@ function ManualMeasurementForm({
             </option>
           ))}
         </select>
+        <FieldError fieldErrors={fieldErrors} id="measurementGroupId" />
       </div>
 
       <div className="field">
         <label htmlFor="name">Name</label>
         {/* No `required` -- an empty submit must reach our own server-side validation and inline red-state UI, not the browser's native popup. */}
-        <input id="name" name="name" type="text" placeholder="e.g. Bathroom floor" {...fieldErrorProps(state.fieldErrors, "name")} />
-        <FieldError fieldErrors={state.fieldErrors} id="name" />
+        <input id="name" name="name" type="text" placeholder="e.g. Bathroom floor" {...fieldErrorProps(fieldErrors, "name")} />
+        <FieldError fieldErrors={fieldErrors} id="name" />
       </div>
 
       <div className="tenant-form" style={{ width: "100%" }}>
@@ -192,9 +215,9 @@ function ManualMeasurementForm({
               step={0.01}
               value={length}
               onChange={(e) => setLength(e.target.value)}
-              {...fieldErrorProps(state.fieldErrors, "length")}
+              {...fieldErrorProps(fieldErrors, "length")}
             />
-            <FieldError fieldErrors={state.fieldErrors} id="length" />
+            <FieldError fieldErrors={fieldErrors} id="length" />
           </div>
           <div className="field" style={{ flex: 1 }}>
             <label htmlFor="width">Width ({unit})</label>
@@ -206,9 +229,9 @@ function ManualMeasurementForm({
               step={0.01}
               value={width}
               onChange={(e) => setWidth(e.target.value)}
-              {...fieldErrorProps(state.fieldErrors, "width")}
+              {...fieldErrorProps(fieldErrors, "width")}
             />
-            <FieldError fieldErrors={state.fieldErrors} id="width" />
+            <FieldError fieldErrors={fieldErrors} id="width" />
           </div>
           {measurementType === "wall_area" ? (
             <div className="field" style={{ flex: 1 }}>
@@ -221,9 +244,9 @@ function ManualMeasurementForm({
                 step={0.01}
                 value={height}
                 onChange={(e) => setHeight(e.target.value)}
-                {...fieldErrorProps(state.fieldErrors, "height")}
+                {...fieldErrorProps(fieldErrors, "height")}
               />
-              <FieldError fieldErrors={state.fieldErrors} id="height" />
+              <FieldError fieldErrors={fieldErrors} id="height" />
             </div>
           ) : null}
         </div>
@@ -240,9 +263,9 @@ function ManualMeasurementForm({
             step={0.01}
             value={area}
             onChange={(e) => setArea(e.target.value)}
-            {...fieldErrorProps(state.fieldErrors, "area")}
+            {...fieldErrorProps(fieldErrors, "area")}
           />
-          <FieldError fieldErrors={state.fieldErrors} id="area" />
+          <FieldError fieldErrors={fieldErrors} id="area" />
         </div>
       ) : null}
 
@@ -257,9 +280,9 @@ function ManualMeasurementForm({
             step={0.01}
             value={linearLength}
             onChange={(e) => setLinearLength(e.target.value)}
-            {...fieldErrorProps(state.fieldErrors, "linearLength")}
+            {...fieldErrorProps(fieldErrors, "linearLength")}
           />
-          <FieldError fieldErrors={state.fieldErrors} id="linearLength" />
+          <FieldError fieldErrors={fieldErrors} id="linearLength" />
         </div>
       ) : null}
 
@@ -274,9 +297,9 @@ function ManualMeasurementForm({
           step={1}
           value={wastePercent}
           onChange={(e) => setWastePercent(e.target.value)}
-          {...fieldErrorProps(state.fieldErrors, "wastePercent")}
+          {...fieldErrorProps(fieldErrors, "wastePercent")}
         />
-        <FieldError fieldErrors={state.fieldErrors} id="wastePercent" />
+        <FieldError fieldErrors={fieldErrors} id="wastePercent" />
       </div>
 
       <div className="field">
@@ -301,7 +324,8 @@ function ManualMeasurementForm({
         <p className="hint">Fill in the dimensions to see the calculated area/perimeter.</p>
       )}
 
-      <SubmitButton pendingText="Saving…" className="button-primary" disabled={measurementGroups.length === 0}>
+      {/* Not disabled on `measurementGroups.length === 0` -- see handleSubmit above. */}
+      <SubmitButton pendingText="Saving…" className="button-primary">
         Save measurement
       </SubmitButton>
     </form>

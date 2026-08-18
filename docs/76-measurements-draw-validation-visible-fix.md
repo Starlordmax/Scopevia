@@ -110,3 +110,44 @@ description of the drawing surface.
 - `clients.spec.ts`'s "editing a client persists after reload" test
   remains an intermittent, pre-existing timeout unrelated to this
   change (see docs/75's own "Known limitations").
+
+## Addendum — a third instance of the same bug: missing measurement group
+
+A real user hit this directly: drew a full shape in Freehand, closed it,
+entered a valid reference length — but never created a measurement group
+first. `Save drawn measurement` was *also* `disabled={... ||
+measurementGroups.length === 0}`, on top of the two conditions already
+fixed above — the exact same bug class, in a spot the original fix
+missed. The click did nothing, and `Continue to Scope of Work` (a plain
+navigation link, never gated on Measurements' completion — proposals
+can legitimately have zero measurements if everything is priced as
+custom Materials & Costs line items) let them leave with the drawing
+silently un-saved and no indication why.
+
+Fixed the same way as the other two: the Save button in
+`FreehandDrawForm`, `RectangleDrawForm`, and `ManualMeasurementForm` is
+no longer disabled on `measurementGroups.length === 0`; a missing group
+is instead caught client-side (`measurementGroups.length === 0` is a
+reliable signal here without needing to track the uncontrolled
+`<select>`'s own value — once any group exists, a native `<select>`
+can never be left on its disabled placeholder option) and shown as a
+red `measurementGroupId` field error — "Create a measurement group
+before saving." — on the Group select itself, using the same
+`fieldErrorProps`/`FieldError`/`useFocusFirstFieldError` primitives as
+everything else. The in-progress drawing is never discarded: it stays
+exactly as drawn, ready to save the moment a group exists.
+
+`Continue to Scope of Work` was deliberately left ungated — Measurements
+being fully optional (a proposal can be priced entirely from Materials &
+Costs custom line items) is an existing product decision, not something
+this bug-fix pass should change; blocking navigation on step completion
+would be a new business rule, out of scope for "make the red state
+visible."
+
+New test: `tests/e2e/measurements-red-validation.spec.ts`'s "drawing a
+full shape with no measurement group created yet" — reproduces the
+exact reported scenario (draw, close shape, set reference length, no
+group), confirms the Group field turns red (computed
+`border-color: rgb(220, 38, 38)`, `aria-invalid`, message), confirms the
+drawing itself survives untouched, then creates a group and saves
+successfully. Screenshot: `test-results/validation-review/measurements-no-group-error.png`.
