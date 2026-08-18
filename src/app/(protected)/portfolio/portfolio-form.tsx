@@ -27,7 +27,7 @@ export function PortfolioForm({ tenantId, project }: { tenantId: string; project
   useFocusFirstFieldError(state.fieldErrors);
 
   return (
-    <form action={formAction} className="stack">
+    <form action={formAction} noValidate className="stack">
       {state.error ? <p className="error-banner">{state.error}</p> : null}
       <input type="hidden" name="tenantId" value={tenantId} />
       {project ? <input type="hidden" name="portfolioProjectId" value={project.id} /> : null}

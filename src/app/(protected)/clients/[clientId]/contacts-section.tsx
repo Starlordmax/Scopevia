@@ -50,7 +50,7 @@ export function ContactsSection({
 
       {canCreate ? (
         showForm ? (
-          <form action={createAction} className="stack">
+          <form action={createAction} noValidate className="stack">
             {createState.error ? <p className="error-banner">{createState.error}</p> : null}
             <input type="hidden" name="clientId" value={clientId} />
             <div className="tenant-form" style={{ width: "100%" }}>
@@ -171,7 +171,7 @@ function ContactRow({
       ) : null}
 
       {editing ? (
-        <form action={editAction} className="stack" style={{ marginTop: 10 }}>
+        <form action={editAction} noValidate className="stack" style={{ marginTop: 10 }}>
           {editState.error ? <p className="error-banner">{editState.error}</p> : null}
           <input type="hidden" name="contactId" value={contact.id} />
           <input type="hidden" name="clientId" value={clientId} />

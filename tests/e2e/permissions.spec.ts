@@ -54,7 +54,7 @@ test.describe("Sales permissions", () => {
     await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
     await page.goto("/opportunities/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await page.getByLabel("Title").fill(`E2E Sales Opp ${suffix}`);
     await page.getByRole("button", { name: "Create opportunity" }).click();
     await page.waitForURL(/\/opportunities\/[0-9a-f-]+$/);
@@ -106,7 +106,7 @@ test.describe("Field Worker permissions", () => {
     await ownerPage.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
     await ownerPage.goto("/proposals/new");
-    await ownerPage.getByLabel("Client").selectOption({ label: clientName });
+    await ownerPage.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await ownerPage.waitForURL(/clientId=/);
     await ownerPage.getByLabel("Proposal title").fill(proposalTitle);
     await ownerPage.getByLabel("Service type").selectOption("custom");

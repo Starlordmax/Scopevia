@@ -38,7 +38,7 @@ function GroupForm({ proposalId, proposalVersionId }: { proposalId: string; prop
   const [state, formAction] = useActionState(createMeasurementGroupAction, initialState);
   useFocusFirstFieldError(state.fieldErrors);
   return (
-    <form action={formAction} className="tenant-form" style={{ width: "100%" }}>
+    <form action={formAction} noValidate className="tenant-form" style={{ width: "100%" }}>
       <input type="hidden" name="proposalVersionId" value={proposalVersionId} />
       <input type="hidden" name="proposalId" value={proposalId} />
       {state.error ? <p className="error-banner">{state.error}</p> : null}
@@ -124,7 +124,7 @@ function ManualMeasurementForm({
   useFocusFirstFieldError(state.fieldErrors);
 
   return (
-    <form action={formAction} className="stack">
+    <form action={formAction} noValidate className="stack">
       <input type="hidden" name="proposalVersionId" value={proposalVersionId} />
       <input type="hidden" name="proposalId" value={proposalId} />
       <input type="hidden" name="unit" value={unit} />
@@ -401,7 +401,7 @@ function GenerateMaterialForm({
   if (selectedMeasurement?.linear_length != null) availableFields.push({ value: "linear_length", label: `Linear length (${selectedMeasurement.linear_length} ${selectedMeasurement.unit})` });
 
   return (
-    <form action={formAction} className="stack">
+    <form action={formAction} noValidate className="stack">
       <input type="hidden" name="proposalVersionId" value={proposalVersionId} />
       <input type="hidden" name="proposalId" value={proposalId} />
       <input type="hidden" name="measurementId" value={measurementId} />
@@ -520,7 +520,7 @@ function GenerateLaborForm({
   const canUseLinear = selectedMeasurement?.linear_length != null || selectedMeasurement?.perimeter != null;
 
   return (
-    <form action={formAction} className="stack">
+    <form action={formAction} noValidate className="stack">
       <input type="hidden" name="proposalVersionId" value={proposalVersionId} />
       <input type="hidden" name="proposalId" value={proposalId} />
       <input type="hidden" name="measurementId" value={measurementId} />

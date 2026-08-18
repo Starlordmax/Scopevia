@@ -15,7 +15,7 @@ export function InviteMemberForm({ tenantId }: { tenantId: string }) {
   useFocusFirstFieldError(state.fieldErrors);
 
   return (
-    <form action={formAction} className="stack">
+    <form action={formAction} noValidate className="stack">
       {state.error ? <p className="error-banner">{state.error}</p> : null}
       <input type="hidden" name="tenantId" value={tenantId} />
 

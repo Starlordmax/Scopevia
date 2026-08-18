@@ -52,7 +52,7 @@ export function NotesSection({
       )}
 
       {canCreate ? (
-        <form action={createAction} className="stack">
+        <form action={createAction} noValidate className="stack">
           {createState.error ? <p className="error-banner">{createState.error}</p> : null}
           <input type="hidden" name="tenantId" value={parent.tenantId} />
           <ParentHiddenFields {...parent} />
@@ -103,7 +103,7 @@ function NoteBody({
           </summary>
           <div className="stack" style={{ marginTop: 8 }}>
             {canUpdate ? (
-              <form action={updateAction} className="stack">
+              <form action={updateAction} noValidate className="stack">
                 {updateState.error ? <p className="error-banner">{updateState.error}</p> : null}
                 <input type="hidden" name="noteId" value={note.id} />
                 <ParentHiddenFields {...parent} />

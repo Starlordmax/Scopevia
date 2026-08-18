@@ -52,7 +52,7 @@ export function PortalResponseSection({ token, existingResponse }: { token: stri
       ) : null}
 
       {mode === "accept" ? (
-        <form action={acceptAction} className="stack">
+        <form action={acceptAction} noValidate className="stack">
           {acceptState.error ? <p className="error-banner">{acceptState.error}</p> : null}
           <input type="hidden" name="token" value={token} />
 
@@ -99,7 +99,7 @@ export function PortalResponseSection({ token, existingResponse }: { token: stri
       ) : null}
 
       {mode === "decline" ? (
-        <form action={declineAction} className="stack">
+        <form action={declineAction} noValidate className="stack">
           {declineState.error ? <p className="error-banner">{declineState.error}</p> : null}
           <input type="hidden" name="token" value={token} />
           <p className="hint">You can decline this proposal and optionally share a reason with the contractor.</p>

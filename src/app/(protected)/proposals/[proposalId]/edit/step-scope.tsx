@@ -66,7 +66,7 @@ export function StepScope({
       <div className="section-card stack">
         <h2>Job summary</h2>
         {scopeState.error ? <p className="error-banner">{scopeState.error}</p> : null}
-        <form action={scopeAction} className="stack">
+        <form action={scopeAction} noValidate className="stack">
           <input type="hidden" name="proposalVersionId" value={version.id} />
           <input type="hidden" name="proposalId" value={proposalId} />
           <div className="field">
@@ -156,7 +156,7 @@ export function StepScope({
             ) : null}
 
             {sectionState.error ? <p className="error-banner">{sectionState.error}</p> : null}
-            <form action={sectionAction} className="stack">
+            <form action={sectionAction} noValidate className="stack">
               <input type="hidden" name="proposalVersionId" value={version.id} />
               <input type="hidden" name="proposalId" value={proposalId} />
               <div className="field">

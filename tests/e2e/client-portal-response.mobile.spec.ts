@@ -26,7 +26,7 @@ test.describe("Client portal accept/decline (mobile, 390x844)", () => {
     await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
     await page.goto("/proposals/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await page.waitForURL(/clientId=/);
     await page.getByLabel("Proposal title").fill(`E2E Mobile Response Proposal ${suffix}`);
     await page.getByLabel("Service type").selectOption("custom");

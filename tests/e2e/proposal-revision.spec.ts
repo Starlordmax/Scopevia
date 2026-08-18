@@ -17,7 +17,7 @@ async function createReadyProposal(page: Page, suffix: string): Promise<{ propos
   await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
   await page.goto("/proposals/new");
-  await page.getByLabel("Client").selectOption({ label: clientName });
+  await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
   await page.waitForURL(/clientId=/);
   await page.getByLabel("Proposal title").fill(`E2E Revision Proposal ${suffix}`);
   await page.getByLabel("Service type").selectOption("custom");

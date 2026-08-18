@@ -105,7 +105,7 @@ export function QuickCreateClientModal({ tenantId }: { tenantId: string }) {
 
   const dialog = (
     <dialog ref={dialogRef} className="modal" aria-labelledby="quick-create-client-title">
-      <form ref={formRef} onSubmit={handleSubmit} className="stack">
+      <form ref={formRef} onSubmit={handleSubmit} noValidate className="stack">
         <h2 id="quick-create-client-title" className="modal-title">
           Create new client
         </h2>

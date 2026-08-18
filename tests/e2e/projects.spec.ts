@@ -57,7 +57,7 @@ test.describe("Projects (legacy routes)", () => {
     await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
     await page.goto("/opportunities/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await page.getByLabel("Title").fill(`E2E No Convert Opp ${suffix}`);
     await page.getByRole("button", { name: "Create opportunity" }).click();
     await page.waitForURL(/\/opportunities\/[0-9a-f-]+$/);

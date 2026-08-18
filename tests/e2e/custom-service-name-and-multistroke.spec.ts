@@ -69,12 +69,16 @@ test.describe("Custom service name + multi-stroke drawing + inline validation", 
 
     // A single open stroke is already a valid linear measurement (e.g.
     // tracing one board), so Save is enabled here -- Undo removes the
-    // WHOLE stroke, not just a point, leaving zero strokes behind, which
-    // disables both Save and Close shape (neither has anything to work
-    // with anymore).
+    // WHOLE stroke, not just a point, leaving zero strokes behind. Close
+    // shape has nothing to work with anymore and disables, but Save
+    // itself stays clickable -- see docs/76-measurements-draw-validation-visible-fix.md:
+    // a disabled Save button on an empty drawing used to be a silent
+    // no-op with no red state at all, so Save is never disabled for
+    // "nothing drawn yet" anymore, only for structural preconditions
+    // (no group, or mid-drag).
     await expect(measurementsPanel.getByRole("button", { name: "Save drawn measurement" })).toBeEnabled();
     await measurementsPanel.getByRole("button", { name: "Undo" }).click();
-    await expect(measurementsPanel.getByRole("button", { name: "Save drawn measurement" })).toBeDisabled();
+    await expect(measurementsPanel.getByRole("button", { name: "Save drawn measurement" })).toBeEnabled();
     await expect(measurementsPanel.getByRole("button", { name: "Close shape" })).toBeDisabled();
 
     // Redraw stroke 1, then a SEPARATE stroke 2 far away (lifting the
@@ -125,12 +129,17 @@ test.describe("Custom service name + multi-stroke drawing + inline validation", 
     await expect(measurementsPanel.locator("#name-error")).toHaveText("Measurement name is required.");
     await expect(measurementsPanel.locator("#name")).toHaveAttribute("aria-invalid", "true");
 
-    // Fill the name, clear the reference length -- Save becomes disabled
-    // client-side (pixelsPerUnit <= 0), confirming client-side validation
-    // blocks an obviously-invalid submit before ever reaching the server.
+    // Fill the name, clear the reference length -- Save stays clickable
+    // (see docs/76-measurements-draw-validation-visible-fix.md: it's never
+    // disabled just because a field is invalid), but clicking it with an
+    // empty reference length shows a red, client-side error on that field
+    // instead of silently doing nothing.
     await measurementsPanel.locator("#name").fill("Deck outline");
     await measurementsPanel.locator("#scaleReferenceLength").fill("");
-    await expect(measurementsPanel.getByRole("button", { name: "Save drawn measurement" })).toBeDisabled();
+    await expect(measurementsPanel.getByRole("button", { name: "Save drawn measurement" })).toBeEnabled();
+    await measurementsPanel.getByRole("button", { name: "Save drawn measurement" }).click();
+    await expect(measurementsPanel.locator("#scaleReferenceLength-error")).toHaveText("Enter a reference length greater than 0.");
+    await expect(measurementsPanel.locator("#scaleReferenceLength")).toHaveAttribute("aria-invalid", "true");
 
     // Fill a valid reference length and save successfully.
     await measurementsPanel.locator("#scaleReferenceLength").fill("10");

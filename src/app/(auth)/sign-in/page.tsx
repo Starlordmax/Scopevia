@@ -19,7 +19,7 @@ export default function SignInPage() {
         <p className="hint">Sign in to your account</p>
       </div>
 
-      <form action={formAction} className="stack">
+      <form action={formAction} noValidate className="stack">
         {state.error ? <p className="error-banner">{state.error}</p> : null}
 
         <div className="field">

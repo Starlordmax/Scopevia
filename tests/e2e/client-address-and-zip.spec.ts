@@ -33,7 +33,7 @@ test.describe("Client Address + Material ZIP Defaults — New Client form", () =
     await expect(page.getByText("123 Main St")).toBeVisible();
 
     await page.goto("/proposals/new");
-    await page.getByLabel("Client").selectOption({ label: name });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: name });
     await page.waitForURL(/clientId=/);
     await page.getByLabel("Proposal title").fill(`E2E ZIP Proposal ${suffix}`);
     await page.getByLabel("Service type").selectOption("custom");
@@ -60,7 +60,7 @@ test.describe("Client Address + Material ZIP Defaults — New Client form", () =
     await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
 
     await page.goto("/proposals/new");
-    await page.getByLabel("Client").selectOption({ label: name });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: name });
     await page.waitForURL(/clientId=/);
     await page.getByLabel("Proposal title").fill(`E2E Override Proposal ${suffix}`);
     await page.getByLabel("Service type").selectOption("custom");
@@ -97,7 +97,7 @@ test.describe("Client Address + Material ZIP Defaults — New Client form", () =
     await expect(page.getByRole("heading", { name: new RegExp(name) })).toBeVisible();
 
     await page.goto("/proposals/new");
-    await page.getByLabel("Client").selectOption({ label: name });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: name });
     await page.waitForURL(/clientId=/);
     await page.getByLabel("Proposal title").fill(`E2E Intl Proposal ${suffix}`);
     await page.getByLabel("Service type").selectOption("custom");

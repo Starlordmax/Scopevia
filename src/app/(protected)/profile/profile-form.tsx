@@ -23,7 +23,7 @@ export function ProfileForm({
   useFocusFirstFieldError(state.fieldErrors);
 
   return (
-    <form action={formAction} className="stack">
+    <form action={formAction} noValidate className="stack">
       {state.error ? <p className="error-banner">{state.error}</p> : null}
 
       <div className="field">

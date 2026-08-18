@@ -83,7 +83,7 @@ export function NewProposalForm({
   }, [state, title, serviceType]);
 
   return (
-    <form action={formAction} className="stack">
+    <form action={formAction} noValidate className="stack">
       {state.error ? <p className="error-banner">{state.error}</p> : null}
       {justCreatedClient ? <p className="success-banner">Client created and selected.</p> : null}
       <input type="hidden" name="tenantId" value={tenantId} />

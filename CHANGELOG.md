@@ -4,6 +4,41 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fix — Measurements' Draw layout validation was invisible in the real UI
+
+The previous fix built the correct `fieldErrors`/red-border/`aria-invalid`
+architecture everywhere, but in Measurements' Draw layout (Freehand and
+Rectangle) it never actually rendered — clicking Save with missing
+fields silently did nothing. Reproduced with real Playwright screenshots
+before touching any code, root-caused, then fixed and re-verified the
+same way (see the "after" screenshots in
+[docs/76](docs/76-measurements-draw-validation-visible-fix.md)).
+
+Two compounding bugs, both now fixed: (1) the Save button was `disabled`
+based on the *exact* conditions it was supposed to report as red-state
+errors — "nothing drawn" and "invalid reference length" — so the click
+that would have triggered validation was never clickable in the first
+place; Save is now only disabled for genuine structural preconditions
+(no group to save into, mid-drag), and those two cases are caught
+client-side with the same visual treatment as a server error. (2) Native
+HTML5 constraint validation (`min`/`max` on number inputs, `type="email"`,
+`pattern`) was silently intercepting form submission before React ever
+saw it — the same class of bug as the `required` attribute already
+removed, just on attributes nobody had checked. `noValidate` is now on
+every form using the field-error pattern, app-wide, not just Measurements.
+
+The drawing canvas's invalid state (red border, `aria-invalid`) moved
+from the `<svg role="img">` itself to a wrapping `<div>`, since
+`aria-invalid` isn't valid on `role="img"` per the ARIA spec.
+
+3 new/updated E2E specs (desktop + mobile) with real screenshots proving
+the red state now renders, plus 2 pre-existing tests updated whose
+assertions encoded the old (buggy) disabled-button behavior. Full
+regression pass across every file touched by the `noValidate` sweep — a
+pre-existing, unrelated `getByLabel("Client")` test-selector ambiguity
+was found and fixed along the way in several spec files. See
+[docs/76](docs/76-measurements-draw-validation-visible-fix.md).
+
 ### Fix — Global required-field validation with red highlighting
 
 Every form in the app with a required or validatable field now

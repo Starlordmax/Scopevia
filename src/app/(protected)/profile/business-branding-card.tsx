@@ -104,7 +104,7 @@ export function BusinessBrandingCard({
 
       {canUpdate ? (
         <>
-          <form ref={uploadFormRef} onSubmit={handleUploadSubmit} className="stack">
+          <form ref={uploadFormRef} onSubmit={handleUploadSubmit} noValidate className="stack">
             {uploadError ? <p className="error-banner">{uploadError}</p> : null}
             {uploadMessage ? <p className="success-banner">{uploadMessage}</p> : null}
             <input type="hidden" name="tenantId" value={tenantId} />

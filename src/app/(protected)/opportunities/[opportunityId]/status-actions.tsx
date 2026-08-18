@@ -36,7 +36,7 @@ export function OpportunityStatusActions({ opportunityId, status }: { opportunit
       </div>
 
       {pendingStatus ? (
-        <form action={formAction} className="stack">
+        <form action={formAction} noValidate className="stack">
           <input type="hidden" name="opportunityId" value={opportunityId} />
           <input type="hidden" name="newStatus" value={pendingStatus} />
 

@@ -12,7 +12,7 @@ async function createClient(page: import("@playwright/test").Page, name: string)
 
 async function createOpportunity(page: import("@playwright/test").Page, clientName: string, title: string) {
   await page.goto("/opportunities/new");
-  await page.getByLabel("Client").selectOption({ label: clientName });
+  await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
   await page.getByLabel("Title").fill(title);
   await page.getByRole("button", { name: "Create opportunity" }).click();
   await page.waitForURL(/\/opportunities\/[0-9a-f-]+$/);
@@ -26,7 +26,7 @@ test.describe("Opportunities", () => {
     await createClient(page, clientName);
 
     await page.goto("/opportunities/new");
-    await page.getByLabel("Client").selectOption({ label: clientName });
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
     await page.getByLabel("Title").fill(`E2E Opportunity ${suffix}`);
     await page.getByLabel("Estimated value ($)").fill("1250.50");
     // "Assigned to" defaults to "Unassigned" — Owner A is the only active

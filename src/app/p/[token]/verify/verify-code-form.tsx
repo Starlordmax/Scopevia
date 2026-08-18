@@ -14,7 +14,7 @@ export function VerifyCodeForm({ token, email }: { token: string; email: string 
 
   return (
     <div className="stack">
-      <form action={verifyAction} className="stack">
+      <form action={verifyAction} noValidate className="stack">
         {verifyState.error ? <p className="error-banner">{verifyState.error}</p> : null}
 
         <input type="hidden" name="token" value={token} />

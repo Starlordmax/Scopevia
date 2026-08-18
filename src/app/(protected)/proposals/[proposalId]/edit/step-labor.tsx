@@ -104,7 +104,7 @@ export function StepLabor({
               </span>
             </div>
 
-            <form action={formAction} className="stack">
+            <form action={formAction} noValidate className="stack">
               <input type="hidden" name="proposalVersionId" value={proposalVersionId} />
               <input type="hidden" name="proposalId" value={proposalId} />
               <input type="hidden" name="pricingMethod" value={pricingMethod} />

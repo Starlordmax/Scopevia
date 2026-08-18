@@ -18,7 +18,7 @@ export default function ResetPasswordPage() {
         <p className="hint">You followed a valid password reset link.</p>
       </div>
 
-      <form action={formAction} className="stack">
+      <form action={formAction} noValidate className="stack">
         {state.error ? <p className="error-banner">{state.error}</p> : null}
 
         <div className="field">

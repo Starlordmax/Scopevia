@@ -149,7 +149,7 @@ function CatalogResultRow({
       </td>
       <td data-label="Add">
         {canAddFromCatalog ? (
-          <form action={formAction} className="stack" style={{ gap: 4 }}>
+          <form action={formAction} noValidate className="stack" style={{ gap: 4 }}>
             <input type="hidden" name="proposalVersionId" value={proposalVersionId} />
             <input type="hidden" name="proposalId" value={proposalId} />
             <input type="hidden" name="materialCatalogItemId" value={result.id} />
@@ -390,7 +390,7 @@ export function StepMaterials({
         {canManagePricing ? (
           <>
             {state.error ? <p className="error-banner">{state.error}</p> : null}
-            <form action={formAction} className="stack">
+            <form action={formAction} noValidate className="stack">
               <input type="hidden" name="proposalVersionId" value={proposalVersionId} />
               <input type="hidden" name="proposalId" value={proposalId} />
 

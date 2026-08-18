@@ -193,8 +193,40 @@ function FreehandDrawForm({
     strokes: simplifiedStrokes,
     viewport: { width: VIEWPORT_WIDTH, height: VIEWPORT_HEIGHT },
   });
-  const drawingFieldError = state.fieldErrors?.drawing;
-  useFocusFirstFieldError(state.fieldErrors);
+
+  // The Save button used to be `disabled` whenever there was nothing drawn
+  // yet or the reference length was missing/invalid -- which meant a click
+  // in exactly those states did NOTHING: no error, no red border, no
+  // explanation, since a disabled button can't be clicked at all and the
+  // Server Action (the only thing that ever populated `fieldErrors`) never
+  // ran. Save is now always clickable (except mid-drag or with no group to
+  // save into); these two geometry-blocking cases are instead caught
+  // HERE, client-side, before the browser-level form submission — the
+  // same visual result (red border, message, aria-invalid, focus) as a
+  // server round trip, just without one, since the server has no way to
+  // know about pixel geometry it was never sent. `attemptedSubmit` keeps
+  // these hidden until the user actually tries to save, and because
+  // they're recomputed every render (not "set once"), fixing the
+  // underlying issue clears the red state immediately, before a re-submit.
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+  const clientFieldErrors: Record<string, string> = {};
+  if (attemptedSubmit) {
+    if (!hasEnoughPoints) {
+      clientFieldErrors.drawing = "Draw the area before saving.";
+    } else if (referenceLength <= 0) {
+      clientFieldErrors.scaleReferenceLength = "Enter a reference length greater than 0.";
+    }
+  }
+  const fieldErrors: Record<string, string> = { ...state.fieldErrors, ...clientFieldErrors };
+  const drawingFieldError = fieldErrors.drawing;
+  useFocusFirstFieldError(fieldErrors);
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    setAttemptedSubmit(true);
+    if (!hasEnoughPoints || referenceLength <= 0) {
+      e.preventDefault();
+    }
+  }
 
   return (
     <div className="stack">
@@ -204,17 +236,25 @@ function FreehandDrawForm({
         real-world reference length to scale it.
       </p>
 
-      <svg
-        ref={svgRef}
-        width={VIEWPORT_WIDTH}
-        height={VIEWPORT_HEIGHT}
-        viewBox={`0 0 ${VIEWPORT_WIDTH} ${VIEWPORT_HEIGHT}`}
+      {/* `aria-invalid` lives on this wrapping div, not the <svg> itself --
+          role="img" (correctly describing the drawing surface for screen
+          readers) doesn't support aria-invalid per the ARIA spec, so the
+          invalid-state semantics and the red border both move one level
+          up instead of being dropped. */}
+      <div
+        id="drawing"
+        // Programmatically focusable (a plain <div> isn't in the tab order
+        // by default) so useFocusFirstFieldError's .focus() actually
+        // scrolls the canvas into view and gives it a visible focus ring
+        // when "Draw the area before saving." is the first/only error.
+        tabIndex={-1}
+        className={drawingFieldError ? "field-input-error" : undefined}
         style={{
-          touchAction: "none",
-          background: "var(--color-surface-alt, #f5f5f5)",
+          display: "inline-block",
           border: "1px solid var(--color-border)",
           borderRadius: "var(--radius)",
           maxWidth: "100%",
+          lineHeight: 0,
           // The app shell's topbar is `position: sticky; top: 0` (see
           // globals.css) -- without this, scrolling the canvas to the very
           // top of the viewport (e.g. a mobile browser's native
@@ -222,13 +262,27 @@ function FreehandDrawForm({
           // sticky header, silently swallowing touches/clicks there.
           scrollMarginTop: "calc(var(--topbar-height) + 12px)",
         }}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        role="img"
-        aria-label="Drawing surface — draw the area's outline with mouse or touch"
+        aria-invalid={drawingFieldError ? true : undefined}
+        aria-describedby={drawingFieldError ? "drawing-error" : undefined}
       >
-        {closed ? (
+        <svg
+          ref={svgRef}
+          width={VIEWPORT_WIDTH}
+          height={VIEWPORT_HEIGHT}
+          viewBox={`0 0 ${VIEWPORT_WIDTH} ${VIEWPORT_HEIGHT}`}
+          style={{
+            touchAction: "none",
+            background: "var(--color-surface-alt, #f5f5f5)",
+            maxWidth: "100%",
+            display: "block",
+          }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          role="img"
+          aria-label="Drawing surface — draw the area's outline with mouse or touch"
+        >
+          {closed ? (
           // Closing joins every stroke end-to-end, in drawn order, into
           // one outline -- only ever rendered once the user has
           // explicitly asked for that (Close shape), never automatically
@@ -259,7 +313,8 @@ function FreehandDrawForm({
             ) : null
           )
         )}
-      </svg>
+        </svg>
+      </div>
 
       <div className="tenant-form" style={{ width: "100%" }}>
         <button type="button" className="button-secondary" onClick={() => setStrokes((prev) => prev.slice(0, -1))} disabled={strokes.length === 0 || isDrawing}>
@@ -292,7 +347,7 @@ function FreehandDrawForm({
         </p>
       ) : null}
 
-      <form action={formAction} className="stack">
+      <form action={formAction} onSubmit={handleSubmit} noValidate className="stack">
         <input type="hidden" name="proposalVersionId" value={proposalVersionId} />
         <input type="hidden" name="proposalId" value={proposalId} />
         <input type="hidden" name="strokes" value={realStrokes.length > 0 ? JSON.stringify(realStrokes) : ""} />
@@ -304,7 +359,7 @@ function FreehandDrawForm({
 
         {state.error ? <p className="error-banner">{state.error}</p> : null}
 
-        <GroupAndNameFields measurementGroups={measurementGroups} idPrefix="freehand" fieldErrors={state.fieldErrors} />
+        <GroupAndNameFields measurementGroups={measurementGroups} idPrefix="freehand" fieldErrors={fieldErrors} />
 
         {closed ? (
           <div className="field">
@@ -339,9 +394,9 @@ function FreehandDrawForm({
               step={0.01}
               value={scaleReferenceLength}
               onChange={(e) => setScaleReferenceLength(e.target.value)}
-              {...fieldErrorProps(state.fieldErrors, "scaleReferenceLength")}
+              {...fieldErrorProps(fieldErrors, "scaleReferenceLength")}
             />
-            <FieldError fieldErrors={state.fieldErrors} id="scaleReferenceLength" />
+            <FieldError fieldErrors={fieldErrors} id="scaleReferenceLength" />
           </div>
           <div className="field" style={{ flex: 1 }}>
             <label htmlFor="freehandWaste">Waste %</label>
@@ -376,7 +431,14 @@ function FreehandDrawForm({
           <p className="hint">Draw a shape, close it (or leave it open for a linear path), and enter its reference width to see the calculated area/length.</p>
         )}
 
-        <SubmitButton pendingText="Saving…" className="button-primary" disabled={!hasEnoughPoints || pixelsPerUnit <= 0 || measurementGroups.length === 0 || isDrawing}>
+        {/* Deliberately NOT disabled just because there's no drawing yet or
+            the reference length is invalid -- those are exactly the two
+            things this button's own click is supposed to surface as a
+            red-state error (see handleSubmit above). A disabled button
+            can't be clicked at all, so gating on them here would silently
+            swallow the click with no explanation, same as the removed
+            `required` attribute elsewhere in this app. */}
+        <SubmitButton pendingText="Saving…" className="button-primary" disabled={measurementGroups.length === 0 || isDrawing}>
           Save drawn measurement
         </SubmitButton>
       </form>
@@ -465,44 +527,84 @@ function RectangleDrawForm({
       })
     : "";
 
-  useFocusFirstFieldError(state.fieldErrors);
+  // Same fix as FreehandDrawForm above: Save used to be `disabled` whenever
+  // nothing was drawn, so a click in that state did nothing visible at
+  // all. Now always clickable (bar mid-drag/no group); "nothing drawn" is
+  // instead caught client-side and shown the same way a server error
+  // would be. (Submitting an empty rectangle to the server was also
+  // considered, but shapeData="" fails JSON.parse() server-side and
+  // surfaces a generic, non-field-specific "Invalid drawing data" —
+  // strictly worse than catching it here with a real field-level message.)
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+  const clientFieldErrors: Record<string, string> = attemptedSubmit && !hasShape ? { drawing: "Draw the area before saving." } : {};
+  const fieldErrors: Record<string, string> = { ...state.fieldErrors, ...clientFieldErrors };
+  const drawingFieldError = fieldErrors.drawing;
+  useFocusFirstFieldError(fieldErrors);
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    setAttemptedSubmit(true);
+    if (!hasShape) {
+      e.preventDefault();
+    }
+  }
 
   return (
     <div className="stack">
       <p className="hint">Drag on the grid below to draw a rectangle (mouse or touch), then enter the real-world length of its width to scale it.</p>
 
-      <svg
-        ref={svgRef}
-        width={VIEWPORT_WIDTH}
-        height={VIEWPORT_HEIGHT}
-        viewBox={`0 0 ${VIEWPORT_WIDTH} ${VIEWPORT_HEIGHT}`}
+      {/* aria-invalid lives on this wrapping div, not the <svg> itself --
+          role="img" doesn't support aria-invalid per the ARIA spec. */}
+      <div
+        id="drawing"
+        tabIndex={-1}
+        className={drawingFieldError ? "field-input-error" : undefined}
         style={{
-          touchAction: "none",
-          background: "var(--color-surface-alt, #f5f5f5)",
+          display: "inline-block",
           border: "1px solid var(--color-border)",
           borderRadius: "var(--radius)",
           maxWidth: "100%",
+          lineHeight: 0,
           scrollMarginTop: "calc(var(--topbar-height) + 12px)",
         }}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        role="img"
-        aria-label="Drawing surface — drag to draw a rectangle"
+        aria-invalid={drawingFieldError ? true : undefined}
+        aria-describedby={drawingFieldError ? "drawing-error" : undefined}
       >
-        {hasShape ? (
-          <rect x={rectX} y={rectY} width={pixelWidth} height={pixelHeight} fill="rgba(37, 99, 235, 0.15)" stroke="#2563eb" strokeWidth={2} />
-        ) : null}
-      </svg>
+        <svg
+          ref={svgRef}
+          width={VIEWPORT_WIDTH}
+          height={VIEWPORT_HEIGHT}
+          viewBox={`0 0 ${VIEWPORT_WIDTH} ${VIEWPORT_HEIGHT}`}
+          style={{
+            touchAction: "none",
+            background: "var(--color-surface-alt, #f5f5f5)",
+            maxWidth: "100%",
+            display: "block",
+          }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          role="img"
+          aria-label="Drawing surface — drag to draw a rectangle"
+        >
+          {hasShape ? (
+            <rect x={rectX} y={rectY} width={pixelWidth} height={pixelHeight} fill="rgba(37, 99, 235, 0.15)" stroke="#2563eb" strokeWidth={2} />
+          ) : null}
+        </svg>
+      </div>
+      {drawingFieldError ? (
+        <p id="drawing-error" className="field-error-text" role="alert">
+          {drawingFieldError}
+        </p>
+      ) : null}
 
-      <form action={formAction} className="stack">
+      <form action={formAction} onSubmit={handleSubmit} noValidate className="stack">
         <input type="hidden" name="proposalVersionId" value={proposalVersionId} />
         <input type="hidden" name="proposalId" value={proposalId} />
         <input type="hidden" name="shapeData" value={shapeData} />
 
         {state.error ? <p className="error-banner">{state.error}</p> : null}
 
-        <GroupAndNameFields measurementGroups={measurementGroups} idPrefix="drawRect" fieldErrors={state.fieldErrors} />
+        <GroupAndNameFields measurementGroups={measurementGroups} idPrefix="drawRect" fieldErrors={fieldErrors} />
 
         <div className="tenant-form" style={{ width: "100%" }}>
           <div className="field" style={{ flex: 1 }}>
@@ -535,9 +637,9 @@ function RectangleDrawForm({
               step={0.01}
               value={scaleReferenceLength}
               onChange={(e) => setScaleReferenceLength(e.target.value)}
-              {...fieldErrorProps(state.fieldErrors, "scaleReferenceLength")}
+              {...fieldErrorProps(fieldErrors, "scaleReferenceLength")}
             />
-            <FieldError fieldErrors={state.fieldErrors} id="scaleReferenceLength" />
+            <FieldError fieldErrors={fieldErrors} id="scaleReferenceLength" />
           </div>
           <div className="field" style={{ flex: 1 }}>
             <label htmlFor="drawWaste">Waste %</label>
@@ -574,7 +676,8 @@ function RectangleDrawForm({
           <p className="hint">Draw a rectangle and enter its real-world width to see the calculated area.</p>
         )}
 
-        <SubmitButton pendingText="Saving…" className="button-primary" disabled={!hasShape || measurementGroups.length === 0}>
+        {/* Not disabled on `!hasShape` -- same reasoning as FreehandDrawForm's Save button above. */}
+        <SubmitButton pendingText="Saving…" className="button-primary" disabled={measurementGroups.length === 0}>
           Save drawn measurement
         </SubmitButton>
       </form>
