@@ -34,9 +34,26 @@ const MEASUREMENT_TYPES = [
   { value: "custom", label: "Custom" },
 ];
 
-function GroupForm({ proposalId, proposalVersionId }: { proposalId: string; proposalVersionId: string }) {
+function GroupForm({
+  proposalId,
+  proposalVersionId,
+  measurementGroups,
+}: {
+  proposalId: string;
+  proposalVersionId: string;
+  measurementGroups: ProposalMeasurementGroup[];
+}) {
   const [state, formAction] = useActionState(createMeasurementGroupAction, initialState);
   useFocusFirstFieldError(state.fieldErrors);
+  // Proactive nudge, not a failed-submit error: nothing works in
+  // Measurements yet (Save is disabled everywhere) until at least one
+  // group exists, so draw the eye here first instead of leaving the
+  // user to discover it only after drawing/measuring something and
+  // hitting the red state on Save (see docs/76, "Addendum").
+  const noGroupsYet = measurementGroups.length === 0;
+  const nameErrorProps = fieldErrorProps(state.fieldErrors, "name");
+  const hasRealNameError = Boolean(state.fieldErrors?.name);
+  const showProactiveHint = noGroupsYet && !hasRealNameError;
   return (
     <form action={formAction} noValidate className="tenant-form" style={{ width: "100%" }}>
       <input type="hidden" name="proposalVersionId" value={proposalVersionId} />
@@ -49,8 +66,21 @@ function GroupForm({ proposalId, proposalVersionId }: { proposalId: string; prop
             falls back to a [name=...] lookup when id and the error key differ,
             which is the case here since "name" as an id would collide with
             ManualMeasurementForm's own "name" field on this same page. */}
-        <input id="groupName" name="name" type="text" placeholder="e.g. Bathroom" {...fieldErrorProps(state.fieldErrors, "name")} />
+        <input
+          id="groupName"
+          name="name"
+          type="text"
+          placeholder="e.g. Bathroom"
+          className={nameErrorProps.className ?? (noGroupsYet ? "field-input-error" : undefined)}
+          aria-invalid={nameErrorProps["aria-invalid"]}
+          aria-describedby={nameErrorProps["aria-describedby"] ?? (showProactiveHint ? "groupName-hint" : undefined)}
+        />
         <FieldError fieldErrors={state.fieldErrors} id="name" />
+        {showProactiveHint ? (
+          <p id="groupName-hint" className="field-error-text">
+            Create a group before you can save any measurement.
+          </p>
+        ) : null}
       </div>
       <div className="field" style={{ flex: "0 0 auto" }}>
         <label htmlFor="groupUnitSystem">Units</label>
@@ -59,7 +89,7 @@ function GroupForm({ proposalId, proposalVersionId }: { proposalId: string; prop
           <option value="metric">Meters (metric)</option>
         </select>
       </div>
-      <SubmitButton pendingText="Creating…" className="button-secondary">
+      <SubmitButton pendingText="Creating…" className={noGroupsYet ? "button-secondary button-attention-blink" : "button-secondary"}>
         + Add group
       </SubmitButton>
     </form>
@@ -671,7 +701,9 @@ export function StepMeasurements({
           materials.
         </p>
 
-        {isDraft && canCreate ? <GroupForm proposalId={proposalId} proposalVersionId={proposalVersionId} /> : null}
+        {isDraft && canCreate ? (
+          <GroupForm proposalId={proposalId} proposalVersionId={proposalVersionId} measurementGroups={measurementGroups} />
+        ) : null}
 
         {isDraft && canCreate ? (
           <>

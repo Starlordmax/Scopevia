@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Feature — Proactive "create a group first" nudge in Measurements
+
+Follow-up to the fix below: rather than only turning red after a failed
+Save, "New group name" and "+ Add group" now draw the eye *before* the
+user does anything, for as long as no measurement group exists yet —
+red border and hint text on the name field, a pulsing red ring on the
+button (respecting `prefers-reduced-motion`). Both clear the moment a
+group is actually created. New E2E test with a screenshot confirms the
+red state, the button's animation is genuinely applied (not just
+defined in CSS), and both clear on success. See
+[docs/76](docs/76-measurements-draw-validation-visible-fix.md), "Addendum 2."
+
 ### Fix — Measurements Save button also silently blocked on a missing group
 
 A third instance of the same bug documented below: a real user drew a

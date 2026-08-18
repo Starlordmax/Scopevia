@@ -151,3 +151,43 @@ group), confirms the Group field turns red (computed
 `border-color: rgb(220, 38, 38)`, `aria-invalid`, message), confirms the
 drawing itself survives untouched, then creates a group and saves
 successfully. Screenshot: `test-results/validation-review/measurements-no-group-error.png`.
+
+## Addendum 2 — a proactive nudge for the group step itself
+
+Follow-up ask: rather than only turning red *after* a failed Save (the
+fix above), "New group name" and "+ Add group" should already draw the
+eye *before* the user has done anything, for as long as no group
+exists — since nothing else in Measurements works until one does.
+
+This is deliberately a different visual language from the rest of this
+doc's fix, and intentionally so: every other red state here is a
+*failed-submission* error (`fieldErrors` from a real or client-side
+validation attempt). This one is a *proactive* nudge toward the very
+first thing to do on an empty step, shown from page load, not gated by
+`useActionState`'s `fieldErrors` or an attempted submit. Implemented as:
+
+- `GroupForm` now receives `measurementGroups` as a prop (previously
+  didn't need it) and derives `noGroupsYet = measurementGroups.length === 0`.
+- "New group name" gets the same `.field-input-error` red border and an
+  explanatory message ("Create a group before you can save any
+  measurement.") whenever `noGroupsYet` — falling back cleanly to the
+  real server-side `fieldErrors.name` treatment if the user submits an
+  actually-invalid name (the real error always takes precedence over
+  the proactive hint, never shown at the same time as it).
+- "+ Add group" gets a new `.button-attention-blink` class — a
+  `box-shadow` pulse (`@keyframes`, 1.2s, infinite) rather than
+  `opacity`/`visibility` toggling, so the button's own text stays fully
+  legible throughout; suppressed under `prefers-reduced-motion: reduce`
+  (falls back to a static red ring instead of animating) since a
+  blinking button is exactly the kind of motion that media query exists
+  to let users opt out of.
+- Both clear immediately once a group is actually created — no page
+  reload needed, since `measurementGroups` is a prop that updates via
+  the parent Server Component's `revalidatePath()` on success.
+
+New test: `tests/e2e/measurements-red-validation.spec.ts`'s "with no
+group yet" — confirms the red border (computed `border-color`), the
+hint text, the button's `animation-name` is actually applied (not just
+present in a stylesheet nobody's using), then creates a group and
+confirms both clear. Screenshot:
+`test-results/validation-review/measurements-no-group-nudge.png`.

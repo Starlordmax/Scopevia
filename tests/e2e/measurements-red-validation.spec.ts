@@ -187,4 +187,52 @@ test.describe("Measurements — real red-state validation proof", () => {
     await saveButton.click();
     await expect(measurementsPanel.locator("tr").filter({ hasText: "Roof outline" })).toBeVisible();
   });
+
+  /**
+   * Proactive nudge (not a failed-submit error): before any group
+   * exists, "New group name" and "+ Add group" should already draw the
+   * eye, since nothing else in Measurements works until a group exists.
+   */
+  test("with no group yet, 'New group name' is red and '+ Add group' blinks red; both clear once a group is created", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const clientName = `E2E Group Nudge Client ${suffix}`;
+
+    await page.goto("/clients/new");
+    await page.getByLabel("Display name").fill(clientName);
+    await page.getByRole("button", { name: "Create client" }).click();
+    await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
+
+    await page.goto("/proposals/new");
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
+    await page.waitForURL(/clientId=/);
+    await page.getByLabel("Proposal title").fill(`E2E Group Nudge Proposal ${suffix}`);
+    await page.getByLabel("Service type").selectOption("interior_painting");
+    await page.getByRole("button", { name: "Save and continue" }).click();
+    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=measurements/);
+
+    const measurementsPanel = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Measurements" }) });
+    const groupNameField = measurementsPanel.locator("#groupName");
+    const addGroupButton = measurementsPanel.getByRole("button", { name: "+ Add group" });
+
+    // Before any group exists: red field, red hint, blinking button.
+    await expect(groupNameField).toHaveClass(/field-input-error/);
+    const groupNameBorderColor = await groupNameField.evaluate((el) => getComputedStyle(el).borderColor);
+    expect(groupNameBorderColor).toBe("rgb(220, 38, 38)");
+    await expect(measurementsPanel.locator("#groupName-hint")).toHaveText("Create a group before you can save any measurement.");
+    await expect(addGroupButton).toHaveClass(/button-attention-blink/);
+    const addGroupAnimation = await addGroupButton.evaluate((el) => getComputedStyle(el).animationName);
+    expect(addGroupAnimation).toBe("button-attention-blink");
+
+    await page.screenshot({ path: "test-results/validation-review/measurements-no-group-nudge.png", fullPage: true });
+
+    // Creating a group clears both.
+    await groupNameField.fill("Garage");
+    await addGroupButton.click();
+    await expect(measurementsPanel.locator("#measurementGroupId option", { hasText: "Garage" })).toHaveCount(1);
+    await expect(groupNameField).not.toHaveClass(/field-input-error/);
+    await expect(measurementsPanel.locator("#groupName-hint")).toHaveCount(0);
+    await expect(addGroupButton).not.toHaveClass(/button-attention-blink/);
+  });
 });

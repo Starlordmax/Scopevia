@@ -352,6 +352,33 @@ button:disabled {
   margin: 0;
 }
 
+/* A proactive (not error-on-submit) nudge for a step the user hasn't
+   started yet -- e.g. Measurements' "+ Add group" before any group
+   exists. Distinct from .field-input-error: nothing has been submitted
+   or failed validation here, this is just drawing the eye to the first
+   thing to do. Respects prefers-reduced-motion (a pulsing/blinking
+   button is exactly the kind of motion that spec exists to suppress). */
+@keyframes button-attention-blink {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px var(--color-danger);
+  }
+  50% {
+    box-shadow: 0 0 0 2px transparent;
+  }
+}
+
+.button-attention-blink {
+  animation: button-attention-blink 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button-attention-blink {
+    animation: none;
+    box-shadow: 0 0 0 2px var(--color-danger);
+  }
+}
+
 .error-banner {
   display: flex;
   align-items: center;
