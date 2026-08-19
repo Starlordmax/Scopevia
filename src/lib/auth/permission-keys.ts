@@ -13,8 +13,9 @@
  * (Phase 2A), supabase/migrations/20260708120200_seed_material_catalog_permissions.sql
  * (Phase 2B), supabase/migrations/20260709140300_measurements_rls_and_permissions.sql
  * (Phase 2C), supabase/migrations/20260715100200_client_portal_rls_and_permissions.sql
- * (Phase 3A), and supabase/migrations/20260720100200_seed_proposal_revision_permission.sql
- * (Phase 3B.1).
+ * (Phase 3A), supabase/migrations/20260720100200_seed_proposal_revision_permission.sql
+ * (Phase 3B.1), and supabase/migrations/20260819100600_seed_ai_permissions.sql
+ * (AI-assisted proposal text).
  */
 export const PERMISSIONS = {
   TENANT_VIEW: "tenant.view",
@@ -110,6 +111,11 @@ export const PERMISSIONS = {
   PORTAL_LINKS_CREATE: "proposal_portal_links.create",
   PORTAL_LINKS_VIEW: "proposal_portal_links.view",
   PORTAL_LINKS_REVOKE: "proposal_portal_links.revoke",
+
+  // AI-assisted proposal text (Terms/Exclusions/Notes). Business profile
+  // itself has no dedicated permission -- it reuses TENANT_VIEW/TENANT_UPDATE
+  // above, see docs/78-business-profile-ai-context.md.
+  AI_GENERATE_PROPOSAL_TEXT: "ai.generate_proposal_text",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

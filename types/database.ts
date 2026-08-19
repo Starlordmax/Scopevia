@@ -39,6 +39,73 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_generation_events: {
+        Row: {
+          created_at: string
+          error_code: string | null
+          feature: string
+          id: string
+          input_tokens: number | null
+          model: string
+          output_tokens: number | null
+          proposal_id: string | null
+          proposal_version_id: string | null
+          status: string
+          tenant_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_code?: string | null
+          feature: string
+          id?: string
+          input_tokens?: number | null
+          model: string
+          output_tokens?: number | null
+          proposal_id?: string | null
+          proposal_version_id?: string | null
+          status: string
+          tenant_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_code?: string | null
+          feature?: string
+          id?: string
+          input_tokens?: number | null
+          model?: string
+          output_tokens?: number | null
+          proposal_id?: string | null
+          proposal_version_id?: string | null
+          status?: string
+          tenant_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_generation_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_generation_events_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_generation_events_proposal_version_id_fkey"
+            columns: ["proposal_version_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -81,6 +148,89 @@ export type Database = {
             foreignKeyName: "audit_logs_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_profiles: {
+        Row: {
+          business_address: string
+          business_email: string
+          business_name: string
+          business_phone: string
+          created_at: string
+          default_cancellation_policy: string
+          default_change_order_policy: string
+          default_cleanup_policy: string
+          default_client_responsibilities: string
+          default_deposit_policy: string
+          default_exclusions: string
+          default_materials_policy: string
+          default_payment_terms: string
+          default_warranty_policy: string
+          industry: string
+          insurance_statement: string
+          license_number: string
+          main_services: string
+          service_area: string
+          tenant_id: string
+          tone_preference: string
+          updated_at: string
+        }
+        Insert: {
+          business_address?: string
+          business_email?: string
+          business_name?: string
+          business_phone?: string
+          created_at?: string
+          default_cancellation_policy?: string
+          default_change_order_policy?: string
+          default_cleanup_policy?: string
+          default_client_responsibilities?: string
+          default_deposit_policy?: string
+          default_exclusions?: string
+          default_materials_policy?: string
+          default_payment_terms?: string
+          default_warranty_policy?: string
+          industry?: string
+          insurance_statement?: string
+          license_number?: string
+          main_services?: string
+          service_area?: string
+          tenant_id: string
+          tone_preference?: string
+          updated_at?: string
+        }
+        Update: {
+          business_address?: string
+          business_email?: string
+          business_name?: string
+          business_phone?: string
+          created_at?: string
+          default_cancellation_policy?: string
+          default_change_order_policy?: string
+          default_cleanup_policy?: string
+          default_client_responsibilities?: string
+          default_deposit_policy?: string
+          default_exclusions?: string
+          default_materials_policy?: string
+          default_payment_terms?: string
+          default_warranty_policy?: string
+          industry?: string
+          insurance_statement?: string
+          license_number?: string
+          main_services?: string
+          service_area?: string
+          tenant_id?: string
+          tone_preference?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
@@ -2538,6 +2688,144 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      count_recent_ai_generations: {
+        Args: { p_tenant_id: string; p_window_minutes?: number }
+        Returns: number
+      }
+      ensure_business_profile: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          business_address: string
+          business_email: string
+          business_name: string
+          business_phone: string
+          created_at: string
+          default_cancellation_policy: string
+          default_change_order_policy: string
+          default_cleanup_policy: string
+          default_client_responsibilities: string
+          default_deposit_policy: string
+          default_exclusions: string
+          default_materials_policy: string
+          default_payment_terms: string
+          default_warranty_policy: string
+          industry: string
+          insurance_statement: string
+          license_number: string
+          main_services: string
+          service_area: string
+          tenant_id: string
+          tone_preference: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "business_profiles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      get_business_profile: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          business_address: string
+          business_email: string
+          business_name: string
+          business_phone: string
+          created_at: string
+          default_cancellation_policy: string
+          default_change_order_policy: string
+          default_cleanup_policy: string
+          default_client_responsibilities: string
+          default_deposit_policy: string
+          default_exclusions: string
+          default_materials_policy: string
+          default_payment_terms: string
+          default_warranty_policy: string
+          industry: string
+          insurance_statement: string
+          license_number: string
+          main_services: string
+          service_area: string
+          tenant_id: string
+          tone_preference: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "business_profiles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      record_ai_generation_event: {
+        Args: {
+          p_error_code?: string
+          p_feature: string
+          p_input_tokens?: number
+          p_model: string
+          p_output_tokens?: number
+          p_proposal_id: string
+          p_proposal_version_id: string
+          p_status: string
+          p_tenant_id: string
+        }
+        Returns: string
+      }
+      update_business_profile: {
+        Args: {
+          p_business_address: string
+          p_business_email: string
+          p_business_name: string
+          p_business_phone: string
+          p_default_cancellation_policy: string
+          p_default_change_order_policy: string
+          p_default_client_responsibilities: string
+          p_default_cleanup_policy: string
+          p_default_deposit_policy: string
+          p_default_exclusions: string
+          p_default_materials_policy: string
+          p_default_payment_terms: string
+          p_default_warranty_policy: string
+          p_industry: string
+          p_insurance_statement: string
+          p_license_number: string
+          p_main_services: string
+          p_service_area: string
+          p_tenant_id: string
+          p_tone_preference: string
+        }
+        Returns: {
+          business_address: string
+          business_email: string
+          business_name: string
+          business_phone: string
+          created_at: string
+          default_cancellation_policy: string
+          default_change_order_policy: string
+          default_cleanup_policy: string
+          default_client_responsibilities: string
+          default_deposit_policy: string
+          default_exclusions: string
+          default_materials_policy: string
+          default_payment_terms: string
+          default_warranty_policy: string
+          industry: string
+          insurance_statement: string
+          license_number: string
+          main_services: string
+          service_area: string
+          tenant_id: string
+          tone_preference: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "business_profiles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       accept_invitation: {
         Args: { p_membership_id: string }
         Returns: {

@@ -4,6 +4,50 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Feature — AI-assisted proposal text (Terms, Exclusions, Notes for client)
+
+An "AI writing assistant" on the Terms & Pricing step drafts Terms,
+Exclusions, and Notes for client from the proposal's own scope/
+measurements/labor/materials and a new tenant-level **Business profile**
+(Profile → Business profile — company info, service policies, tone
+preference), via [OpenRouter](https://openrouter.ai), called entirely
+server-side. A draft is always shown for review; applying it never
+silently overwrites existing text (asks Replace/Append/Cancel first);
+the user still clicks the form's own "Save and continue" to persist
+anything. Falls back to a local, no-API-call basic template when
+`OPENROUTER_API_KEY` isn't configured, so no environment is ever blocked
+by a missing key.
+
+New `ai.generate_proposal_text` permission (Owner/Admin/Estimator/Sales;
+Viewer/Field Worker cannot) — the UI additionally only shows the
+assistant to users who can also edit Terms & Pricing
+(`proposals.manage_pricing`), since generating a draft nobody can save
+would be a dead end; see docs/77, "Permissions," for the Sales nuance.
+New `business_profiles` table (reuses `tenant.view`/`tenant.update`, no
+new permission) and `ai_generation_events` (append-only telemetry — never
+the prompt or the AI's raw response — used for a 10-per-hour-per-user
+rate limit checked *before* any provider call).
+
+Security: the API key is read server-only, never `NEXT_PUBLIC_`, never
+logged, never stored; the prompt deliberately excludes the client's
+phone/email/address and any exact dollar amounts (see docs/79 for the
+full data-minimization list); every RPC is tenant/permission-checked in
+Postgres, not just in TypeScript. **The OpenRouter API key shared
+earlier in this project's history is treated as compromised and must be
+rotated before real use** — see docs/79.
+
+6 new migrations (business profile + generation-events schema/functions/
+RLS, permission seed) — applied to the linked Supabase project. New unit
+tests (prompt builder never includes a secret, business profile
+validation, OpenRouter module's request/response handling via a mocked
+`fetch`, fallback template generator), a new RLS suite (tenant isolation,
+permission matrix, append-only enforcement — 15/15 passing against the
+real database), and a new E2E suite exercising the fallback-template path
+live end-to-end (business profile save/reload, Generate → Apply →
+Save → value survives reload, the Replace/Append/Cancel confirmation,
+Cancel discarding a draft) — 9/9 passing. No test anywhere calls the
+real OpenRouter API, by design. See docs/77, docs/78, docs/79.
+
 ### Feature — Proactive "create a group first" nudge in Measurements
 
 Follow-up to the fix below: rather than only turning red after a failed

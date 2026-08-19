@@ -5,6 +5,7 @@ import { hasPermission, PERMISSIONS } from "../../../../../lib/auth/permissions"
 import { getFullProposal } from "../../../../../lib/proposals/data";
 import { getPortfolioMediaOptions } from "../../../../../lib/proposals/portfolio-options";
 import { getBusinessBranding } from "../../../../../lib/branding/data";
+import { getBusinessProfile } from "../../../../../lib/business/data";
 import { searchMaterialCatalog } from "../../../../../lib/proposals/materials";
 import { serviceTypeLabel } from "../../../../../lib/proposals/service-type";
 import { DEFAULT_PAGE_SIZE } from "../../../../../lib/search";
@@ -58,6 +59,7 @@ export default async function ProposalEditPage({
     canCreateMeasurements,
     canArchiveMeasurements,
     canGenerateFromMeasurements,
+    canGenerateAiText,
   ] = await Promise.all([
     hasPermission(tenant.tenant_id, PERMISSIONS.PROPOSALS_UPDATE),
     hasPermission(tenant.tenant_id, PERMISSIONS.PROPOSALS_MANAGE_PRICING),
@@ -69,6 +71,7 @@ export default async function ProposalEditPage({
     hasPermission(tenant.tenant_id, PERMISSIONS.MEASUREMENTS_CREATE),
     hasPermission(tenant.tenant_id, PERMISSIONS.MEASUREMENTS_ARCHIVE),
     hasPermission(tenant.tenant_id, PERMISSIONS.MEASUREMENTS_GENERATE_MATERIALS),
+    hasPermission(tenant.tenant_id, PERMISSIONS.AI_GENERATE_PROPOSAL_TEXT),
   ]);
 
   const isDraft = data.version.version_status === "draft" && data.proposal.status === "draft";
@@ -80,6 +83,11 @@ export default async function ProposalEditPage({
     const { data: settings } = await supabase.rpc("get_tenant_proposal_settings", { p_tenant_id: tenant.tenant_id });
     if (settings) defaultHourlyRateCents = settings.default_customer_hourly_rate_cents;
   }
+
+  const defaultAiTone =
+    step === "pricing" && canGenerateAiText && canManagePricing
+      ? ((await getBusinessProfile(tenant.tenant_id))?.tone_preference ?? "professional")
+      : "professional";
 
   const catalogPage =
     (step === "materials" || step === "measurements") && canViewMaterials
@@ -177,7 +185,22 @@ export default async function ProposalEditPage({
           canUsePortfolio={canViewPortfolio && isDraft}
         />
       ) : null}
-      {step === "pricing" ? <StepPricing proposalId={proposalId} version={data.version} canEdit={canManagePricing && isDraft} /> : null}
+      {step === "pricing" ? (
+        <StepPricing
+          tenantId={tenant.tenant_id}
+          proposalId={proposalId}
+          version={data.version}
+          canEdit={canManagePricing && isDraft}
+          // Gated on manage_pricing too, not just ai.generate_proposal_text:
+          // the assistant's whole point is filling in THIS step's fields,
+          // which stay disabled for anyone who can't manage_pricing (see
+          // canEdit above) -- showing "Generate" to a user who could never
+          // apply or save the result would be a dead end. See
+          // docs/77-ai-proposal-text-generation.md, "Permissions."
+          canGenerateAiText={canGenerateAiText && canManagePricing && isDraft}
+          defaultAiTone={defaultAiTone}
+        />
+      ) : null}
       {step === "review" ? (
         <StepReview
           proposalId={proposalId}

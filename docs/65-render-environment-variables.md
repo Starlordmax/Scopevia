@@ -37,11 +37,16 @@ handlers) and never bundled for the browser.
 | `EMAIL_FROM` | Verified sender address in Resend — required when `EMAIL_PROVIDER=resend` | Same as above |
 | `EMAIL_REPLY_TO` | Optional reply-to address for outgoing email | Same as above |
 | `EMAIL_ALLOW_DEV_PROVIDER_IN_PRODUCTION` | Dangerous override allowing `EMAIL_PROVIDER=dev` under `NODE_ENV=production` — **must never be set on a public Render deployment**; exists only for local/CI E2E runs | `src/lib/email/provider-selection.ts` |
+| `OPENROUTER_API_KEY` | AI writing assistant (Terms/Exclusions/Notes for client, see [docs/77](77-ai-proposal-text-generation.md)) — if unset, the feature falls back to a local basic template, never blocking the page | `src/lib/ai/openrouter.ts` |
+| `OPENROUTER_MODEL` | Optional. OpenRouter model id — defaults to a small, inexpensive model if unset | `src/lib/ai/openrouter.ts` |
+| `OPENROUTER_SITE_URL` | Optional. `HTTP-Referer` header on OpenRouter calls — falls back to `APP_BASE_URL` if unset | `src/lib/ai/openrouter.ts` |
+| `OPENROUTER_APP_NAME` | Optional. `X-Title` header on OpenRouter calls — defaults to "Scopevia" if unset | `src/lib/ai/openrouter.ts` |
 
 ## Rules (unchanged from every prior phase, restated here for this deployment)
 
 - Never give `SUPABASE_SERVICE_ROLE_KEY` a `NEXT_PUBLIC_` prefix, ever.
 - Never give `RESEND_API_KEY` a `NEXT_PUBLIC_` prefix, ever.
+- Never give `OPENROUTER_API_KEY` a `NEXT_PUBLIC_` prefix, ever — see [docs/79](79-openrouter-security.md).
 - Never commit `.env.local` — it's gitignored (verified:
   `git check-ignore -v .env.local`).
 - Render receives every secret from its dashboard (or, via the
@@ -67,3 +72,5 @@ handlers) and never bundled for the browser.
 | `NEXT_PUBLIC_APP_ENV` | Not fetched from anywhere — just type `staging` |
 | `EMAIL_PROVIDER` | Not fetched from anywhere — just type `resend` |
 | `NEXT_PUBLIC_ADDRESS_AUTOCOMPLETE_PROVIDER` / `NEXT_PUBLIC_GOOGLE_PLACES_API_KEY` | Optional — leave unset for this phase. Address autocomplete works fine with plain manual entry with neither set; see [docs/73](73-client-address-and-material-zip-defaults.md) |
+| `OPENROUTER_API_KEY` | [openrouter.ai/keys](https://openrouter.ai/keys) — a **newly rotated** key, never the one that may have been shared in chat/logs during development (treat any previously-shared key as compromised) |
+| `OPENROUTER_MODEL` / `OPENROUTER_SITE_URL` / `OPENROUTER_APP_NAME` | Optional — leave unset for sensible defaults; see [docs/77](77-ai-proposal-text-generation.md) |

@@ -18,6 +18,11 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // See tests/stubs/server-only-stub.ts -- the real "server-only"
+      // package throws unconditionally outside Next.js's server bundler,
+      // which would break any unit test importing a genuinely
+      // server-only module (e.g. src/lib/ai/openrouter.ts).
+      "server-only": path.resolve(__dirname, "./tests/stubs/server-only-stub.ts"),
     },
   },
 });
