@@ -5,15 +5,22 @@ import { authFile, uniqueSuffix } from "./fixtures/session";
  * The brief's exact worked scenario end-to-end: create proposal -> go to
  * Measurements -> add a manual room (20ft x 15ft, confirm area 300 sq
  * ft) -> set a ZIP in Materials & Costs -> generate a flooring material
- * from the measurement (confirm the waste-adjusted quantity) -> generate
- * labor by area -> confirm the proposal total -> confirm Preview shows
- * the measurement plus what it generated. See
- * docs/45-measurements-takeoff-builder.md.
+ * from the measurement (confirm the waste-adjusted quantity, from the
+ * Materials & Costs step) -> generate labor by area (from the Labor step)
+ * -> confirm the proposal total -> confirm Preview shows the measurement
+ * plus what it generated.
+ *
+ * Layout note: Measurements is a pure capture step (create/draw/save/view
+ * measurements only). "Generate materials from a saved measurement" lives
+ * in Materials & Costs; "Generate labor from a saved measurement" lives in
+ * Labor. See docs/34-proposal-builder-ux.md, "Step responsibilities."
  */
 test.describe("Measurements / Takeoff builder", () => {
   test.use({ storageState: authFile("owner-a") });
 
-  test("manual room measurement -> generate flooring material with waste -> generate area labor -> total and preview", async ({ page }) => {
+  test("manual room measurement -> generate flooring material with waste (Materials) -> generate area labor (Labor) -> total and preview", async ({
+    page,
+  }) => {
     test.setTimeout(120_000);
     const suffix = uniqueSuffix();
     const clientName = `E2E Measurements Client ${suffix}`;
@@ -37,6 +44,10 @@ test.describe("Measurements / Takeoff builder", () => {
     await page.goto(`${proposalUrl}/edit?step=measurements`);
     const measurementsPanel = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Measurements" }) });
 
+    // Measurements is capture-only -- no generate panels here at all.
+    await expect(page.getByRole("heading", { name: "Generate materials from a saved measurement" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Generate labor from a saved measurement" })).toHaveCount(0);
+
     await measurementsPanel.locator("#groupName").fill("Living Room");
     await measurementsPanel.getByRole("button", { name: "+ Add group" }).click();
     await expect(measurementsPanel.locator("#measurementGroupId option", { hasText: "Living Room" })).toHaveCount(1);
@@ -50,38 +61,42 @@ test.describe("Measurements / Takeoff builder", () => {
     await expect(measurementsPanel.locator(".unsaved-preview-tile")).toContainText("300.00 sq ft");
 
     await measurementsPanel.getByRole("button", { name: "Save measurement" }).click();
+    await expect(measurementsPanel.getByText("Saved. You can now use this measurement in Labor or Materials & Costs.")).toBeVisible();
     const savedRow = measurementsPanel.locator("tr").filter({ hasText: "Living room floor" });
     await expect(savedRow).toBeVisible();
     await expect(savedRow).toContainText("300");
 
-    // --- Set a ZIP in Materials & Costs so the catalog has local pricing ---
+    // --- Materials & Costs: set ZIP, search the catalog, generate the material ---
     await page.goto(`${proposalUrl}/edit?step=materials`);
     await page.getByLabel("ZIP code").fill("33101");
     await page.getByRole("button", { name: "Save ZIP" }).click();
 
-    // --- Back to Measurements: generate a flooring material from the measurement ---
-    await page.goto(`${proposalUrl}/edit?step=measurements`);
-    const generatePanel = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Generate materials from measurement" }) });
-
-    await generatePanel.getByLabel("Search the material catalog").fill("Laminate Flooring");
-    await generatePanel.getByRole("button", { name: "Search" }).click();
+    await page.getByLabel("Search the material catalog").fill("Laminate Flooring");
+    await page.getByRole("button", { name: "Search" }).click();
     await page.waitForURL(/catalogSearch=Laminate/);
 
-    const laminateOption = generatePanel.locator("#genMaterial option", { hasText: "Laminate Flooring" });
+    const generateMaterialsPanel = page
+      .locator(".section-card")
+      .filter({ has: page.getByRole("heading", { name: "Generate materials from a saved measurement" }) });
+    const laminateOption = generateMaterialsPanel.locator("#genMaterial option", { hasText: "Laminate Flooring" });
     await expect(laminateOption).toHaveCount(1);
     const laminateOptionValue = await laminateOption.getAttribute("value");
-    await generatePanel.locator("#genMaterial").selectOption({ value: laminateOptionValue! });
-    await generatePanel.locator("#measurementValueField").selectOption("area");
-    await generatePanel.locator("#coverageRate").fill("1");
-    await generatePanel.locator("#coats").fill("1");
-    await generatePanel.locator("#genWaste").fill("10");
-    await generatePanel.getByRole("button", { name: "Add to proposal" }).click();
+    await generateMaterialsPanel.locator("#genMaterial").selectOption({ value: laminateOptionValue! });
+    await generateMaterialsPanel.locator("#measurementValueField").selectOption("area");
+    await generateMaterialsPanel.locator("#coverageRate").fill("1");
+    await generateMaterialsPanel.locator("#coats").fill("1");
+    await generateMaterialsPanel.locator("#genWaste").fill("10");
+    await generateMaterialsPanel.getByRole("button", { name: "Add to proposal" }).click();
 
-    // --- Generate labor by area ($4.00/sq ft x 300 sq ft = $1,200.00) ---
-    await generatePanel.locator("#laborLabel").fill("Flooring install labor");
-    await generatePanel.locator("#pricingMethod").selectOption("area");
-    await generatePanel.locator("#rateCents").fill("4.00");
-    await generatePanel.getByRole("button", { name: "Add labor to proposal" }).click();
+    // --- Labor: generate labor by area ($4.00/sq ft x 300 sq ft = $1,200.00) ---
+    await page.goto(`${proposalUrl}/edit?step=labor`);
+    const generateLaborPanel = page
+      .locator(".section-card")
+      .filter({ has: page.getByRole("heading", { name: "Generate labor from a saved measurement" }) });
+    await generateLaborPanel.locator("#laborLabel").fill("Flooring install labor");
+    await generateLaborPanel.locator("#pricingMethod").selectOption("area");
+    await generateLaborPanel.locator("#rateCents").fill("4.00");
+    await generateLaborPanel.getByRole("button", { name: "Add labor to proposal" }).click();
 
     // --- Confirm the generated material landed in Materials & Costs' Saved
     // costs with the waste-adjusted quantity: 300 sq ft x 1 coat x 1.10
@@ -91,6 +106,12 @@ test.describe("Measurements / Takeoff builder", () => {
     const laminateRow = savedCosts.locator("tr").filter({ hasText: "Laminate Flooring" });
     await expect(laminateRow).toContainText("330");
     await expect(laminateRow).toContainText("$1,155.00");
+
+    // --- Confirm the generated labor landed in Labor's Saved labor ---
+    await page.goto(`${proposalUrl}/edit?step=labor`);
+    const savedLabor = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Saved labor" }) });
+    const laborRow = savedLabor.locator("tr").filter({ hasText: "Flooring install labor" });
+    await expect(laborRow).toContainText("$1,200.00");
 
     // --- Confirm the proposal total: $1,155.00 material + $1,200.00 labor = $2,355.00 ---
     await page.goto(proposalUrl);
@@ -117,12 +138,15 @@ test.describe("Measurements / Takeoff builder", () => {
    * deterministic, but exercising the same freehand/polygon code path as
    * an L-shaped room would) -> close the shape -> scale it (20 ft
    * bounding width -> 120 sq ft, 52 ft perimeter) -> save -> set ZIP ->
-   * generate flooring material (120 sq ft x 1.10 waste = 132 sq ft @
-   * $3.50/sq ft = $462.00) -> generate area labor ($4.00/sq ft x 120 sq
-   * ft = $480.00) -> confirm total ($942.00) -> confirm Preview shows it
-   * as a drawn measurement with no technical/canvas data.
+   * generate flooring material from Materials & Costs (120 sq ft x 1.10
+   * waste = 132 sq ft @ $3.50/sq ft = $462.00) -> generate area labor from
+   * Labor ($4.00/sq ft x 120 sq ft = $480.00) -> confirm total ($942.00)
+   * -> confirm Preview shows it as a drawn measurement with no
+   * technical/canvas data.
    */
-  test("freehand draw -> close shape -> scale -> save -> generate material/labor -> total and preview", async ({ page }) => {
+  test("freehand draw -> close shape -> scale -> save -> generate material (Materials) / labor (Labor) -> total and preview", async ({
+    page,
+  }) => {
     test.setTimeout(120_000);
     const suffix = uniqueSuffix();
     const clientName = `E2E Freehand Client ${suffix}`;
@@ -181,38 +205,42 @@ test.describe("Measurements / Takeoff builder", () => {
     await expect(measurementsPanel.locator(".unsaved-preview-tile")).toContainText("Perimeter: 52.00 ft");
 
     await measurementsPanel.getByRole("button", { name: "Save drawn measurement" }).click();
+    await expect(measurementsPanel.getByText("Saved. You can now use this measurement in Labor or Materials & Costs.")).toBeVisible();
     const savedRow = measurementsPanel.locator("tr").filter({ hasText: "Kitchen floor (freehand)" });
     await expect(savedRow).toBeVisible();
     await expect(savedRow).toContainText("120");
 
-    // --- Set a ZIP in Materials & Costs so the catalog has local pricing ---
+    // --- Materials & Costs: set ZIP, search the catalog, generate the material ---
     await page.goto(`${proposalUrl}/edit?step=materials`);
     await page.getByLabel("ZIP code").fill("33101");
     await page.getByRole("button", { name: "Save ZIP" }).click();
 
-    // --- Back to Measurements: generate a flooring material from the freehand measurement ---
-    await page.goto(`${proposalUrl}/edit?step=measurements`);
-    const generatePanel = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Generate materials from measurement" }) });
-
-    await generatePanel.getByLabel("Search the material catalog").fill("Laminate Flooring");
-    await generatePanel.getByRole("button", { name: "Search" }).click();
+    await page.getByLabel("Search the material catalog").fill("Laminate Flooring");
+    await page.getByRole("button", { name: "Search" }).click();
     await page.waitForURL(/catalogSearch=Laminate/);
 
-    const laminateOption = generatePanel.locator("#genMaterial option", { hasText: "Laminate Flooring" });
+    const generateMaterialsPanel = page
+      .locator(".section-card")
+      .filter({ has: page.getByRole("heading", { name: "Generate materials from a saved measurement" }) });
+    const laminateOption = generateMaterialsPanel.locator("#genMaterial option", { hasText: "Laminate Flooring" });
     await expect(laminateOption).toHaveCount(1);
     const laminateOptionValue = await laminateOption.getAttribute("value");
-    await generatePanel.locator("#genMaterial").selectOption({ value: laminateOptionValue! });
-    await generatePanel.locator("#measurementValueField").selectOption("area");
-    await generatePanel.locator("#coverageRate").fill("1");
-    await generatePanel.locator("#coats").fill("1");
-    await generatePanel.locator("#genWaste").fill("10");
-    await generatePanel.getByRole("button", { name: "Add to proposal" }).click();
+    await generateMaterialsPanel.locator("#genMaterial").selectOption({ value: laminateOptionValue! });
+    await generateMaterialsPanel.locator("#measurementValueField").selectOption("area");
+    await generateMaterialsPanel.locator("#coverageRate").fill("1");
+    await generateMaterialsPanel.locator("#coats").fill("1");
+    await generateMaterialsPanel.locator("#genWaste").fill("10");
+    await generateMaterialsPanel.getByRole("button", { name: "Add to proposal" }).click();
 
-    // --- Generate labor by area ($4.00/sq ft x 120 sq ft = $480.00) ---
-    await generatePanel.locator("#laborLabel").fill("Freehand floor install labor");
-    await generatePanel.locator("#pricingMethod").selectOption("area");
-    await generatePanel.locator("#rateCents").fill("4.00");
-    await generatePanel.getByRole("button", { name: "Add labor to proposal" }).click();
+    // --- Labor: generate area labor ($4.00/sq ft x 120 sq ft = $480.00) ---
+    await page.goto(`${proposalUrl}/edit?step=labor`);
+    const generateLaborPanel = page
+      .locator(".section-card")
+      .filter({ has: page.getByRole("heading", { name: "Generate labor from a saved measurement" }) });
+    await generateLaborPanel.locator("#laborLabel").fill("Freehand floor install labor");
+    await generateLaborPanel.locator("#pricingMethod").selectOption("area");
+    await generateLaborPanel.locator("#rateCents").fill("4.00");
+    await generateLaborPanel.getByRole("button", { name: "Add labor to proposal" }).click();
 
     // --- Confirm the generated material: 120 sq ft x 1 coat x 1.10 waste / 1 coverage = 132 sq ft, at $3.50/sq ft = $462.00 ---
     await page.goto(`${proposalUrl}/edit?step=materials`);
@@ -236,5 +264,87 @@ test.describe("Measurements / Takeoff builder", () => {
     await expect(previewRow).toContainText("Material: Laminate Flooring");
     await expect(previewRow).toContainText("Labor: Freehand floor install labor");
     await expect(page.getByText(/proposal_measurement_id|shape_data|"points"|sketch_polygon|strokeCount/)).toHaveCount(0);
+  });
+
+  test("Labor and Materials & Costs show an empty state with a link to Measurements when no measurements exist yet", async ({ page }) => {
+    const suffix = uniqueSuffix();
+    const clientName = `E2E No Measurements Client ${suffix}`;
+    const proposalTitle = `E2E No Measurements Proposal ${suffix}`;
+
+    await page.goto("/clients/new");
+    await page.getByLabel("Display name").fill(clientName);
+    await page.getByRole("button", { name: "Create client" }).click();
+    await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
+
+    await page.goto("/proposals/new");
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
+    await page.waitForURL(/clientId=/);
+    await page.getByLabel("Proposal title").fill(proposalTitle);
+    await page.getByLabel("Service type").selectOption("flooring");
+    await page.getByRole("button", { name: "Save and continue" }).click();
+    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=measurements/);
+    const proposalUrl = page.url().replace(/\/edit\?step=measurements$/, "");
+
+    // --- Labor: no measurements saved yet -- empty state, no form fields ---
+    await page.goto(`${proposalUrl}/edit?step=labor`);
+    const generateLaborPanel = page
+      .locator(".section-card")
+      .filter({ has: page.getByRole("heading", { name: "Generate labor from a saved measurement" }) });
+    await expect(generateLaborPanel.getByText("No saved measurements yet. Go to Measurements to create an area or linear measurement first.")).toBeVisible();
+    await expect(generateLaborPanel.locator("#laborLabel")).toHaveCount(0);
+    const laborMeasurementsLink = generateLaborPanel.getByRole("link", { name: "Go to Measurements" });
+    await expect(laborMeasurementsLink).toHaveAttribute("href", /\/edit\?step=measurements$/);
+
+    // --- Materials & Costs: no measurements saved yet -- empty state, no form fields ---
+    await page.goto(`${proposalUrl}/edit?step=materials`);
+    const generateMaterialsPanel = page
+      .locator(".section-card")
+      .filter({ has: page.getByRole("heading", { name: "Generate materials from a saved measurement" }) });
+    await expect(
+      generateMaterialsPanel.getByText("No saved measurements yet. Create a measurement first, then use it to estimate material quantities.")
+    ).toBeVisible();
+    await expect(generateMaterialsPanel.locator("#genMaterial")).toHaveCount(0);
+    await expect(generateMaterialsPanel.getByRole("link", { name: "Go to Measurements" })).toBeVisible();
+  });
+
+  test("Generate materials from a saved measurement warns when no ZIP is set yet", async ({ page }) => {
+    const suffix = uniqueSuffix();
+    const clientName = `E2E No ZIP Client ${suffix}`;
+    const proposalTitle = `E2E No ZIP Proposal ${suffix}`;
+
+    await page.goto("/clients/new");
+    await page.getByLabel("Display name").fill(clientName);
+    await page.getByRole("button", { name: "Create client" }).click();
+    await page.waitForURL(/\/clients\/[0-9a-f-]+$/);
+
+    await page.goto("/proposals/new");
+    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
+    await page.waitForURL(/clientId=/);
+    await page.getByLabel("Proposal title").fill(proposalTitle);
+    await page.getByLabel("Service type").selectOption("flooring");
+    await page.getByRole("button", { name: "Save and continue" }).click();
+    await page.waitForURL(/\/proposals\/[0-9a-f-]+\/edit\?step=measurements/);
+    const proposalUrl = page.url().replace(/\/edit\?step=measurements$/, "");
+
+    await page.goto(`${proposalUrl}/edit?step=measurements`);
+    const measurementsPanel = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Measurements" }) });
+    await measurementsPanel.locator("#groupName").fill("Bath");
+    await measurementsPanel.getByRole("button", { name: "+ Add group" }).click();
+    await measurementsPanel.locator("#measurementGroupId").selectOption({ label: "Bath" });
+    await measurementsPanel.locator("#name").fill("Bath floor");
+    await measurementsPanel.locator("#length").fill("5");
+    await measurementsPanel.locator("#width").fill("5");
+    await measurementsPanel.getByRole("button", { name: "Save measurement" }).click();
+    await expect(measurementsPanel.locator("tr").filter({ hasText: "Bath floor" })).toBeVisible();
+
+    await page.goto(`${proposalUrl}/edit?step=materials`);
+    // A client with no address on file (as created above) leaves the
+    // proposal's pricing ZIP blank -- see client-address-and-zip.spec.ts.
+    await expect(page.locator("#zipCode")).toHaveValue("");
+    const generateMaterialsPanel = page
+      .locator(".section-card")
+      .filter({ has: page.getByRole("heading", { name: "Generate materials from a saved measurement" }) });
+    await expect(generateMaterialsPanel.getByText("Set a ZIP code above to see local material pricing.")).toBeVisible();
+    await expect(generateMaterialsPanel.locator("#genMaterial")).toHaveCount(0);
   });
 });

@@ -101,6 +101,23 @@ return to draft → archive → restore) and by the E2E suite in
 > [docs/51](51-material-catalog-pagination.md) y
 > [docs/42](42-material-catalog-by-zip.md#pagination-phase-2d1).
 
+> **Nota de estado (2026-08-19, Measurements/Labor/Materials UX split):**
+> Measurements ahora es un paso puro de captura — crear/dibujar/guardar/
+> ver/archivar mediciones, nada más. Los paneles "Generate materials from
+> a saved measurement" y "Generate labor from a saved measurement" (antes
+> ambos vivían dentro de Measurements) se movieron a Materials & Costs y
+> Labor respectivamente, cada uno gateado por el mismo permiso
+> `measurements.generate_materials` que ya existía. Ambos paneles leen
+> `measurements` directo del `getFullProposal()` que ya carga
+> `edit/page.tsx` sin importar el step activo, así que funcionan aunque
+> el usuario nunca haya visitado Measurements en esa sesión de navegador.
+> Ningún cálculo, RPC, RLS, snapshot de precio, o total de propuesta
+> cambió — es un refactor de layout/ubicación de componentes únicamente.
+> Después de guardar una medición, Measurements ahora muestra: "Saved.
+> You can now use this measurement in Labor or Materials & Costs." Ver
+> [docs/45](45-measurements-takeoff-builder.md#ui) y
+> [docs/42](42-material-catalog-by-zip.md#ui).
+
 > **Nota de estado (2026-07-15, Phase 3A — Client Portal):** La página de
 > detalle de la propuesta (`/proposals/[proposalId]`) ahora incluye una
 > sección "Client portal" (visible con `proposal_portal_links.view`): crear
@@ -149,25 +166,29 @@ proposal id doesn't exist yet at that point.
    server can refetch that client's contacts/open opportunities. A **"+
    New client"** action next to the selector opens a Quick Create Client
    modal without leaving this page — see "Quick Create Client" below.
-2. **Measurements** — record room/surface dimensions (manual entry or
-   drawn — see [docs/45](45-measurements-takeoff-builder.md)) and
-   optionally generate a catalog material or priced labor item directly
-   from a measurement's area/perimeter/linear length.
+2. **Measurements** — a pure capture step: record room/surface dimensions
+   (manual entry or drawn — see [docs/45](45-measurements-takeoff-builder.md))
+   and view/archive the saved list. It does **not** generate materials or
+   labor itself — that happens later, from Labor and Materials & Costs
+   (see below).
 3. **Scope of Work** — sections with a type (`scope`/`schedule`/
    `materials`/`additional_services`/`exclusions`/`custom`), basic
    templates per service type (Interior Painting, Bathroom Remodeling,
    General Remodeling — structure only, no invented prices or quantities,
    matching the brief's explicit constraint).
-4. **Labor** — the calculator, with a live client-side preview
-   (`src/lib/proposals/calculations.ts`, explicitly labeled orientative)
-   that's replaced by the real server value the instant the item is
-   saved.
+4. **Labor** — the hourly/fixed calculator, with a live client-side
+   preview (`src/lib/proposals/calculations.ts`, explicitly labeled
+   orientative) that's replaced by the real server value the instant the
+   item is saved, plus a **"Generate labor from a saved measurement"**
+   panel that prices labor by a saved measurement's area or length.
 5. **Materials & Costs** — a ZIP-priced material catalog (search,
-   category filter, resolved price, add flow) plus the original manual
-   "Add a custom cost" form (category, unit, quantity, unit price,
-   taxable toggle, optional section assignment, live preview identical
-   in spirit to Labor's) for anything not in the catalog. See
-   [docs/42](42-material-catalog-by-zip.md).
+   category filter, resolved price, add flow), a **"Generate materials
+   from a saved measurement"** panel that estimates quantity/cost from a
+   saved measurement (reusing this step's own catalog search results),
+   and the original manual "Add a custom cost" form (category, unit,
+   quantity, unit price, taxable toggle, optional section assignment,
+   live preview identical in spirit to Labor's) for anything not in the
+   catalog. See [docs/42](42-material-catalog-by-zip.md).
 6. **Photos** — two clearly separate areas: **Current job photos**
    (direct upload) and **Previous work** (select from the Portfolio,
    attaches the same underlying file rather than duplicating it).

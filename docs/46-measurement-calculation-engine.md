@@ -5,6 +5,13 @@ Status: **Implemented and verified** two ways: a pure unit test suite
 integration test suite against real Postgres RPCs
 (`tests/rls/phase2c-measurements.test.ts`).
 
+> **Update (2026-08-19):** the *UI* that triggers
+> `generate_material_from_measurement()`/
+> `add_proposal_labor_item_from_measurement()` moved to Materials & Costs
+> and Labor respectively (see [docs/45](45-measurements-takeoff-builder.md#ui)
+> and [docs/34](34-proposal-builder-ux.md)) — nothing on this page
+> changed. Every formula, rounding rule, and RPC below is unchanged.
+
 ## Authority
 
 The **only** authoritative implementation is the PL/pgSQL functions in

@@ -8,9 +8,11 @@ import { SubmitButton } from "../../../../../components/submit-button";
 import { FieldError, fieldErrorProps, useFocusFirstFieldError } from "../../../../../components/form-field-error";
 import { computeLaborHours, computeLaborTotalCents } from "../../../../../lib/proposals/calculations";
 import { formatCents } from "../../../../../lib/proposals/format";
+import { GenerateLaborFromMeasurementPanel } from "./generate-labor-from-measurement-panel";
 import type { Database } from "../../../../../../types/database";
 
 type ProposalLaborItem = Database["public"]["Tables"]["proposal_labor_items"]["Row"];
+type ProposalMeasurement = Database["public"]["Tables"]["proposal_measurements"]["Row"];
 
 const initialState: ActionResult = {};
 
@@ -26,6 +28,8 @@ export function StepLabor({
   defaultHourlyRateCents,
   laborTotalCents,
   canEdit,
+  measurements,
+  canGenerateFromMeasurements,
 }: {
   proposalId: string;
   proposalVersionId: string;
@@ -33,6 +37,8 @@ export function StepLabor({
   defaultHourlyRateCents: number;
   laborTotalCents: number;
   canEdit: boolean;
+  measurements: ProposalMeasurement[];
+  canGenerateFromMeasurements: boolean;
 }) {
   const [state, formAction] = useActionState(addProposalLaborItemAction, initialState);
   const [pricingMethod, setPricingMethod] = useState<"hourly" | "fixed">("hourly");
@@ -268,6 +274,15 @@ export function StepLabor({
           Saved labor total: <strong>{formatCents(laborTotalCents)}</strong>
         </p>
       </div>
+
+      {canEdit ? (
+        <GenerateLaborFromMeasurementPanel
+          proposalId={proposalId}
+          proposalVersionId={proposalVersionId}
+          measurements={measurements}
+          canGenerate={canGenerateFromMeasurements}
+        />
+      ) : null}
 
       <div className="tenant-form" style={{ justifyContent: "space-between" }}>
         <Link href={`/proposals/${proposalId}/edit?step=scope`} className="button-secondary">

@@ -14,10 +14,12 @@ import { FieldError, fieldErrorProps, useFocusFirstFieldError } from "../../../.
 import { computeLineItemTotalCents } from "../../../../../lib/proposals/calculations";
 import { formatCents, formatLabel } from "../../../../../lib/proposals/format";
 import type { MaterialCatalogSearchResult } from "../../../../../lib/proposals/materials";
+import { GenerateMaterialsFromMeasurementPanel } from "./generate-materials-from-measurement-panel";
 import type { Database } from "../../../../../../types/database";
 
 type ProposalLineItem = Database["public"]["Tables"]["proposal_line_items"]["Row"];
 type ProposalSection = Database["public"]["Tables"]["proposal_sections"]["Row"];
+type ProposalMeasurement = Database["public"]["Tables"]["proposal_measurements"]["Row"];
 
 const CATEGORIES = ["material", "equipment", "subcontractor", "travel", "disposal", "additional_service", "allowance", "other"];
 const UNITS = ["each", "hour", "day", "gallon", "sq_ft", "linear_ft", "fixed"];
@@ -272,7 +274,7 @@ function MaterialPricingPanel({
           {pricingZipCode && !hasAnyPrice ? (
             <p className="hint">No price is available for these materials in this ZIP code. Try another ZIP code or add a custom cost.</p>
           ) : null}
-          <div className="table-card">
+          <div className="table-card scroll-capped-list">
             <table>
               <thead>
                 <tr>
@@ -333,6 +335,8 @@ export function StepMaterials({
   catalogHasMore,
   catalogLimit,
   catalogPageSize,
+  measurements,
+  canGenerateFromMeasurements,
 }: {
   proposalId: string;
   proposalVersionId: string;
@@ -351,6 +355,8 @@ export function StepMaterials({
   catalogHasMore: boolean;
   catalogLimit: number;
   catalogPageSize: number;
+  measurements: ProposalMeasurement[];
+  canGenerateFromMeasurements: boolean;
 }) {
   const [state, formAction] = useActionState(addProposalLineItemAction, initialState);
   const [quantity, setQuantity] = useState("1");
@@ -380,6 +386,19 @@ export function StepMaterials({
           catalogHasMore={catalogHasMore}
           catalogLimit={catalogLimit}
           catalogPageSize={catalogPageSize}
+        />
+      ) : null}
+
+      {isDraft ? (
+        <GenerateMaterialsFromMeasurementPanel
+          proposalId={proposalId}
+          proposalVersionId={proposalVersionId}
+          measurements={measurements}
+          catalogResults={catalogResults}
+          sections={sections}
+          canGenerate={canGenerateFromMeasurements}
+          canManagePricing={canManagePricing}
+          pricingZipCode={pricingZipCode}
         />
       ) : null}
 

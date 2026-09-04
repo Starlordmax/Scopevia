@@ -103,7 +103,7 @@ export async function addMeasurementAction(_prev: ActionResult, formData: FormDa
   if (error) return { error: friendlyRpcErrorMessage(error.message) };
 
   revalidatePath(`/proposals/${proposalId.data}/edit`);
-  return {};
+  return { message: "Saved. You can now use this measurement in Labor or Materials & Costs." };
 }
 
 export async function updateMeasurementAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
@@ -215,7 +215,7 @@ export async function saveMeasurementShapeAction(_prev: ActionResult, formData: 
   }
 
   revalidatePath(`/proposals/${proposalId.data}/edit`);
-  return {};
+  return { message: "Saved. You can now use this measurement in Labor or Materials & Costs." };
 }
 
 /**
@@ -296,7 +296,7 @@ export async function saveMeasurementPolygonShapeAction(_prev: ActionResult, for
   }
 
   revalidatePath(`/proposals/${proposalId.data}/edit`);
-  return {};
+  return { message: "Saved. You can now use this measurement in Labor or Materials & Costs." };
 }
 
 export async function generateMaterialFromMeasurementAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {

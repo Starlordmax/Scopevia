@@ -693,6 +693,40 @@ button:disabled {
   }
 }
 
+/* Caps long lists (e.g. the material catalog search results) at a fixed
+   height with their own internal scroll, instead of pushing the whole page
+   down. Composed with .table-card (keeps its border/background/shadow on
+   desktop, and its mobile card-list treatment) -- this class only adds the
+   height cap + scroll. The sticky thead only matters on desktop: on mobile
+   the table/thead/tbody rules further down turn <thead> into `display:
+   none`, so there's nothing to stick. See docs/34-proposal-builder-ux.md. */
+.scroll-capped-list {
+  max-height: 500px;
+  overflow-y: auto;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* .table-card's own mobile rule strips the border/background so its
+   card-list rows aren't double-boxed -- but for a height-capped list that
+   makes the scroll boundary invisible (the last row just gets cut off
+   mid-card, reading as broken rather than "scroll for more"). Restore a
+   light boundary here so the cutoff reads as an intentional container. */
+@media (max-width: 640px) {
+  .scroll-capped-list {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+  }
+}
+
+.scroll-capped-list thead th {
+  position: sticky;
+  top: 0;
+  background: var(--color-surface);
+  z-index: 1;
+}
+
 .section-card-header {
   display: flex;
   align-items: center;

@@ -90,7 +90,7 @@ export default async function ProposalEditPage({
       : "professional";
 
   const catalogPage =
-    (step === "materials" || step === "measurements") && canViewMaterials
+    step === "materials" && canViewMaterials
       ? await searchMaterialCatalog(tenant.tenant_id, {
           zipCode: data.version.pricing_zip_code,
           searchText: catalogSearch,
@@ -118,19 +118,12 @@ export default async function ProposalEditPage({
         <StepMeasurements
           proposalId={proposalId}
           proposalVersionId={data.version.id}
-          pricingZipCode={data.version.pricing_zip_code}
           measurementGroups={data.measurementGroups}
           measurements={data.measurements}
-          sections={data.sections}
           isDraft={isDraft}
           canView={canViewMeasurements}
           canCreate={canCreateMeasurements}
           canArchive={canArchiveMeasurements}
-          canGenerate={canGenerateFromMeasurements}
-          canManagePricing={canManagePricing}
-          catalogResults={catalogResults}
-          catalogSearch={catalogSearch ?? ""}
-          catalogCategory={catalogCategory ?? ""}
         />
       ) : null}
       {step === "scope" ? (
@@ -150,6 +143,8 @@ export default async function ProposalEditPage({
           defaultHourlyRateCents={defaultHourlyRateCents}
           laborTotalCents={data.version.labor_total_cents}
           canEdit={canManagePricing && isDraft}
+          measurements={data.measurements}
+          canGenerateFromMeasurements={canGenerateFromMeasurements}
         />
       ) : null}
       {step === "materials" ? (
@@ -171,6 +166,8 @@ export default async function ProposalEditPage({
           catalogHasMore={catalogPage.hasMore}
           catalogLimit={catalogLimit}
           catalogPageSize={DEFAULT_PAGE_SIZE}
+          measurements={data.measurements}
+          canGenerateFromMeasurements={canGenerateFromMeasurements}
         />
       ) : null}
       {step === "photos" ? (

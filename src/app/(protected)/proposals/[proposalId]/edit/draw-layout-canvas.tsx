@@ -377,6 +377,7 @@ function FreehandDrawForm({
         <input type="hidden" name="measurementType" value={closed ? measurementType : "linear"} />
 
         {state.error ? <p className="error-banner">{state.error}</p> : null}
+        {state.message ? <p className="success-banner">{state.message}</p> : null}
 
         <GroupAndNameFields measurementGroups={measurementGroups} idPrefix="freehand" fieldErrors={fieldErrors} />
 
@@ -633,6 +634,7 @@ function RectangleDrawForm({
         <input type="hidden" name="shapeData" value={shapeData} />
 
         {state.error ? <p className="error-banner">{state.error}</p> : null}
+        {state.message ? <p className="success-banner">{state.message}</p> : null}
 
         <GroupAndNameFields measurementGroups={measurementGroups} idPrefix="drawRect" fieldErrors={fieldErrors} />
 

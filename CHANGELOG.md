@@ -4,6 +4,51 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### UI fix — material catalog list no longer grows the page indefinitely
+
+The material catalog search results table in **Materials & Costs**
+(`.table-card` under "Material pricing") now sits in a container capped
+at `max-height: 500px` with its own internal vertical scroll, instead of
+rendering every loaded row inline and pushing the whole page down. On
+desktop the table header stays sticky while scrolling within the
+container. The new `.scroll-capped-list` CSS class layers on top of the
+existing `.table-card` styling — it doesn't touch the "Saved costs"
+table or any other `.table-card` usage. On mobile, where `.table-card`
+normally drops its border/background so per-row cards aren't
+double-boxed, `.scroll-capped-list` restores a light border so the
+500px cutoff reads as an intentional scroll boundary rather than
+truncated content; internal vertical scroll and the "Add to proposal"
+buttons continue to work as before. No changes to search, ZIP pricing,
+category filtering, pagination ("Load more materials"), price overrides,
+or add-to-proposal logic. See docs/34-proposal-builder-ux.md and
+docs/42-material-catalog-by-zip.md.
+
+### UX fix — moved measurement-based material/labor generation to the correct steps
+
+Measurements is now a pure capture step (create/draw/save/view/archive
+measurements only) — the "Generate materials from measurement" and
+"Generate labor from measurement" panels that used to live at the bottom
+of Measurements moved to where they're actually used: **"Generate
+materials from a saved measurement"** now lives in Materials & Costs
+(reusing that step's own catalog search results instead of a duplicate
+search form), and **"Generate labor from a saved measurement"** now
+lives in Labor, alongside the existing hourly/fixed labor form. Both new
+panels (`generate-materials-from-measurement-panel.tsx`,
+`generate-labor-from-measurement-panel.tsx`) read saved measurements
+straight from the same proposal load `edit/page.tsx` already does
+regardless of the active step, so either one works even if the user
+never visited Measurements earlier in that browser session. Empty
+states link back to Measurements when no measurement exists yet, and
+Materials & Costs' panel additionally warns when no ZIP is set. Saving a
+measurement now shows a confirmation: "Saved. You can now use this
+measurement in Labor or Materials & Costs."
+
+No calculation, RPC, RLS policy, snapshot pricing, or proposal total
+changed — this is a component-placement/UX refactor only, reusing the
+existing `measurements.generate_materials` permission and the existing
+`generateMaterialFromMeasurementAction`/`addLaborFromMeasurementAction`
+Server Actions unchanged. See docs/34, docs/45, docs/42.
+
 ### Feature — AI-assisted proposal text (Terms, Exclusions, Notes for client)
 
 An "AI writing assistant" on the Terms & Pricing step drafts Terms,

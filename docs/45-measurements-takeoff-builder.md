@@ -3,9 +3,11 @@
 Status: **Implemented**, verified against real Postgres
 (`tests/rls/phase2c-measurements.test.ts`, 39 tests), a pure unit suite
 (`tests/unit/measurement-calculations.test.ts`, 46 tests), and end-to-end
-via Playwright (`tests/e2e/measurements.spec.ts` +
-`measurements.mobile.spec.ts`, 2 scenarios each — manual/rectangle and
-freehand).
+via Playwright (`tests/e2e/measurements.spec.ts` — manual/rectangle,
+freehand, no-measurements empty state on Labor/Materials, and no-ZIP
+warning on Materials; `measurements.mobile.spec.ts` — manual/rectangle
+and freehand, both now generating labor from Labor and a material from
+Materials & Costs).
 
 > **Update (`docs/74`):** Draw layout → Freehand now genuinely supports
 > multiple separate strokes (a real bug fix — see
@@ -14,6 +16,15 @@ freehand).
 > validation (red border, message under the field, focus moved to the
 > first invalid field) instead of a single generic error banner. See
 > [docs/74-custom-service-name-and-multistroke-drawing.md](74-custom-service-name-and-multistroke-drawing.md).
+
+> **Update (2026-08-19, UX split):** Measurements is now a pure capture
+> step — the "Generate materials from measurement" / "Generate labor from
+> measurement" panels that used to live at the bottom of this step moved
+> to Materials & Costs and Labor respectively (see "UI" below and
+> [docs/34](34-proposal-builder-ux.md)). No RPC, calculation, or
+> permission changed — this is a component-placement refactor only.
+> Saving a measurement now shows a confirmation: "Saved. You can now use
+> this measurement in Labor or Materials & Costs."
 
 ## What this phase adds
 
@@ -156,13 +167,40 @@ Phase 2B established for materials.
 
 ## UI
 
-`step-measurements.tsx`: one "Measurements" panel (group creation,
-Manual entry / Draw layout tabs, saved measurements list) plus a
-"Generate materials from measurement" / "Generate labor from
-measurement" panel (measurement picker, catalog search reusing
-`searchMaterialCatalog()`, coverage/coats/waste inputs, and a
-labor-by-area/linear form). See [docs/34](34-proposal-builder-ux.md)
-for how this fits into the builder's step-by-step flow.
+Split across three steps, each owning exactly one responsibility (see
+[docs/34](34-proposal-builder-ux.md) for how this fits into the
+builder's step-by-step flow):
+
+- **Measurements** (`step-measurements.tsx`) — capture only: group
+  creation, Manual entry / Draw layout tabs, and the saved measurements
+  list (view/archive). No generate-material or generate-labor UI lives
+  here at all.
+- **Labor** (`step-labor.tsx` +
+  `generate-labor-from-measurement-panel.tsx`) — the existing hourly/
+  fixed labor form and saved-labor list, plus a **"Generate labor from a
+  saved measurement"** panel (measurement picker, label, price-by area/
+  linear, rate). Empty state when no measurements exist yet: "No saved
+  measurements yet. Go to Measurements to create an area or linear
+  measurement first." with a link back to `?step=measurements`.
+- **Materials & Costs** (`step-materials.tsx` +
+  `generate-materials-from-measurement-panel.tsx`) — the material catalog
+  panel and "Add a custom cost" form, plus a **"Generate materials from a
+  saved measurement"** panel (measurement picker, value-field picker,
+  material picker, coverage/coats/waste). It reuses this step's own
+  already-loaded catalog search results instead of duplicating a second
+  search form. Empty states: no measurements yet ("Create a measurement
+  first, then use it to estimate material quantities." + a link to
+  Measurements) and no ZIP set yet ("Set a ZIP code above to see local
+  material pricing.").
+
+Both generate panels are gated by the same `measurements.generate_materials`
+permission the panel used before the move (no new permission was added),
+and both receive `measurements` straight from the same `getFullProposal()`
+load `edit/page.tsx` already does regardless of the active step — so
+either panel works even if the user never visited Measurements earlier in
+that browser session. The underlying Server Actions
+(`generateMaterialFromMeasurementAction`, `addLaborFromMeasurementAction`)
+and RPCs are unchanged; only where their forms render moved.
 
 ## Preview
 

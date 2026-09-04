@@ -248,10 +248,30 @@ Materials & Costs step (`step-materials.tsx`):
 1. **Material pricing** — a single panel (`MaterialPricingPanel`)
    containing the ZIP field, the search/category form, and the results
    list, in that order — see "ZIP + search: one unified panel" below.
-2. **Add a custom cost** — the pre-existing (Phase 2A) manual entry
+   The results table sits in a `.scroll-capped-list` container (composed
+   with `.table-card` in `globals.css`): `max-height: 500px` with its
+   own internal scroll, sticky `<thead>` on desktop, so a large result
+   set (see pagination below) no longer pushes the rest of the page —
+   ZIP form, "Generate materials from a saved measurement", "Add a
+   custom cost", "Saved costs" — down the page. Purely a layout change;
+   search, filtering, pagination, and add-to-proposal are unaffected.
+2. **Generate materials from a saved measurement**
+   (`generate-materials-from-measurement-panel.tsx`, moved here
+   2026-08-19 from Measurements — see
+   [docs/45](45-measurements-takeoff-builder.md#ui) and
+   [docs/34](34-proposal-builder-ux.md)) — picks a saved measurement and
+   one of its computed fields (area/perimeter/linear length), a material
+   from the catalog results already loaded above, and coverage/coats/
+   waste, then calls `generate_material_from_measurement()`. Reuses this
+   step's own catalog search results rather than a second search form.
+   Empty states: no saved measurements ("Create a measurement first,
+   then use it to estimate material quantities." + a link to
+   Measurements) and no ZIP set ("Set a ZIP code above to see local
+   material pricing.").
+3. **Add a custom cost** — the pre-existing (Phase 2A) manual entry
    form, relabeled to make the distinction from catalog items explicit;
    unchanged behavior, still gated by `proposals.manage_pricing`.
-3. **Saved costs** — unchanged table, with a small "via catalog — ZIP
+4. **Saved costs** — unchanged table, with a small "via catalog — ZIP
    NNNNN" hint under any catalog-sourced row's description.
 
 No preview-vs-saved-total regression: adding a catalog item calls

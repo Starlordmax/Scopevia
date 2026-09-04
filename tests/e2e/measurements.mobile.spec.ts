@@ -7,8 +7,10 @@ import { authFile, uniqueSuffix } from "./fixtures/session";
  * Covers manual entry, the draw-layout rectangle (via mouse-emulated
  * pointer events — Playwright's mouse API dispatches real Pointer
  * Events, which is what the canvas listens for, so this exercises the
- * same code path a touch drag would), and generating a material, all
- * with explicit no-horizontal-overflow checks.
+ * same code path a touch drag would), and generating labor (Labor step)
+ * and a material (Materials & Costs step) from the saved measurement, all
+ * with explicit no-horizontal-overflow checks. Also confirms Measurements
+ * itself carries no generate panels, per docs/34-proposal-builder-ux.md.
  */
 test.use({ storageState: authFile("owner-a") });
 
@@ -82,27 +84,49 @@ test.describe("Measurements / Takeoff builder (mobile, 390x844)", () => {
     scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(viewportWidth + 1);
 
-    // Set a ZIP so the catalog has local pricing, then generate a material.
+    // Measurements itself carries no generate panels.
+    await expect(page.getByRole("heading", { name: "Generate materials from a saved measurement" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Generate labor from a saved measurement" })).toHaveCount(0);
+
+    // Labor: generate labor from the saved measurement, no overflow.
+    await page.goto(`${proposalUrl}/edit?step=labor`);
+    scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(scrollWidth).toBeLessThanOrEqual(viewportWidth + 1);
+
+    const generateLaborPanel = page
+      .locator(".section-card")
+      .filter({ has: page.getByRole("heading", { name: "Generate labor from a saved measurement" }) });
+    await generateLaborPanel.locator("#laborLabel").fill("Bedroom floor install labor");
+    await generateLaborPanel.locator("#pricingMethod").selectOption("area");
+    await generateLaborPanel.locator("#rateCents").fill("4.00");
+    await generateLaborPanel.getByRole("button", { name: "Add labor to proposal" }).click();
+
+    const savedLabor = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Saved labor" }) });
+    await expect(savedLabor.locator("tr").filter({ hasText: "Bedroom floor install labor" })).toBeVisible();
+    scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(scrollWidth).toBeLessThanOrEqual(viewportWidth + 1);
+
+    // Materials & Costs: set a ZIP so the catalog has local pricing, search, then generate a material.
     await page.goto(`${proposalUrl}/edit?step=materials`);
     await page.getByLabel("ZIP code").fill("33101");
     await page.getByRole("button", { name: "Save ZIP" }).click();
 
-    await page.goto(`${proposalUrl}/edit?step=measurements`);
-    const generatePanel = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Generate materials from measurement" }) });
-    await generatePanel.getByLabel("Search the material catalog").fill("Laminate Flooring");
-    await generatePanel.getByRole("button", { name: "Search" }).click();
+    await page.getByLabel("Search the material catalog").fill("Laminate Flooring");
+    await page.getByRole("button", { name: "Search" }).click();
     await page.waitForURL(/catalogSearch=Laminate/);
 
     scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(viewportWidth + 1);
 
-    const laminateOption = generatePanel.locator("#genMaterial option", { hasText: "Laminate Flooring" });
+    const generateMaterialsPanel = page
+      .locator(".section-card")
+      .filter({ has: page.getByRole("heading", { name: "Generate materials from a saved measurement" }) });
+    const laminateOption = generateMaterialsPanel.locator("#genMaterial option", { hasText: "Laminate Flooring" });
     const laminateOptionValue = await laminateOption.getAttribute("value");
-    await generatePanel.locator("#genMaterial").selectOption({ value: laminateOptionValue! });
-    await generatePanel.locator("#coverageRate").fill("1");
-    await generatePanel.getByRole("button", { name: "Add to proposal" }).click();
+    await generateMaterialsPanel.locator("#genMaterial").selectOption({ value: laminateOptionValue! });
+    await generateMaterialsPanel.locator("#coverageRate").fill("1");
+    await generateMaterialsPanel.getByRole("button", { name: "Add to proposal" }).click();
 
-    await page.goto(`${proposalUrl}/edit?step=materials`);
     const savedCosts = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Saved costs" }) });
     await expect(savedCosts.locator("tr").filter({ hasText: "Laminate Flooring" })).toBeVisible();
     scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
@@ -184,27 +208,49 @@ test.describe("Measurements / Takeoff builder (mobile, 390x844)", () => {
     scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(viewportWidth + 1);
 
-    // Set a ZIP so the catalog has local pricing, then generate a material from the freehand-derived area.
+    // Measurements itself carries no generate panels.
+    await expect(page.getByRole("heading", { name: "Generate materials from a saved measurement" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Generate labor from a saved measurement" })).toHaveCount(0);
+
+    // Labor: generate labor from the freehand-derived measurement, no overflow.
+    await page.goto(`${proposalUrl}/edit?step=labor`);
+    scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(scrollWidth).toBeLessThanOrEqual(viewportWidth + 1);
+
+    const generateLaborPanel = page
+      .locator(".section-card")
+      .filter({ has: page.getByRole("heading", { name: "Generate labor from a saved measurement" }) });
+    await generateLaborPanel.locator("#laborLabel").fill("Bathroom sketch install labor");
+    await generateLaborPanel.locator("#pricingMethod").selectOption("area");
+    await generateLaborPanel.locator("#rateCents").fill("4.00");
+    await generateLaborPanel.getByRole("button", { name: "Add labor to proposal" }).click();
+
+    const savedLabor = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Saved labor" }) });
+    await expect(savedLabor.locator("tr").filter({ hasText: "Bathroom sketch install labor" })).toBeVisible();
+    scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(scrollWidth).toBeLessThanOrEqual(viewportWidth + 1);
+
+    // Materials & Costs: set a ZIP so the catalog has local pricing, search, then generate a material from the freehand-derived area.
     await page.goto(`${proposalUrl}/edit?step=materials`);
     await page.getByLabel("ZIP code").fill("33101");
     await page.getByRole("button", { name: "Save ZIP" }).click();
 
-    await page.goto(`${proposalUrl}/edit?step=measurements`);
-    const generatePanel = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Generate materials from measurement" }) });
-    await generatePanel.getByLabel("Search the material catalog").fill("Laminate Flooring");
-    await generatePanel.getByRole("button", { name: "Search" }).click();
+    await page.getByLabel("Search the material catalog").fill("Laminate Flooring");
+    await page.getByRole("button", { name: "Search" }).click();
     await page.waitForURL(/catalogSearch=Laminate/);
 
     scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(viewportWidth + 1);
 
-    const laminateOption = generatePanel.locator("#genMaterial option", { hasText: "Laminate Flooring" });
+    const generateMaterialsPanel = page
+      .locator(".section-card")
+      .filter({ has: page.getByRole("heading", { name: "Generate materials from a saved measurement" }) });
+    const laminateOption = generateMaterialsPanel.locator("#genMaterial option", { hasText: "Laminate Flooring" });
     const laminateOptionValue = await laminateOption.getAttribute("value");
-    await generatePanel.locator("#genMaterial").selectOption({ value: laminateOptionValue! });
-    await generatePanel.locator("#coverageRate").fill("1");
-    await generatePanel.getByRole("button", { name: "Add to proposal" }).click();
+    await generateMaterialsPanel.locator("#genMaterial").selectOption({ value: laminateOptionValue! });
+    await generateMaterialsPanel.locator("#coverageRate").fill("1");
+    await generateMaterialsPanel.getByRole("button", { name: "Add to proposal" }).click();
 
-    await page.goto(`${proposalUrl}/edit?step=materials`);
     const savedCosts = page.locator(".section-card").filter({ has: page.getByRole("heading", { name: "Saved costs" }) });
     await expect(savedCosts.locator("tr").filter({ hasText: "Laminate Flooring" })).toBeVisible();
     scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
