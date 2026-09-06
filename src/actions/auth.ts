@@ -5,12 +5,29 @@ import { headers } from "next/headers";
 import { createClient } from "../lib/supabase/server";
 import { signUpSchema, signInSchema, forgotPasswordSchema, resetPasswordSchema } from "../lib/validation/schemas";
 import { logAuditEvent } from "../lib/audit/log";
+import { resolveSiteOrigin } from "../lib/auth/site-origin";
+import { zodIssuesToFieldErrors } from "../lib/validation/field-errors";
 
-export type ActionResult = { error?: string };
+/**
+ * `fieldErrors` is optional and additive to `error` — a form that wants
+ * inline, per-field red states (see docs/74-custom-service-name-and-multistroke-drawing.md,
+ * "Validation UX") reads it directly; every existing consumer that only
+ * reads `error` keeps working unchanged.
+ */
+export type ActionResult = { error?: string; message?: string; fieldErrors?: Record<string, string> };
 
+/**
+ * `NEXT_PUBLIC_SITE_URL` wins whenever it's set (Render/staging/production),
+ * `APP_BASE_URL` (Phase 3D's notification-link env var — already required
+ * on any real deployment, see docs/64) is a secondary fallback, then the
+ * request's `Origin` header, then localhost — see src/lib/auth/site-origin.ts
+ * for why the env vars must come before the header. This is the SAME
+ * canonical-URL resolution /auth/callback/route.ts uses for the final
+ * post-confirmation redirect — see docs/68-auth-callback-localhost-redirect-fix.md.
+ */
 async function siteOrigin(): Promise<string> {
   const originHeader = (await headers()).get("origin");
-  return originHeader ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  return resolveSiteOrigin(process.env.NEXT_PUBLIC_SITE_URL || process.env.APP_BASE_URL, originHeader);
 }
 
 export async function signUpAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
@@ -20,7 +37,7 @@ export async function signUpAction(_prev: ActionResult, formData: FormData): Pro
     fullName: formData.get("fullName") || undefined,
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
   }
 
   const supabase = await createClient();
@@ -30,7 +47,10 @@ export async function signUpAction(_prev: ActionResult, formData: FormData): Pro
     password: parsed.data.password,
     options: {
       data: parsed.data.fullName ? { full_name: parsed.data.fullName } : undefined,
-      emailRedirectTo: `${origin}/auth/callback`,
+      // After confirming, land the user on /sign-in (not straight into the
+      // app) — a deliberate product choice, not a bug: see
+      // docs/68-auth-callback-localhost-redirect-fix.md.
+      emailRedirectTo: `${origin}/auth/callback?next=/sign-in`,
     },
   });
 
@@ -47,7 +67,7 @@ export async function signInAction(_prev: ActionResult, formData: FormData): Pro
     password: formData.get("password"),
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
   }
 
   const supabase = await createClient();
@@ -94,7 +114,7 @@ export async function signOutAction(): Promise<void> {
 export async function forgotPasswordAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const parsed = forgotPasswordSchema.safeParse({ email: formData.get("email") });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
   }
 
   const supabase = await createClient();
@@ -114,7 +134,7 @@ export async function resetPasswordAction(_prev: ActionResult, formData: FormDat
     confirmPassword: formData.get("confirmPassword"),
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
   }
 
   const supabase = await createClient();

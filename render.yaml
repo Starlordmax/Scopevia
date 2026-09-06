@@ -1,0 +1,62 @@
+# Render Blueprint for Scopevia Staging — see docs/64-render-staging-deployment.md
+# and docs/65-render-environment-variables.md for the full setup guide and
+# what each variable is / where to get it.
+#
+# Deliberately contains NO secrets. Every value that must be private
+# (`sync: false`) is left for you to enter directly in the Render dashboard
+# after the Blueprint is applied — Render will prompt for each one. Public/
+# non-sensitive values are set inline since there's nothing to protect by
+# hiding them.
+#
+# This describes a Web Service, not a Static Site — Scopevia uses Next.js
+# server-side rendering, Server Actions, httpOnly cookies, and the Supabase
+# service role, none of which a static host can run.
+services:
+  - type: web
+    name: scopevia-staging
+    runtime: node
+    plan: starter
+    branch: feature/proposal-centric-pivot
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      # --- Public / non-sensitive — inline is fine ---
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_APP_ENV
+        value: staging
+      - key: NEXT_PUBLIC_SITE_URL
+        sync: false # set to this service's actual Render URL once known
+      - key: APP_BASE_URL
+        sync: false # same value as NEXT_PUBLIC_SITE_URL — see docs/65
+
+      # --- Supabase — get these from the scopevia-test project settings
+      # (or a dedicated staging project — see docs/64, "Supabase staging
+      # strategy") — never production. ---
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+
+      # --- Email (Resend) — staging MUST use a real provider, never `dev`,
+      # so beta testers actually receive OTP codes and notifications. See
+      # docs/64, "Email provider for staging." ---
+      - key: EMAIL_PROVIDER
+        value: resend
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: EMAIL_REPLY_TO
+        sync: false
+
+      # Deliberately NOT set here. This override exists only for local/CI
+      # E2E runs (see .env.example) — it must never be present on a public
+      # staging deployment. If EMAIL_PROVIDER is ever accidentally left as
+      # `dev` without this override, instrumentation.ts refuses to start
+      # the server at all rather than silently logging a real customer's
+      # access code to the Render console.
+      # - key: EMAIL_ALLOW_DEV_PROVIDER_IN_PRODUCTION

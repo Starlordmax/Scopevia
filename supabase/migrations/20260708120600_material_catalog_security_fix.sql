@@ -1,0 +1,16 @@
+-- Phase 2B fix: find_material_zip_price() performs no permission check of
+-- its own -- it is an internal helper for search_material_catalog() and
+-- add_proposal_line_item_from_catalog(), both of which already gate on
+-- materials.view/proposals.update against a tenant_id derived from a
+-- row the caller has proven access to (not a bare client-supplied value)
+-- before ever calling it. Granting it directly to `authenticated` (as the
+-- previous migration mistakenly did) would let any authenticated user
+-- call it with an arbitrary p_tenant_id and read that tenant's own
+-- tenant-owned price overrides -- exactly the cross-tenant leak
+-- docs/42-material-catalog-by-zip.md requires never happens.
+--
+-- SECURITY DEFINER functions execute as their owner, not as the original
+-- caller, so search_material_catalog()/add_proposal_line_item_from_catalog()
+-- calling find_material_zip_price() internally is unaffected by revoking
+-- the authenticated-role grant here.
+revoke execute on function public.find_material_zip_price(uuid, uuid, text) from authenticated;

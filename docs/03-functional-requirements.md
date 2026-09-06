@@ -2,6 +2,17 @@
 
 Convención de IDs: `<MODULE>-<NNN>`. Prioridad: **P0** (bloqueante para MVP), **P1** (deseable en MVP), **P2** (post-MVP).
 
+> **Nota de estado (2026-07-06):** la sección **PROP — Proposals & Client
+> Portal** de abajo describe el diseño original (basado en
+> `estimates`/`estimate_versions`), **superseded** por el pivote Phase 2A
+> — ver [29-proposal-centric-product-pivot.md](29-proposal-centric-product-pivot.md).
+> El flujo real implementado ya no depende de EST/CAT: Proposal se
+> construye directamente sobre Client/Opportunity, con su propio motor de
+> cálculo (labor + line items), sin Estimating Engine ni Catálogo. La
+> sección EST/CAT permanece como registro de diseño para una fase futura
+> que aún podría necesitar un catálogo reutilizable de materiales, pero no
+> es un prerequisito de Proposals tal como quedó implementado.
+
 ## AUTH — Authentication & Session
 
 | ID | Requisito | Prioridad | Criterio de aceptación |

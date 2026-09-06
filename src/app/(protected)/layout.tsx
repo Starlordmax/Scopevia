@@ -1,8 +1,13 @@
 import Link from "next/link";
+import { CircleUserRound, LogOut } from "lucide-react";
 import { requireUser } from "../../lib/auth/session";
 import { requireActiveTenant } from "../../lib/auth/tenant";
+import { hasPermission, PERMISSIONS } from "../../lib/auth/permissions";
 import { signOutAction } from "../../actions/auth";
-import { switchTenantAction } from "../../actions/tenant";
+import { TenantSwitcher } from "./tenant-switcher";
+import { SidebarNav } from "./sidebar-nav";
+import { BottomNav } from "./bottom-nav";
+import { buildNavItems } from "./nav-items";
 
 // Every page under this layout reads the caller's session and tenant
 // membership from the database on every request — there is no meaningful
@@ -16,42 +21,56 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   const user = await requireUser();
   const { tenant, tenants } = await requireActiveTenant();
 
+  const [canViewProposals, canCreateProposal, canViewClients, canViewPortfolio, canViewMembers, canViewProposalSettings] = await Promise.all([
+    hasPermission(tenant.tenant_id, PERMISSIONS.PROPOSALS_VIEW),
+    hasPermission(tenant.tenant_id, PERMISSIONS.PROPOSALS_CREATE),
+    hasPermission(tenant.tenant_id, PERMISSIONS.CLIENTS_VIEW),
+    hasPermission(tenant.tenant_id, PERMISSIONS.PORTFOLIO_VIEW),
+    hasPermission(tenant.tenant_id, PERMISSIONS.MEMBERS_VIEW),
+    hasPermission(tenant.tenant_id, PERMISSIONS.PROPOSAL_SETTINGS_VIEW),
+  ]);
+
+  const navItems = buildNavItems({
+    canViewProposals,
+    canCreateProposal,
+    canViewClients,
+    canViewPortfolio,
+    canViewMembers,
+    canViewProposalSettings,
+  });
+
   return (
     <div className="app-shell">
-      <header className="app-header">
-        <div>
-          <strong>Scopevia</strong>
-          <div className="hint">{user.email}</div>
-        </div>
+      <SidebarNav items={navItems.main} adminItems={navItems.admin} />
 
-        {tenants.length > 1 ? (
-          <form action={switchTenantAction} className="tenant-form">
-            <select name="tenantId" defaultValue={tenant.tenant_id} onChange={(e) => e.currentTarget.form?.requestSubmit()}>
-              {tenants.map((t) => (
-                <option key={t.tenant_id} value={t.tenant_id}>
-                  {t.tenant_name}
-                </option>
-              ))}
-            </select>
-          </form>
-        ) : (
-          <strong>{tenant.tenant_name}</strong>
-        )}
+      <div className="app-body">
+        <header className="topbar">
+          <div className="topbar-context">
+            {tenants.length > 1 ? (
+              <TenantSwitcher tenants={tenants} activeTenantId={tenant.tenant_id} />
+            ) : (
+              <strong>{tenant.tenant_name}</strong>
+            )}
+          </div>
 
-        <nav>
-          <Link href="/">Home</Link>
-          <Link href="/members">Members</Link>
-          <Link href="/profile">Profile</Link>
-        </nav>
+          <div className="topbar-account">
+            <span className="hint">{user.email}</span>
+            <Link href="/profile" className="button-secondary" aria-label="Profile" title="Profile">
+              <CircleUserRound className="icon" size={18} aria-hidden="true" />
+            </Link>
+            <form action={signOutAction}>
+              <button type="submit" className="button-secondary">
+                <LogOut className="icon" size={16} aria-hidden="true" />
+                Sign out
+              </button>
+            </form>
+          </div>
+        </header>
 
-        <form action={signOutAction}>
-          <button type="submit" className="button-secondary">
-            Sign out
-          </button>
-        </form>
-      </header>
+        <main className="app-main">{children}</main>
 
-      <main className="app-main">{children}</main>
+        <BottomNav items={navItems.bottomNav} more={navItems.more} />
+      </div>
     </div>
   );
 }

@@ -14,6 +14,7 @@ import {
   membershipStatusSchema,
   emailSchema,
 } from "../lib/validation/schemas";
+import { zodIssuesToFieldErrors, attributeRpcErrorToField } from "../lib/validation/field-errors";
 import type { ActionResult } from "./auth";
 import type { Database } from "../../types/database";
 
@@ -25,7 +26,7 @@ export async function createTenantAction(_prev: ActionResult, formData: FormData
     slug: formData.get("slug"),
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
   }
 
   const supabase = await createClient();
@@ -35,7 +36,8 @@ export async function createTenantAction(_prev: ActionResult, formData: FormData
 
   if (error) {
     if (error.code === "23505") {
-      return { error: "That business URL is already taken. Try another." };
+      const message = "That business URL is already taken. Try another.";
+      return { error: message, fieldErrors: { slug: message } };
     }
     return { error: error.message };
   }
@@ -96,8 +98,11 @@ export async function updateMembershipAction(_prev: ActionResult, formData: Form
   const supabase = await createClient();
   const { error } = await supabase.rpc("update_membership", {
     p_membership_id: membershipId.data,
-    p_new_status: status?.data ?? null,
-    p_new_role_key: roleKey?.data ?? null,
+    // undefined (key omitted from the request), not null: both p_new_status
+    // and p_new_role_key have a SQL `default null`, which only takes effect
+    // when the argument is omitted — an explicit JSON null does not.
+    p_new_status: status?.data ?? undefined,
+    p_new_role_key: roleKey?.data ?? undefined,
   });
   if (error) {
     return { error: error.message };
@@ -136,8 +141,12 @@ export async function inviteMemberAction(_prev: ActionResult, formData: FormData
   const tenantId = uuidSchema.safeParse(formData.get("tenantId"));
   const email = emailSchema.safeParse(formData.get("email"));
   const roleKey = roleKeySchema.safeParse(formData.get("roleKey"));
-  if (!tenantId.success || !email.success || !roleKey.success) {
-    return { error: "Invalid input" };
+  if (!tenantId.success || !roleKey.success) {
+    return { error: "Invalid request" };
+  }
+  if (!email.success) {
+    const message = email.error.issues[0]?.message ?? "Enter a valid email address.";
+    return { error: message, fieldErrors: { email: message } };
   }
 
   try {
@@ -153,7 +162,11 @@ export async function inviteMemberAction(_prev: ActionResult, formData: FormData
     p_role_key: roleKey.data,
   });
   if (error) {
-    return { error: error.message };
+    const field = attributeRpcErrorToField(error.message, [
+      ["No Scopevia account exists yet for that email", "email"],
+      ["That person is already a member of this tenant", "email"],
+    ]);
+    return { error: error.message, fieldErrors: field ? { [field]: error.message } : undefined };
   }
 
   revalidatePath("/members");

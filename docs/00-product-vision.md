@@ -1,5 +1,14 @@
 # 00 — Product Vision
 
+> **Nota de estado (2026-07-06):** Phase 2A cambió la propuesta de valor
+> principal — ver [29-proposal-centric-product-pivot.md](29-proposal-centric-product-pivot.md).
+> La nueva promesa central es *"Create professional proposals, showcase
+> your work, price your time, and win more jobs"*. El flujo ya no exige
+> un Project antes de cotizar; Proposal es ahora el paso inmediato
+> después de Opportunity. Good/Better/Best, el motor de estimación por
+> industria, y el Client Portal siguen siendo visión válida a futuro,
+> pero no son parte de lo ya implementado.
+
 ## Product vision
 
 > **Scopevia** ayuda a contratistas independientes y pequeñas empresas de construcción a convertir una inspección de campo en un estimado profesional, con opciones Good/Better/Best, en minutos en lugar de horas — y a cobrar más rápido gracias a un portal de cliente y pagos integrados.

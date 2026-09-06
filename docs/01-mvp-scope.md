@@ -1,5 +1,15 @@
 # 01 — MVP Scope
 
+> **Nota de estado (2026-07-06):** ver
+> [29-proposal-centric-product-pivot.md](29-proposal-centric-product-pivot.md).
+> "Estimados con versiones" y "Opciones Good/Better/Best" de la sección
+> "In scope" de abajo fueron reemplazados, para Phase 2A, por un modelo de
+> Proposal más simple (`proposals`/`proposal_versions`, sin
+> Good/Better/Best todavía) que no depende de un motor de estimación por
+> industria ni de un catálogo — ver
+> [30-phase-2a-proposal-data-model.md](30-phase-2a-proposal-data-model.md).
+> Project ya no es un prerequisito para cotizar.
+
 ## In scope
 
 ### Industria

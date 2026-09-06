@@ -26,6 +26,19 @@ supabase/.temp
 
 # Testing
 coverage/
+playwright-report/
+test-results/
+playwright/.auth/
+blob-report/
+
+# UX review screenshots (local only, never committed)
+docs/ux-review-screenshots/
+
+# Dev-mode client portal OTP capture (local only — see docs/52, "Email strategy")
+.portal-otp-dev/
+
+# Dev-mode Client Portal event notification capture (local only — see docs/62-proposal-email-notifications.md)
+.notification-emails-dev/
 
 # Editor / OS
 .DS_Store

@@ -4,12 +4,13 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "../lib/supabase/server";
 import { requireUser } from "../lib/auth/session";
+import { zodIssuesToFieldErrors } from "../lib/validation/field-errors";
 import type { ActionResult } from "./auth";
 
 const updateProfileSchema = z.object({
-  fullName: z.string().trim().min(1).max(120),
-  locale: z.string().trim().min(2).max(20),
-  timezone: z.string().trim().min(2).max(64),
+  fullName: z.string().trim().min(1, "Full name is required.").max(120),
+  locale: z.string().trim().min(2, "Enter a valid locale (e.g. en-US).").max(20),
+  timezone: z.string().trim().min(2, "Enter a valid timezone.").max(64),
 });
 
 export async function updateProfileAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
@@ -21,7 +22,7 @@ export async function updateProfileAction(_prev: ActionResult, formData: FormDat
     timezone: formData.get("timezone"),
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", fieldErrors: zodIssuesToFieldErrors(parsed.error) };
   }
 
   const supabase = await createClient();
